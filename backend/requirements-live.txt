@@ -1,0 +1,7 @@
+# Extra deps needed only when SELLFINDER_USE_LIVE_MODEL=true, since
+# LiveModelClient imports /model's SellFinderModel in-process.
+# Mirrors model/requirements.txt's runtime (non-dev) deps.
+pandas>=2.0
+scikit-learn>=1.3
+numpy>=1.24
+joblib>=1.3

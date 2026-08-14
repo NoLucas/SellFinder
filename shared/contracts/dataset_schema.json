@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sellfinder.internal/contracts/dataset_schema.json",
+  "title": "SellFinder Dataset Schema",
+  "description": "Contract for historical listing data delivered by /data-pipeline to /model for training. One record = one closed or still-open marketplace listing. The item-facing fields (item_id, category, price, condition, brand, days_listed, attributes) intentionally mirror PredictionItem in prediction_api.json so training and inference share one feature space; sold/days_to_sell/final_sale_price are the historical outcome labels used only for training.",
+  "type": "object",
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "Unique listing identifier."
+          },
+          "category": {
+            "type": "string",
+            "description": "Product category, e.g. 'electronics/laptop'."
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Asking price at listing time."
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["new", "like_new", "good", "fair", "poor"]
+          },
+          "brand": {
+            "type": ["string", "null"]
+          },
+          "days_listed": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of days the item had been listed as of this record, if known."
+          },
+          "attributes": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "Free-form extra features, passed through from the source listing."
+          },
+          "sold": {
+            "type": "boolean",
+            "description": "Whether the listing eventually sold. Training label for sell_probability."
+          },
+          "days_to_sell": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Days between listing and sale. Null when sold is false. Training label for estimated_days_to_sell."
+          },
+          "final_sale_price": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Actual sale price. Null when sold is false. Training label for recommended_price."
+          }
+        },
+        "required": ["item_id", "category", "price", "condition", "sold"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["records"],
+  "additionalProperties": false
+}
