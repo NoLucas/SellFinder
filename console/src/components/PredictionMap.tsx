@@ -3,18 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { Protocol as PMTilesProtocol } from "pmtiles";
 
-import { authTransformRequest, getRegionDetail, getRunManifest, listAllRegionScores } from "@/lib/api/client";
-import type { PredictionDetail, RegionScore } from "@/lib/api/types";
-import { NO_DATA_FILL, scoreFillExpression } from "@/lib/color/scoreScale";
+import { authTransformRequest, getBasemapManifest, getRegionDetail, getRegionScores } from "@/lib/api/client";
+import type { PredictionDetail, RegionScoresPayload } from "@/lib/api/types";
+import { NO_DATA_FILL, scoreFillExpression, type ScoreDomain } from "@/lib/color/scoreScale";
 import { HATCH_IMAGE_ID, hatchOpacityExpression, registerHatchPattern } from "@/lib/map/hatchPattern";
 
+// Registered once at module scope — addProtocol is global to maplibre-gl,
+// re-registering per mount/unmount would just thrash the same handler.
+let pmtilesRegistered = false;
+function ensurePmtilesProtocol() {
+  if (pmtilesRegistered) return;
+  const protocol = new PMTilesProtocol();
+  maplibregl.addProtocol("pmtiles", protocol.tile);
+  pmtilesRegistered = true;
+}
+
 const SOURCE_ID = "predictions";
-// Assumed vector-tile source-layer name — 04_api_contract.yaml documents the
-// tile endpoint's *properties* (opportunity_score, confidence_level) but not
-// its source-layer name. Flagged in console/RECONCILIATION.md for backend
-// to confirm; change this one constant if it turns out to differ.
-const SOURCE_LAYER = "regions";
 const FILL_LAYER_ID = "region-fill";
 const OUTLINE_LAYER_ID = "region-outline";
 const HATCH_LAYER_ID = "region-hatch";
@@ -22,6 +28,8 @@ const HATCH_LAYER_ID = "region-hatch";
 export interface PredictionMapProps {
   runId: string;
   authToken: string;
+  productId?: string;
+  channel?: string;
   /** Called only when a region is clicked and its detail finishes loading. */
   onRegionSelect?: (detail: PredictionDetail) => void;
   onError?: (message: string) => void;
@@ -29,14 +37,14 @@ export interface PredictionMapProps {
 
 type LoadState = "loading" | "ready" | "error";
 
-export default function PredictionMap({ runId, authToken, onRegionSelect, onError }: PredictionMapProps) {
+export default function PredictionMap({ runId, authToken, productId, channel, onRegionSelect, onError }: PredictionMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [scoreDomain, setScoreDomain] = useState<ScoreDomain>([0, 100]);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    ensurePmtilesProtocol();
     let cancelled = false;
 
     const map = new maplibregl.Map({
@@ -50,38 +58,64 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
       zoom: 6.3,
       transformRequest: authTransformRequest(authToken),
     });
-    mapRef.current = map;
 
     map.on("load", () => {
       void bootstrap();
     });
 
+    // Set once bootstrap resolves which vector source-layer (pmtiles path)
+    // or `undefined` (geojson custom_catchment path) the layers/join use.
+    let sourceLayer: string | undefined;
+
     async function bootstrap() {
       setLoadState("loading");
       try {
-        // 1) manifest → tile URL, gated on the run actually being ready.
-        const manifest = await getRunManifest(runId, authToken);
-        if (cancelled) return;
-        if (manifest.status !== "succeeded") {
-          setLoadState("error");
-          onError?.(`prediction run ${runId} is '${manifest.status}', not renderable yet`);
-          return;
-        }
-
-        map.addSource(SOURCE_ID, {
-          type: "vector",
-          tiles: [manifest.tileUrlTemplate],
-          promoteId: { [SOURCE_LAYER]: "region_id" },
+        // 1) scores → region_level, boundary_vintage, and the fixed
+        // score_range this run's color scale must use.
+        const scoresPayload: RegionScoresPayload = await getRegionScores(runId, authToken, {
+          productId,
+          channel,
         });
+        if (cancelled) return;
+        setScoreDomain([scoresPayload.score_range.min, scoresPayload.score_range.max]);
+
+        if (scoresPayload.region_level === "custom_catchment" && scoresPayload.custom_geometries) {
+          // Tenant-defined catchments: too few, too tenant-specific for a
+          // shared pmtiles archive — inlined as GeoJSON instead (ADR-001).
+          sourceLayer = undefined;
+          map.addSource(SOURCE_ID, {
+            type: "geojson",
+            data: scoresPayload.custom_geometries,
+            promoteId: "region_id",
+          });
+        } else {
+          // 2) manifest → the pmtiles archive for THIS run's boundary
+          // vintage — never "latest" (see getBasemapManifest doc comment).
+          const manifest = await getBasemapManifest(
+            scoresPayload.region_level,
+            scoresPayload.boundary_vintage,
+            authToken,
+          );
+          if (cancelled) return;
+          sourceLayer = manifest.source_layer;
+
+          map.addSource(SOURCE_ID, {
+            type: "vector",
+            url: `pmtiles://${manifest.tile_url}`,
+            promoteId: { [manifest.source_layer]: manifest.feature_id_property },
+            minzoom: manifest.minzoom,
+            maxzoom: manifest.maxzoom,
+          });
+        }
 
         map.addLayer({
           id: FILL_LAYER_ID,
           type: "fill",
           source: SOURCE_ID,
-          "source-layer": SOURCE_LAYER,
+          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
           paint: {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            "fill-color": scoreFillExpression() as any,
+            "fill-color": scoreFillExpression([scoresPayload.score_range.min, scoresPayload.score_range.max]) as any,
             "fill-opacity": 0.85,
           },
         });
@@ -90,7 +124,7 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
           id: OUTLINE_LAYER_ID,
           type: "line",
           source: SOURCE_ID,
-          "source-layer": SOURCE_LAYER,
+          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
           paint: { "line-color": "rgba(11, 11, 11, 0.15)", "line-width": 0.5 },
         });
 
@@ -99,7 +133,7 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
           id: HATCH_LAYER_ID,
           type: "fill",
           source: SOURCE_ID,
-          "source-layer": SOURCE_LAYER,
+          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
           paint: {
             "fill-pattern": HATCH_IMAGE_ID,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,15 +141,15 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
           },
         });
 
-        // 2) scores → feature-state join. Kept independent of tile geometry
-        // so re-running/refreshing scores never re-fetches vector tiles.
-        const scores: RegionScore[] = await listAllRegionScores(runId, authToken);
-        if (cancelled) return;
-
-        for (const region of scores) {
+        // 3) scores → feature-state join, driven by the response's own
+        // `schema` so a field reorder doesn't silently mis-map columns.
+        const idIdx = scoresPayload.schema.indexOf("region_id");
+        const scoreIdx = scoresPayload.schema.indexOf("opportunity_score");
+        const confIdx = scoresPayload.schema.indexOf("confidence_level");
+        for (const row of scoresPayload.scores) {
           map.setFeatureState(
-            { source: SOURCE_ID, sourceLayer: SOURCE_LAYER, id: region.region_id },
-            { score: region.opportunity_score, confidence_level: region.confidence.level },
+            { source: SOURCE_ID, sourceLayer, id: row[idIdx] },
+            { score: row[scoreIdx], confidence_level: row[confIdx] },
           );
         }
 
@@ -134,7 +168,7 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
       map.getCanvas().style.cursor = "";
     });
 
-    // 3) detail + factor breakdown fetched ONLY on click — never on hover,
+    // 4) detail + factor breakdown fetched ONLY on click — never on hover,
     // never eagerly for the whole viewport.
     map.on("click", FILL_LAYER_ID, (e) => {
       const feature = e.features?.[0];
@@ -142,7 +176,6 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
       const regionId = String(feature.properties?.region_id ?? feature.id ?? "");
       if (!regionId) return;
 
-      setSelectedRegionId(regionId);
       getRegionDetail(runId, regionId, authToken)
         .then((detail) => {
           if (!cancelled) onRegionSelect?.(detail);
@@ -155,18 +188,16 @@ export default function PredictionMap({ runId, authToken, onRegionSelect, onErro
     return () => {
       cancelled = true;
       map.remove();
-      mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId, authToken]);
+  }, [runId, authToken, productId, channel]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {loadState === "loading" && <MapOverlay text="예측 결과를 불러오는 중..." />}
       {loadState === "error" && <MapOverlay text="지도를 불러오지 못했습니다." tone="error" />}
-      <ScoreLegend />
-      {selectedRegionId && <span data-testid="selected-region" hidden>{selectedRegionId}</span>}
+      <ScoreLegend domain={scoreDomain} />
     </div>
   );
 }
@@ -192,7 +223,7 @@ function MapOverlay({ text, tone = "muted" }: { text: string; tone?: "muted" | "
 }
 
 /** Sequential scale key + the low-confidence pattern swatch — color is never the only channel. */
-function ScoreLegend() {
+function ScoreLegend({ domain }: { domain: ScoreDomain }) {
   return (
     <div
       style={{
@@ -220,7 +251,9 @@ function ScoreLegend() {
             background: `linear-gradient(90deg, ${NO_DATA_FILL} 0%, #cde2fb 8%, #3987e5 50%, #0d366b 100%)`,
           }}
         />
-        <span style={{ color: "#52514e" }}>opportunity_score 0 → 100</span>
+        <span style={{ color: "#52514e" }}>
+          opportunity_score {domain[0].toFixed(0)} → {domain[1].toFixed(0)}
+        </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <HatchSwatch />

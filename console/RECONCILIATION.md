@@ -40,9 +40,9 @@
 
 1. **타입/클라이언트 레이어** — `04_api_contract.yaml`에서 타입을 생성(손으로 안 씀).
    `/backend`가 아직 실제 엔드포인트를 준비하지 못했다면 계약의 example 응답을 목 데이터로 사용.
-2. **지도 뷰** — 벡터타일(`/predictions/{run_id}/tiles/{z}/{x}/{y}.mvt`) 기반 opportunity_score
-   히트맵. 상단에 제품(SKU)·채널·objective 선택 컨트롤. `confidence='low'` 지역은 색상만이 아니라
-   패턴/해칭으로 구분.
+2. **지도 뷰** — ~~벡터타일(`/predictions/{run_id}/tiles/{z}/{x}/{y}.mvt`) 기반~~ **구현 완료
+   (2026-08-15, 아래 참고).** `GET /basemap/regions/manifest` + `GET /predictions/{run_id}/scores`
+   조합으로 재구현. 상단 제품(SKU)·채널·objective 선택 컨트롤은 아직 없음(다음 착수 항목).
 3. **지역 상세 패널** — `/predictions/{run_id}/regions/{region_id}` 응답 기반. p10/p50/p90 구간,
    요인 분해 waterfall, evidence 문장 그대로 노출, 유사 지역 비교, 잠식(cannibalization) 경고,
    risks, data_freshness.
@@ -66,10 +66,44 @@
 - **인증/토큰 발급 방식** — `tenant_id`가 토큰에서만 파생된다는 규칙은 명확하지만, `/console`이
   로그인/토큰 발급을 어떻게 받는지(자체 구현 vs `/backend` 제공 엔드포인트)는 `04_api_contract.yaml`에
   명시가 없어 `/backend` 담당에게 확인이 필요하다.
-- **벡터타일 서버 소스** — region 경계(GeoJSON)를 벡터타일로 변환하는 주체가 `/data-platform`인지
-  `/backend`인지 브리프에 명확하지 않다(`03_region_features.json`에 A가 "벡터타일 생성"이라고
-  되어 있고, `04_api_contract.yaml`의 타일 엔드포인트는 `/backend`에 있음) — `/console`은 최종
-  엔드포인트만 소비하면 되지만 확인 차 남겨둔다.
+- ~~벡터타일 서버 소스~~ → **해결(ADR-001, 2026-08-15).** A/C/D 세 곳이 독립적으로 같은 질문을
+  제기해 jin이 `shared/contracts/ADR-001-map-tiles.md`로 확정: 경계 지오메트리(A 생성, PMTiles
+  아티팩트)와 예측 점수(C 서빙, 경량 JSON)를 분리하고 클라이언트(D)에서 `setFeatureState`로
+  조인한다. `04_api_contract.yaml` v0.2.1에 `GET /basemap/regions/manifest` +
+  `GET /predictions/{run_id}/scores` 신설, 기존 `.mvt` 타일 엔드포인트는 폐기. §7에 이번 지도 뷰
+  구현 세부와 미해결 사항을 기록.
+
+## 7. 지도 뷰 구현 기록 (2026-08-15, ADR-001 반영)
+
+`console/src/components/PredictionMap.tsx` + `lib/api/client.ts` + `lib/color/scoreScale.ts` +
+`lib/map/hatchPattern.ts`로 구현. 흐름: `GET /predictions/{run_id}/scores`로 `region_level` /
+`boundary_vintage` / `score_range` 확보 → `GET /basemap/regions/manifest`(같은 level·vintage로
+조회, "최신" 금지)로 PMTiles URL·`source_layer`·`feature_id_property` 확보 → `pmtiles://` 프로토콜로
+벡터 소스 등록 → 점수 배열을 `setFeatureState`로 조인 → `fill-color`는 `score_range` 고정 도메인의
+순차형(sequential blue, dataviz 스킬 `references/palette.md`) 표현식 → `confidence_level='low'`는
+별도 해칭 레이어(`fill-opacity`를 feature-state로 온오프, **`filter`가 아니라 `paint`** — MapLibre가
+feature-state를 filter에서는 지원하지 않아서). 지역 상세는 클릭 시에만 `/predictions/{run_id}/regions/
+{region_id}` 조회. `region_level='custom_catchment'`인 경우 `custom_geometries` GeoJSON을 벡터 소스
+대신 직접 사용하는 분기도 넣어뒀다(테스트는 안 해봄 — 지금 mock 데이터엔 이 케이스가 없음).
+
+`next build` 정상 통과 확인. 실제 backend 응답으로는 아직 검증 못했다 — 아래 미해결 사항 참고.
+
+**중요 — 계약과 backend 실제 구현이 다르다 (2026-08-15 발견, jin이 계약 기준으로 진행 지시):**
+`backend/CONTRACT_CHANGE_REQUEST.md`에 "jin의 직접 지시로" 구현했다고 적힌 내용이 병합된
+`ADR-001`/`04_api_contract.yaml` v0.2.1과 다르다.
+- 계약: `/basemap/regions/manifest`가 `level`/`vintage` 쿼리로 **PMTiles** 1개 반환
+  (`tile_url`이 `.pmtiles`, `source_layer`/`feature_id_property`/`minzoom`/`maxzoom` 포함).
+  backend 실제: 쿼리 파라미터 없이 **레벨별 GeoJSON URL 목록**(`{level, format, url}[]`)을 한 번에
+  반환. PMTiles 관련 필드 전혀 없음.
+- 계약: 지도 전용 `GET /predictions/{run_id}/scores`(튜플 배열 + `score_range`), `/regions`와 별도.
+  backend 실제: 이 엔드포인트 자체가 없음. 기존 `/predictions/{run_id}/regions`(커서 페이지네이션,
+  금액 포함)에 `boundary_vintage`만 얹어서 재사용.
+
+이 구현은 jin이 이번 세션에서 "ADR-001 계약 기준(PMTiles)"으로 진행하라고 확정해줘서 계약 그대로
+만들었다. **단, backend가 이 계약대로 아직 안 만들었으므로 실제 backend에 붙여서 통합 테스트는
+못 했다** — 계약 예시 데이터 모양으로만 타입/빌드 검증함. backend(C) 세션이 ADR-001에 맞춰
+`/scores` + PMTiles manifest를 구현하거나, 반대로 jin이 계약을 backend의 GeoJSON 방식으로
+갱신하기 전까지는 이 상태가 유지된다 — 둘 중 하나로 수렴시켜 달라고 jin에게 요청.
 
 ---
 

@@ -98,24 +98,18 @@ export interface PredictionDetail {
 
 export type RunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 export type DataTier = "T0" | "T1" | "T2";
+export type RegionLevel = "sido" | "sigungu" | "adm_dong" | "custom_catchment";
 
 /**
- * GET /predictions/{run_id}. Acts as the "manifest" gate for the map: only
- * register the vector tile source once status === 'succeeded'. The contract
- * has no separate tile-manifest endpoint, so the tile URL template is
- * derived here from the documented pattern
- * (/predictions/{run_id}/tiles/{z}/{x}/{y}.mvt) rather than returned by the
- * API. Flagged in console/RECONCILIATION.md as worth confirming with backend
- * if a real TileJSON manifest endpoint ever gets added.
+ * GET /predictions/{run_id}.
  */
-export interface RunManifest {
+export interface RunSummary {
   run_id: string;
   status: RunStatus;
   region_count: number;
   model_version: string;
   feature_as_of: string;
   data_tier: DataTier;
-  tileUrlTemplate: string;
   summary?: {
     top_region: { region_id: string; name: string; opportunity_score: number };
     score_distribution: { p25: number; p50: number; p75: number };
@@ -123,4 +117,49 @@ export interface RunManifest {
   };
   warnings?: string[];
   expires_at?: string;
+}
+
+/**
+ * GET /basemap/regions/manifest (ADR-001-map-tiles.md). Static, tenant-
+ * agnostic boundary tiles — cacheable, owned by /data-platform, served by
+ * /backend as pointer URLs only (never generated/proxied by backend).
+ *
+ * `tile_url` points at a `.pmtiles` archive, not an XYZ template — the map
+ * layer loads it through the `pmtiles://` protocol, not `tiles: […]`.
+ */
+export interface BasemapManifest {
+  level: RegionLevel;
+  boundary_vintage: string;
+  tile_url: string;
+  /** Vector source-layer name inside the pmtiles archive. */
+  source_layer: string;
+  /** Feature property to promote as the tile feature id — setFeatureState's join key. */
+  feature_id_property: string;
+  minzoom: number;
+  maxzoom: number;
+  attribution?: string;
+  available_vintages: string[];
+}
+
+export type RegionScoreTuple = [region_id: string, opportunity_score: number, confidence_level: ConfidenceLevel];
+
+/**
+ * GET /predictions/{run_id}/scores (ADR-001-map-tiles.md) — the map-only,
+ * unpaginated companion to GET /predictions/{run_id}/regions. Tuple array +
+ * schema instead of an object array to cut payload size; no
+ * expected_revenue_krw (that stays exclusive to the per-region detail call
+ * so the T0-null rule only has to be enforced in one place).
+ */
+export interface RegionScoresPayload {
+  run_id: string;
+  region_level: RegionLevel;
+  boundary_vintage: string;
+  objective: string;
+  data_tier: DataTier;
+  schema: readonly ["region_id", "opportunity_score", "confidence_level"];
+  scores: RegionScoreTuple[];
+  /** Fixed color-scale domain for this run — never recompute min/max client-side (ADR-001). */
+  score_range: { min: number; max: number; p50: number };
+  /** GeoJSON FeatureCollection, populated only when region_level === 'custom_catchment'. */
+  custom_geometries: GeoJSON.FeatureCollection | null;
 }

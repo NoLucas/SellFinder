@@ -1,4 +1,12 @@
-import type { PredictionDetail, RegionScore, RegionScorePage, RunManifest } from "./types";
+import type {
+  BasemapManifest,
+  PredictionDetail,
+  RegionLevel,
+  RegionScore,
+  RegionScorePage,
+  RegionScoresPayload,
+  RunSummary,
+} from "./types";
 
 /**
  * shared/contracts/04_api_contract.yaml `servers[0].url`. Overridable per env
@@ -39,17 +47,44 @@ async function fetchJSON<T>(path: string, token: string, init?: RequestInit): Pr
   return res.json() as Promise<T>;
 }
 
+/** GET /predictions/{run_id} — status/summary, not the map data path itself. */
+export function getRunSummary(runId: string, token: string): Promise<RunSummary> {
+  return fetchJSON<RunSummary>(`/predictions/${runId}`, token);
+}
+
 /**
- * Reads the run summary and gates the map on it: only 'succeeded' runs have
- * renderable tiles. See the doc comment on RunManifest for why the tile URL
- * template is computed here instead of read from the response.
+ * GET /basemap/regions/manifest (ADR-001-map-tiles.md). Static + cacheable,
+ * tenant-agnostic — call this with the `level`/`boundary_vintage` a scores
+ * payload reports, never with "latest", or a reopened run's regions can be
+ * painted against boundaries that have since moved (redistricting).
  */
-export async function getRunManifest(runId: string, token: string): Promise<RunManifest> {
-  const summary = await fetchJSON<Omit<RunManifest, "tileUrlTemplate">>(`/predictions/${runId}`, token);
-  return {
-    ...summary,
-    tileUrlTemplate: `${API_BASE}/predictions/${runId}/tiles/{z}/{x}/{y}.mvt`,
-  };
+export function getBasemapManifest(
+  level: RegionLevel,
+  vintage: string,
+  token: string,
+): Promise<BasemapManifest> {
+  const params = new URLSearchParams({ level, vintage });
+  return fetchJSON<BasemapManifest>(`/basemap/regions/manifest?${params.toString()}`, token);
+}
+
+/**
+ * GET /predictions/{run_id}/scores (ADR-001-map-tiles.md) — the map's score
+ * source. Deliberately not paginated (documented exception to the API's
+ * cursor-pagination rule): the map needs every region at once. Do not call
+ * listAllRegionScores() for map rendering — that endpoint is for the
+ * region-list/table view and carries revenue, which this one intentionally
+ * omits.
+ */
+export function getRegionScores(
+  runId: string,
+  token: string,
+  query: { productId?: string; channel?: string } = {},
+): Promise<RegionScoresPayload> {
+  const params = new URLSearchParams();
+  if (query.productId) params.set("product_id", query.productId);
+  if (query.channel) params.set("channel", query.channel);
+  const qs = params.toString();
+  return fetchJSON<RegionScoresPayload>(`/predictions/${runId}/scores${qs ? `?${qs}` : ""}`, token);
 }
 
 export interface RegionScoreQuery {
