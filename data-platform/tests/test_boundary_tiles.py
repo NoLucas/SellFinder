@@ -6,7 +6,7 @@ import mapbox_vector_tile
 import pytest
 from pmtiles.reader import MemorySource, Reader
 
-from src.boundary_tiles.build import build_vintage
+from src.boundary_tiles.build import SOURCE_LAYER, build_vintage
 from src.boundary_tiles.feature_id import FeatureIdCollisionError, build_id_map, region_id_to_feature_id
 from src.boundary_tiles.manifest import VintageExistsError, load_manifest
 
@@ -43,7 +43,18 @@ def test_build_vintage_end_to_end(tmp_path):
         source_id="src_sample_boundary",
     )
 
-    pmtiles_path = tmp_path / entry["pmtiles_path"]
+    # shared/contracts/04_api_contract.yaml 의 /basemap/regions/manifest 응답 예시와
+    # 필드가 정확히 맞아야 backend가 이 entry를 거의 그대로 서빙할 수 있다.
+    assert entry["level"] == "sido"
+    assert entry["boundary_vintage"] == "2026-01-01"
+    assert entry["source_layer"] == "regions"
+    assert entry["feature_id_property"] == "region_id"
+    assert entry["minzoom"] == 0
+    assert entry["maxzoom"] == 8
+    assert entry["available_vintages"] == ["2026-01-01"]
+    assert entry["tile_url"] == "tiles/regions-sido-2026-01-01.pmtiles"
+
+    pmtiles_path = tmp_path / entry["tile_url"]
     id_map_path = tmp_path / entry["id_map_path"]
     assert pmtiles_path.exists()
     assert id_map_path.exists()
@@ -62,13 +73,14 @@ def test_build_vintage_end_to_end(tmp_path):
     raw = reader.get(0, 0, 0)
     assert raw is not None
     decoded = mapbox_vector_tile.decode(gzip.decompress(raw))
-    layer = decoded["sido"]
+    layer = decoded[SOURCE_LAYER]
     found_ids = {feat["id"] for feat in layer["features"]}
     assert found_ids  # z=0 타일 하나에 최소 한 지역은 걸려야 한다
     assert found_ids.issubset(set(id_map["region_id_to_feature_id"].values()))
 
     for feat in layer["features"]:
-        assert "region_id" not in feat["properties"]  # 브리프 지시사항: 속성이 아니라 id
+        # region_id는 feature id로만 실리고, 속성(properties)에는 없어야 한다.
+        assert "region_id" not in feat["properties"]
 
 
 def test_build_vintage_refuses_to_overwrite_same_vintage(tmp_path):
@@ -84,7 +96,7 @@ def test_build_vintage_refuses_to_overwrite_same_vintage(tmp_path):
         build_vintage(**kwargs)
 
 
-def test_new_vintage_does_not_touch_previous_vintage_files(tmp_path):
+def test_new_vintage_does_not_touch_previous_vintage_artifact_files(tmp_path):
     first = build_vintage(
         level="sido",
         vintage="2026-01-01",
@@ -92,8 +104,9 @@ def test_new_vintage_does_not_touch_previous_vintage_files(tmp_path):
         output_root=tmp_path,
         source_id="src_sample_boundary",
     )
-    first_pmtiles = tmp_path / first["pmtiles_path"]
+    first_pmtiles = tmp_path / first["tile_url"]
     first_bytes_before = first_pmtiles.read_bytes()
+    first_id_map_before = (tmp_path / first["id_map_path"]).read_bytes()
 
     second = build_vintage(
         level="sido",
@@ -104,10 +117,21 @@ def test_new_vintage_does_not_touch_previous_vintage_files(tmp_path):
         valid_to=None,
     )
 
-    # 이전 vintage 파일이 그대로다 (바이트 단위로 불변).
+    # 이전 vintage의 타일/id_map 파일 바이트가 그대로다 — 절대 덮어쓰지 않는다.
     assert first_pmtiles.read_bytes() == first_bytes_before
-    assert second["pmtiles_path"] != first["pmtiles_path"]
+    assert (tmp_path / first["id_map_path"]).read_bytes() == first_id_map_before
+    assert second["tile_url"] != first["tile_url"]
 
     manifest = load_manifest(tmp_path / "tiles" / "manifest.json")
-    vintages = [e["vintage"] for e in manifest["levels"]["sido"]]
-    assert vintages == ["2026-01-01", "2026-07-01"]  # 둘 다 남아있고, 오래된 순 정렬
+    vintages_dict = manifest["levels"]["sido"]["vintages"]
+    assert sorted(vintages_dict.keys()) == ["2026-01-01", "2026-07-01"]
+    assert manifest["levels"]["sido"]["latest_vintage"] == "2026-07-01"
+
+    # available_vintages는 "지금 존재하는 전체 목록"이라 새 vintage가 생기면
+    # 예전 항목에서도 갱신된다 — 하지만 그 vintage 자체를 정의하는 다른 필드
+    # (tile_url, sha256, feature_count 등)는 손대지 않는다.
+    old_entry = vintages_dict["2026-01-01"]
+    assert old_entry["available_vintages"] == ["2026-01-01", "2026-07-01"]
+    assert old_entry["tile_url"] == first["tile_url"]
+    assert old_entry["sha256"] == first["sha256"]
+    assert old_entry["feature_count"] == first["feature_count"]
