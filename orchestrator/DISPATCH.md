@@ -35,7 +35,7 @@ D ──(조인 테스트 골격 · 레벨 UI · 토큰) ► A 를 기다리는 
 | # | 작업 | 근거 | 끝났다고 말할 조건 |
 |---|---|---|---|
 | A-1 | `.gitignore` 분리 + `output/manifest/regions-{level}-{vintage}.json` 커밋 | D-11 | `git ls-files data-platform/output/manifest` 가 비어 있지 않고, `git ls-files '*.pmtiles'` 가 **비어 있음** |
-| A-2 | `region_id` 를 properties 에 문자열로 유지 + 매니페스트에서 `id_map_path` 제거 | **D-20 / ADR-005** | `vf_56_tile_probe.py` 재실행 시 `'region_id' in properties -> True` |
+| A-2 | `region_id` 를 properties 에 문자열로 유지 + 매니페스트에서 `id_map_path` 제거 | **D-20 / ADR-005** `data-platform/.venv/Scripts/python.exe verification/fixtures/vf_56_tile_probe.py` 가 `'region_id' in properties -> True` |
 | A-3 | **빌드 자체 검증**: 광고한 `feature_id_property` 가 산출 타일에 없으면 빌드 실패 | ADR-005 | 일부러 속성을 빼고 빌드 → **실패**하는 것을 확인. 통과하면 검사가 가짜다 |
 | A-4 | `sigungu` 픽스처 타일 + `manifest-fixture.json` (5MB 이하, `boundary_vintage: "fixture"`) | D-12 | A-3 검사를 통과한 파이프라인으로 구운 것일 것 |
 | A-5 | 레벨 산출 순서 `sigungu` → `adm_dong` → `sido` | D-13 | — |

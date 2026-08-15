@@ -124,7 +124,7 @@ ADR 반영 이전 상태에 대한 것이며, 일부는 이미 결정(D-nn)이 �
   `String(featureId)` 강제 변환을 원본에서 그대로 옮겨 썼다):
 
   ```
-  backend/.venv/Scripts/python.exe verification/fixtures/vf_56_dump_features.py
+  data-platform/.venv/Scripts/python.exe verification/fixtures/vf_56_dump_features.py
   node verification/fixtures/vf_56_join.mjs
   ```
 
