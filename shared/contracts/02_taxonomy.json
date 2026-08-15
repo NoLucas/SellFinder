@@ -1,0 +1,151 @@
+{
+  "$schema_name": "SellFinder Product & Channel Taxonomy",
+  "$version": "0.2.0",
+  "$owner": "jin (사람) — 에이전트 직접 수정 금지",
+  "$purpose": "테넌트가 등록한 SKU 를 공개 소비데이터(업종 단위)에 연결하는 브릿지. 00_product_spec.md §4.1 참조.",
+
+  "versioning_rule": {
+    "why": "택소노미가 바뀌면 과거 예측이 재현 불가능해진다.",
+    "rule": [
+      "노드는 절대 삭제하지 않는다. deprecated=true 로 표시하고 successor_id 를 남긴다.",
+      "node_id 는 영구 불변. 이름(name_ko)만 바꾸는 건 허용.",
+      "prediction_run 은 실행 시점의 taxonomy_version 을 기록한다."
+    ]
+  },
+
+  "channels": {
+    "$desc": "제품이 팔리는 경로. 같은 SKU도 채널에 따라 지역별 성패가 완전히 달라지므로 예측의 1급 차원이다.",
+    "cvs":                { "name_ko": "편의점", "type": "offline", "ksic": ["47121"], "catchment_radius_m": 300, "notes": "소량·즉시소비. 유동인구·1인가구 비중이 지배적." },
+    "hypermarket":        { "name_ko": "대형마트", "type": "offline", "ksic": ["47111"], "catchment_radius_m": 3000, "notes": "대용량·가족단위. 차량 접근성·세대수가 지배적." },
+    "ssm":                { "name_ko": "기업형 슈퍼마켓(SSM)", "type": "offline", "ksic": ["47112"], "catchment_radius_m": 800 },
+    "department_store":   { "name_ko": "백화점", "type": "offline", "ksic": ["47119"], "catchment_radius_m": 8000, "notes": "프리미엄 가격대에서만 유의미." },
+    "specialty_store":    { "name_ko": "전문점/로드샵", "type": "offline", "catchment_radius_m": 1000 },
+    "fnb_outlet":         { "name_ko": "외식 매장", "type": "offline", "ksic": ["561"], "catchment_radius_m": 500, "notes": "프랜차이즈 출점 의사결정의 기본 채널." },
+    "online_marketplace": { "name_ko": "온라인 오픈마켓", "type": "online", "catchment_radius_m": null, "notes": "지역 = 배송지 기준 수요 밀도. 상권 개념 없음. 경쟁 밀도 피처 사용 금지." },
+    "own_mall":           { "name_ko": "자사몰(D2C)", "type": "online", "catchment_radius_m": null },
+    "quick_commerce":     { "name_ko": "퀵커머스", "type": "online", "catchment_radius_m": 1500, "notes": "온라인이지만 배송권역이 있어 상권 개념이 부분 적용." },
+    "wholesale":          { "name_ko": "도매/대리점", "type": "b2b", "catchment_radius_m": null }
+  },
+
+  "channel_rules": [
+    "type='online' 채널은 competitor_density, foot_traffic 피처를 사용하지 않는다. 대신 배송 주문 밀도·온라인 침투율을 쓴다.",
+    "objective='store_expansion' 은 type='offline' 채널에서만 유효하다.",
+    "제품의 price_tier 가 'value' 인데 channel 이 'department_store' 인 조합은 경고를 반환한다."
+  ],
+
+  "taxonomy": [
+    {
+      "node_id": "TX-FOOD", "level": 1, "parent_id": null, "name_ko": "식품·음료",
+      "children": [
+        {
+          "node_id": "TX-FOOD-BEV", "level": 2, "parent_id": "TX-FOOD", "name_ko": "음료",
+          "children": [
+            { "node_id": "TX-FOOD-BEV-COFFEE-RTD", "level": 3, "name_ko": "RTD 커피", "ksic_codes": ["11201"], "sbiz_codes": ["Q12A01"], "card_mcc": ["5411", "5499"], "seasonality_profile": [0.92,0.90,0.98,1.02,1.08,1.14,1.18,1.16,1.04,0.96,0.92,0.90], "default_channels": ["cvs","hypermarket","ssm","online_marketplace"] },
+            { "node_id": "TX-FOOD-BEV-TEA",         "level": 3, "name_ko": "차·티음료", "ksic_codes": ["11202"], "seasonality_profile": [1.06,1.04,1.00,0.98,0.96,0.94,0.92,0.94,1.00,1.04,1.08,1.10] },
+            { "node_id": "TX-FOOD-BEV-CARBONATED",  "level": 3, "name_ko": "탄산음료", "ksic_codes": ["11203"], "seasonality_profile": [0.86,0.86,0.94,1.02,1.12,1.22,1.28,1.24,1.06,0.94,0.86,0.84] },
+            { "node_id": "TX-FOOD-BEV-HEALTH",      "level": 3, "name_ko": "건강음료", "ksic_codes": ["11209"] }
+          ]
+        },
+        {
+          "node_id": "TX-FOOD-PROC", "level": 2, "parent_id": "TX-FOOD", "name_ko": "가공식품",
+          "children": [
+            { "node_id": "TX-FOOD-PROC-HMR",    "level": 3, "name_ko": "간편식(HMR)", "ksic_codes": ["10794"], "notes": "1인가구 비중·야간 유동인구와 상관 높음" },
+            { "node_id": "TX-FOOD-PROC-SNACK",  "level": 3, "name_ko": "과자·스낵", "ksic_codes": ["10714"] },
+            { "node_id": "TX-FOOD-PROC-NOODLE", "level": 3, "name_ko": "면류", "ksic_codes": ["10730"] }
+          ]
+        },
+        { "node_id": "TX-FOOD-FRESH",  "level": 2, "parent_id": "TX-FOOD", "name_ko": "신선식품" },
+        { "node_id": "TX-FOOD-ALCOHOL","level": 2, "parent_id": "TX-FOOD", "name_ko": "주류", "ksic_codes": ["1112","1120"], "notes": "지역별 규제·유흥상권 비중 영향 큼" },
+        { "node_id": "TX-FOOD-HFF",    "level": 2, "parent_id": "TX-FOOD", "name_ko": "건강기능식품", "ksic_codes": ["10801"], "notes": "60대 이상 인구 비중과 강한 상관" }
+      ]
+    },
+    {
+      "node_id": "TX-FNB", "level": 1, "parent_id": null, "name_ko": "외식",
+      "notes": "프랜차이즈 출점 의사결정 전용. channel 은 fnb_outlet 고정.",
+      "children": [
+        { "node_id": "TX-FNB-CAFE",     "level": 2, "name_ko": "카페·디저트", "ksic_codes": ["56220"], "sbiz_codes": ["Q12A01"], "card_mcc": ["5814"] },
+        { "node_id": "TX-FNB-KOREAN",   "level": 2, "name_ko": "한식", "ksic_codes": ["56111"] },
+        { "node_id": "TX-FNB-CHICKEN",  "level": 2, "name_ko": "치킨", "ksic_codes": ["56193"] },
+        { "node_id": "TX-FNB-PIZZA",    "level": 2, "name_ko": "피자·양식", "ksic_codes": ["56112"] },
+        { "node_id": "TX-FNB-BUNSIK",   "level": 2, "name_ko": "분식", "ksic_codes": ["56194"] },
+        { "node_id": "TX-FNB-BAKERY",   "level": 2, "name_ko": "베이커리", "ksic_codes": ["56191"] }
+      ]
+    },
+    {
+      "node_id": "TX-BEAUTY", "level": 1, "parent_id": null, "name_ko": "뷰티",
+      "children": [
+        { "node_id": "TX-BEAUTY-SKINCARE", "level": 2, "name_ko": "스킨케어", "ksic_codes": ["20423"] },
+        { "node_id": "TX-BEAUTY-MAKEUP",   "level": 2, "name_ko": "메이크업", "ksic_codes": ["20423"] },
+        { "node_id": "TX-BEAUTY-HAIRBODY", "level": 2, "name_ko": "헤어·바디", "ksic_codes": ["20424"] }
+      ]
+    },
+    {
+      "node_id": "TX-FASHION", "level": 1, "parent_id": null, "name_ko": "패션",
+      "children": [
+        { "node_id": "TX-FASHION-WOMEN",      "level": 2, "name_ko": "여성의류", "ksic_codes": ["14110"] },
+        { "node_id": "TX-FASHION-MEN",        "level": 2, "name_ko": "남성의류", "ksic_codes": ["14120"] },
+        { "node_id": "TX-FASHION-ATHLEISURE", "level": 2, "name_ko": "스포츠·애슬레저", "ksic_codes": ["14192"] },
+        { "node_id": "TX-FASHION-SHOES",      "level": 2, "name_ko": "신발", "ksic_codes": ["15210"] },
+        { "node_id": "TX-FASHION-ACC",        "level": 2, "name_ko": "잡화·액세서리" }
+      ]
+    },
+    {
+      "node_id": "TX-LIVING", "level": 1, "parent_id": null, "name_ko": "생활·리빙",
+      "children": [
+        { "node_id": "TX-LIVING-KITCHEN", "level": 2, "name_ko": "주방용품" },
+        { "node_id": "TX-LIVING-CLEAN",   "level": 2, "name_ko": "세제·청소" },
+        { "node_id": "TX-LIVING-INTERIOR","level": 2, "name_ko": "인테리어·수납" },
+        { "node_id": "TX-LIVING-PET",     "level": 2, "name_ko": "반려동물", "notes": "반려동물 등록 두수 피처와 직결" }
+      ]
+    },
+    {
+      "node_id": "TX-ELEC", "level": 1, "parent_id": null, "name_ko": "가전·디지털",
+      "children": [
+        { "node_id": "TX-ELEC-SMALL",   "level": 2, "name_ko": "소형가전" },
+        { "node_id": "TX-ELEC-LARGE",   "level": 2, "name_ko": "대형가전", "notes": "신규 아파트 입주 물량 피처와 강한 상관" },
+        { "node_id": "TX-ELEC-DIGITAL", "level": 2, "name_ko": "디지털·모바일" }
+      ]
+    },
+    {
+      "node_id": "TX-KIDS", "level": 1, "parent_id": null, "name_ko": "유아·아동",
+      "notes": "0~9세 인구 비중·출생아 수 피처가 지배적",
+      "children": [
+        { "node_id": "TX-KIDS-BABYFOOD", "level": 2, "name_ko": "분유·이유식" },
+        { "node_id": "TX-KIDS-DIAPER",   "level": 2, "name_ko": "기저귀·위생" },
+        { "node_id": "TX-KIDS-APPAREL",  "level": 2, "name_ko": "유아동 의류" }
+      ]
+    },
+    {
+      "node_id": "TX-HEALTH", "level": 1, "parent_id": null, "name_ko": "헬스·웰니스",
+      "children": [
+        { "node_id": "TX-HEALTH-FITNESS", "level": 2, "name_ko": "피트니스·운동용품" },
+        { "node_id": "TX-HEALTH-MEDICAL", "level": 2, "name_ko": "의료·건강기기" }
+      ]
+    }
+  ],
+
+  "classification_contract": {
+    "$desc": "에이전트 B 의 SKU 자동 분류기가 지켜야 할 출력 형식",
+    "input": { "name": "string", "description": "string|null", "unit_price_krw": "integer", "pack_size": "string|null" },
+    "output": {
+      "candidates": [
+        { "node_id": "TX-FOOD-BEV-COFFEE-RTD", "confidence": 0.91, "rationale": "제품명의 '콜드브루' 키워드와 350ml 용량이 RTD 커피 패턴과 일치" }
+      ],
+      "suggested_channels": ["cvs", "online_marketplace"],
+      "extracted_attributes": { "sugar_free": true, "pack_size_ml": 350 }
+    },
+    "rules": [
+      "최상위 confidence < 0.70 이면 자동 확정 금지. UI 에서 사용자 확인을 강제한다.",
+      "candidates 는 최대 5개, confidence 내림차순.",
+      "존재하지 않는 node_id 를 만들어내면 안 된다. 이 파일에 있는 노드만 반환한다.",
+      "leaf 노드가 없는 대분류로 분류하는 것은 level 2 까지만 허용한다."
+    ]
+  },
+
+  "public_data_mapping_note": [
+    "ksic_codes: 통계청 한국표준산업분류. 사업체 통계·경쟁 점포수 산출에 사용.",
+    "sbiz_codes: 소상공인시장진흥공단 상권정보시스템 업종코드. 점포수·개폐업률에 사용.",
+    "card_mcc: 카드 가맹점 업종. 지역별 소비금액 추정에 사용. 라이선스 확인 필수 (06_governance.md).",
+    "매핑이 비어있는 노드는 상위 노드의 매핑을 상속한다. 상속도 없으면 demand_signal 을 만들 수 없으므로 T0 예측에서 해당 노드는 '데이터 부족'으로 표기한다."
+  ]
+}

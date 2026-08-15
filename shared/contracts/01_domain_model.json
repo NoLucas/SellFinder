@@ -1,0 +1,294 @@
+{
+  "$schema_name": "SellFinder Domain Model",
+  "$version": "0.2.0",
+  "$updated": "2026-08-14",
+  "$owner": "jin (사람) — 에이전트 직접 수정 금지",
+  "$read_first": "00_product_spec.md",
+
+  "global_rules": {
+    "tenant_isolation": "tenant_id 를 가진 모든 테이블은 행 수준 보안(RLS)을 적용한다. tenant_id 는 반드시 인증 토큰에서 파생하며, 어떤 API 요청 파라미터로도 받지 않는다.",
+    "id_format": "모든 PK 는 접두사가 붙은 ULID 를 쓴다. 예: prd_01J8XK..., reg_ 는 예외로 행정표준코드를 그대로 사용.",
+    "timestamps": "모든 테이블은 created_at, updated_at (RFC3339 UTC) 을 가진다.",
+    "soft_delete": "테넌트 소유 데이터는 물리 삭제하지 않고 deleted_at 을 채운다.",
+    "money": "금액은 원(KRW) 정수. 소수점 금지. 필드명 접미사 _krw 를 붙인다.",
+    "point_in_time": "지역 피처·소비 신호는 valid_from/valid_to 를 가지며 as-of 조회만 허용한다. 03_region_features.json 참조."
+  },
+
+  "entities": {
+
+    "tenant": {
+      "description": "고객사. 모든 데이터 격리의 최상위 단위.",
+      "fields": {
+        "tenant_id":        { "type": "string", "pk": true, "prefix": "tnt_" },
+        "name":             { "type": "string", "required": true },
+        "industry":         { "type": "enum", "values": ["cpg_manufacturer", "franchise_fnb", "retail_chain", "ecommerce_d2c", "distributor", "other"], "required": true },
+        "data_tier":        { "type": "enum", "values": ["T0", "T1", "T2"], "required": true, "desc": "00_product_spec.md §4.2. 시스템이 자동 산정하며 수동 설정 불가." },
+        "default_objective":{ "type": "enum", "values": ["store_expansion", "distribution_push", "ad_targeting"], "required": true },
+        "data_residency":   { "type": "string", "default": "KR", "desc": "v1 은 KR 고정" },
+        "plan":             { "type": "enum", "values": ["trial", "standard", "enterprise"] },
+        "created_at":       { "type": "timestamp" }
+      }
+    },
+
+    "user": {
+      "description": "테넌트 소속 사용자. RBAC 대상.",
+      "fields": {
+        "user_id":   { "type": "string", "pk": true, "prefix": "usr_" },
+        "tenant_id": { "type": "string", "fk": "tenant.tenant_id", "required": true },
+        "email":     { "type": "string", "required": true },
+        "role":      { "type": "enum", "values": ["owner", "admin", "analyst", "viewer"], "required": true },
+        "region_scope": { "type": "string[]", "required": false, "desc": "이 사용자가 볼 수 있는 지역 제한. 비면 전체. 예: 영남권 담당자" }
+      },
+      "rbac_matrix": {
+        "owner":   ["*"],
+        "admin":   ["product:*", "dataset:*", "prediction:*", "export:*", "user:read"],
+        "analyst": ["product:read", "product:write", "prediction:create", "prediction:read", "export:create"],
+        "viewer":  ["product:read", "prediction:read"]
+      }
+    },
+
+    "product": {
+      "description": "테넌트가 등록한 실제 SKU. 예측의 주체.",
+      "fields": {
+        "product_id":     { "type": "string", "pk": true, "prefix": "prd_" },
+        "tenant_id":      { "type": "string", "fk": "tenant.tenant_id", "required": true },
+        "sku_code":       { "type": "string", "required": false, "desc": "고객사 내부 SKU 코드" },
+        "name":           { "type": "string", "required": true, "example": "제로슈거 콜드브루 350ml" },
+        "description":    { "type": "string", "required": false, "desc": "자동 분류 모델의 입력으로 쓰임" },
+        "taxonomy_node_id": { "type": "string", "fk": "taxonomy_node.node_id", "required": true, "desc": "02_taxonomy.json. 자동 분류 후 사용자 확정 필요." },
+        "taxonomy_confidence": { "type": "number", "range": [0, 1], "desc": "자동 분류 신뢰도. <0.7 이면 UI 에서 사용자 확인 강제." },
+        "channels":       { "type": "string[]", "fk": "taxonomy(channels)", "required": true, "desc": "이 제품이 판매되는/판매하려는 채널 코드 목록" },
+        "unit_price_krw": { "type": "integer", "required": true, "desc": "소비자 판매가" },
+        "unit_cost_krw":  { "type": "integer", "required": false, "desc": "원가. 있으면 예상 이익 기준 랭킹 가능" },
+        "price_tier":     { "type": "enum", "values": ["value", "mid", "premium", "luxury"], "desc": "시스템이 동일 taxonomy_node 내 가격 분포로 자동 산정" },
+        "pack_size":      { "type": "string", "required": false, "example": "350ml" },
+        "attributes":     { "type": "object", "desc": "제품-지역 적합도 계산용 자유 속성", "example": { "sugar_free": true, "organic": false, "premium_ingredient": true, "target_age": ["20s", "30s"], "consumption_occasion": ["office", "on_the_go"] } },
+        "launch_date":    { "type": "date", "required": false },
+        "status":         { "type": "enum", "values": ["draft", "active", "archived"] }
+      },
+      "constraints": ["UNIQUE(tenant_id, sku_code) WHERE sku_code IS NOT NULL"]
+    },
+
+    "taxonomy_node": {
+      "description": "전 테넌트 공용 상품 분류 트리. 자사 SKU와 공개 소비데이터를 잇는 브릿지. 정의는 02_taxonomy.json.",
+      "fields": {
+        "node_id":     { "type": "string", "pk": true, "example": "TX-FOOD-BEV-COFFEE-RTD" },
+        "level":       { "type": "integer", "range": [1, 4] },
+        "parent_id":   { "type": "string", "nullable": true },
+        "name_ko":     { "type": "string" },
+        "ksic_codes":  { "type": "string[]", "desc": "한국표준산업분류 매핑" },
+        "sbiz_codes":  { "type": "string[]", "desc": "소상공인시장진흥공단 상권정보 업종코드 매핑" },
+        "card_mcc":    { "type": "string[]", "desc": "카드 가맹점 업종 매핑" },
+        "seasonality_profile": { "type": "number[12]", "desc": "월별 수요 지수 (평균=1.0)" }
+      }
+    },
+
+    "region": {
+      "description": "지역 단위. 계층 구조를 가지며 다중 해상도를 지원한다. 상세는 03_region_features.json.",
+      "fields": {
+        "region_id":   { "type": "string", "pk": true, "desc": "행정표준코드 또는 h3_/cst_ 접두사" },
+        "level":       { "type": "enum", "values": ["sido", "sigungu", "adm_dong", "census_block", "h3_r8", "custom_catchment"], "required": true },
+        "parent_id":   { "type": "string", "nullable": true },
+        "name":        { "type": "string", "required": true },
+        "full_name":   { "type": "string", "example": "서울특별시 종로구 청운효자동" },
+        "center_lat":  { "type": "number", "required": true },
+        "center_lng":  { "type": "number", "required": true },
+        "geo_boundary":{ "type": "GeoJSON Polygon|MultiPolygon", "required": false, "desc": "대용량이므로 별도 테이블/타일 서버로 분리 권장. API 응답에 기본 미포함." },
+        "area_km2":    { "type": "number" },
+        "tenant_id":   { "type": "string", "nullable": true, "desc": "custom_catchment 인 경우에만 채워짐. 테넌트 전용 상권." },
+        "valid_from":  { "type": "date", "desc": "행정구역 개편 대응" },
+        "valid_to":    { "type": "date", "nullable": true }
+      },
+      "notes": [
+        "행정동 코드는 개편으로 바뀐다. region_code_mapping 테이블로 구/신 코드를 이어야 시계열이 끊기지 않는다.",
+        "custom_catchment 은 반경/도달시간 기반 사용자 정의 상권. 출점 의사결정에는 행정동보다 이쪽이 맞다."
+      ]
+    },
+
+    "region_feature": {
+      "description": "지역 피처 스토어. 시점 정합성 필수. 피처 목록은 03_region_features.json.",
+      "fields": {
+        "region_id":   { "type": "string", "fk": "region.region_id", "pk_part": true },
+        "feature_key": { "type": "string", "pk_part": true, "desc": "03_region_features.json 의 registry 에 등록된 키만 허용" },
+        "value_num":   { "type": "number", "nullable": true },
+        "value_json":  { "type": "object", "nullable": true, "desc": "분포형 피처 (연령대 비율 등)" },
+        "valid_from":  { "type": "date", "pk_part": true, "required": true },
+        "valid_to":    { "type": "date", "nullable": true, "desc": "null = 현재 유효" },
+        "source_id":   { "type": "string", "fk": "data_source.source_id", "required": true },
+        "ingested_at": { "type": "timestamp", "required": true }
+      },
+      "constraints": [
+        "동일 (region_id, feature_key) 의 valid 구간은 겹칠 수 없다.",
+        "학습·백테스트 조회는 반드시 as_of 파라미터를 받아 valid_from <= as_of < COALESCE(valid_to, 'infinity') 로 필터한다."
+      ]
+    },
+
+    "demand_signal": {
+      "description": "공개/라이선스 소비 데이터. 지역 × 택소노미 × 채널 × 기간 단위. 전 테넌트 공용.",
+      "fields": {
+        "region_id":       { "type": "string", "pk_part": true },
+        "taxonomy_node_id":{ "type": "string", "pk_part": true },
+        "channel":         { "type": "string", "pk_part": true, "desc": "채널 미분리 소스는 'all' 사용" },
+        "period":          { "type": "string", "pk_part": true, "format": "YYYY-MM" },
+        "spend_krw":       { "type": "integer", "nullable": true, "desc": "해당 셀 총 소비액" },
+        "transaction_count": { "type": "integer", "nullable": true },
+        "store_count":     { "type": "integer", "nullable": true, "desc": "해당 업종 점포 수 = 경쟁 강도 원천" },
+        "spend_index":     { "type": "number", "desc": "전국 평균 대비 지수 (100 = 전국 평균). 절대금액 비공개 소스 대응." },
+        "coverage_flag":   { "type": "enum", "values": ["actual", "estimated", "suppressed"], "required": true, "desc": "suppressed = 개인정보 임계 미달로 마스킹됨" },
+        "source_id":       { "type": "string", "fk": "data_source.source_id", "required": true }
+      },
+      "privacy_rule": "coverage_flag='suppressed' 인 셀은 모델 입력에서 제외하거나 상위 지역값으로 대체하며, 절대 사용자에게 원시값을 노출하지 않는다. 06_governance.md 참조."
+    },
+
+    "tenant_sales": {
+      "description": "테넌트가 업로드한 자사 실제 판매 실적. 모델 보정(calibration)의 핵심 입력. 절대 테넌트 간 공유 금지.",
+      "fields": {
+        "tenant_sales_id": { "type": "string", "pk": true, "prefix": "tsl_" },
+        "tenant_id":       { "type": "string", "fk": "tenant.tenant_id", "required": true },
+        "product_id":      { "type": "string", "fk": "product.product_id", "required": true },
+        "region_id":       { "type": "string", "fk": "region.region_id", "required": true },
+        "channel":         { "type": "string", "required": true },
+        "period":          { "type": "string", "format": "YYYY-MM", "required": true },
+        "units_sold":      { "type": "integer", "nullable": true },
+        "revenue_krw":     { "type": "integer", "nullable": true },
+        "distribution_points": { "type": "integer", "nullable": true, "desc": "해당 지역에서 이 SKU를 취급한 점포 수. 없으면 취급률 보정 불가." },
+        "is_outlier":      { "type": "boolean", "default": false, "desc": "프로모션·일회성 대량납품 등. 학습에서 제외." },
+        "import_job_id":   { "type": "string", "fk": "import_job.job_id" }
+      },
+      "notes": [
+        "distribution_points 가 없으면 '수요가 없어서 안 팔린 것'과 '안 팔아서 안 팔린 것'을 구분할 수 없다. 업로드 UI에서 강하게 권장할 것.",
+        "개인 식별 정보(고객명, 카드번호, 연락처)가 포함된 파일은 인제스트 단계에서 거부한다."
+      ]
+    },
+
+    "import_job": {
+      "description": "테넌트 데이터 업로드 비동기 작업",
+      "fields": {
+        "job_id":      { "type": "string", "pk": true, "prefix": "imp_" },
+        "tenant_id":   { "type": "string", "required": true },
+        "kind":        { "type": "enum", "values": ["tenant_sales", "product_catalog", "own_store_list"] },
+        "status":      { "type": "enum", "values": ["pending", "validating", "running", "succeeded", "failed", "partially_succeeded"] },
+        "column_mapping": { "type": "object", "desc": "업로드 파일 컬럼 → 표준 필드 매핑" },
+        "row_total":   { "type": "integer" },
+        "row_accepted":{ "type": "integer" },
+        "row_rejected":{ "type": "integer" },
+        "errors":      { "type": "object[]", "desc": "[{row, column, code, message}] 최대 1000건" }
+      }
+    },
+
+    "own_store": {
+      "description": "테넌트의 기존 매장/거래처. 잠식(cannibalization) 계산에 필수.",
+      "fields": {
+        "own_store_id": { "type": "string", "pk": true, "prefix": "sto_" },
+        "tenant_id":    { "type": "string", "required": true },
+        "name":         { "type": "string" },
+        "lat":          { "type": "number", "required": true },
+        "lng":          { "type": "number", "required": true },
+        "region_id":    { "type": "string" },
+        "channel":      { "type": "string" },
+        "opened_at":    { "type": "date" },
+        "monthly_revenue_krw": { "type": "integer", "nullable": true }
+      }
+    },
+
+    "prediction_run": {
+      "description": "버전이 고정된 예측 실행 단위. 재현성과 감사의 기본 단위.",
+      "fields": {
+        "run_id":        { "type": "string", "pk": true, "prefix": "run_" },
+        "tenant_id":     { "type": "string", "required": true },
+        "created_by":    { "type": "string", "fk": "user.user_id" },
+        "status":        { "type": "enum", "values": ["queued", "running", "succeeded", "failed", "cancelled"] },
+        "params":        { "type": "object", "required": true, "desc": "요청 파라미터 원본 스냅샷", "example": {
+          "product_ids": ["prd_01J8XK"],
+          "objective": "distribution_push",
+          "region_level": "sigungu",
+          "region_filter": { "sido": ["서울특별시", "경기도"] },
+          "channels": ["cvs", "online_marketplace"],
+          "horizon_months": 6,
+          "scenario_id": null
+        }},
+        "model_version": { "type": "string", "required": true, "example": "factor-v1.3.0" },
+        "feature_as_of": { "type": "date", "required": true, "desc": "이 시점의 피처 스냅샷으로 계산. 재현성의 핵심." },
+        "boundary_vintage": { "type": "date", "required": true, "desc": "이 실행이 사용한 행정경계 빈티지. 저장된 예측을 나중에 다시 열 때 이 빈티지의 타일을 로드해야 지역이 어긋나지 않는다. ADR-001-map-tiles.md 참조." },
+        "data_tier":     { "type": "enum", "values": ["T0", "T1", "T2"], "desc": "실행 시점 테넌트 tier 고정 기록" },
+        "region_count":  { "type": "integer" },
+        "started_at":    { "type": "timestamp" },
+        "finished_at":   { "type": "timestamp" },
+        "expires_at":    { "type": "timestamp", "desc": "결과 보관 기한. 기본 90일." }
+      },
+      "reproducibility_rule": "동일 run 을 재실행하면 (params + model_version + feature_as_of) 가 같으므로 100% 동일한 결과가 나와야 한다. 난수 시드도 params 에 포함해 고정한다."
+    },
+
+    "prediction": {
+      "description": "예측 결과 1행 = (run, product, region, channel) 하나의 셀",
+      "fields": {
+        "run_id":     { "type": "string", "pk_part": true },
+        "product_id": { "type": "string", "pk_part": true },
+        "region_id":  { "type": "string", "pk_part": true },
+        "channel":    { "type": "string", "pk_part": true },
+        "opportunity_score": { "type": "number", "range": [0, 100], "required": true, "desc": "요청 결과 집합 내 정규화 랭킹 점수" },
+        "score_percentile":  { "type": "number", "range": [0, 1] },
+        "rank":              { "type": "integer" },
+        "expected_revenue_krw": { "type": "object", "nullable": true, "desc": "T0 에서는 반드시 null", "example": { "p10": 8200000, "p50": 14500000, "p90": 23100000 } },
+        "expected_units":      { "type": "object", "nullable": true },
+        "expected_profit_krw": { "type": "object", "nullable": true, "desc": "product.unit_cost_krw 존재 시에만" },
+        "confidence":  { "type": "object", "required": true, "example": { "level": "medium", "data_coverage": 0.72, "backtest_wmape": 0.28, "comparable_region_count": 14 } },
+        "factors":     { "type": "object[]", "required": true, "desc": "요인 분해. 05_scoring_spec.md 의 factor_keys 만 허용." },
+        "cannibalization": { "type": "object", "nullable": true, "example": { "nearby_own_stores": 2, "estimated_uplift_ratio": 0.88, "note": "반경 2km 내 자사 매장 2곳" } },
+        "risks":       { "type": "string[]" },
+        "computed_at": { "type": "timestamp" }
+      }
+    },
+
+    "scenario": {
+      "description": "What-if 시뮬레이션 설정. 가격·채널·시점을 바꿔 재예측.",
+      "fields": {
+        "scenario_id": { "type": "string", "pk": true, "prefix": "scn_" },
+        "tenant_id":   { "type": "string", "required": true },
+        "name":        { "type": "string" },
+        "base_product_id": { "type": "string", "required": true },
+        "overrides":   { "type": "object", "example": { "unit_price_krw": 4500, "channels": ["cvs"], "launch_month": "2026-11", "attributes": { "sugar_free": false } } }
+      }
+    },
+
+    "data_source": {
+      "description": "데이터 출처 레지스트리. 리니지·라이선스·갱신주기 추적. 기업 실사(due diligence) 대응용.",
+      "fields": {
+        "source_id":     { "type": "string", "pk": true, "prefix": "src_" },
+        "name":          { "type": "string", "example": "소상공인시장진흥공단 상권정보" },
+        "provider":      { "type": "string" },
+        "url":           { "type": "string" },
+        "license":       { "type": "string", "example": "공공누리 제1유형" },
+        "commercial_use_allowed": { "type": "boolean", "required": true, "desc": "false 면 프로덕션 투입 금지" },
+        "refresh_cadence": { "type": "enum", "values": ["daily", "weekly", "monthly", "quarterly", "annual", "irregular"] },
+        "last_ingested_at": { "type": "timestamp" },
+        "granularity":   { "type": "string", "example": "adm_dong / monthly" },
+        "known_limitations": { "type": "string[]" }
+      }
+    },
+
+    "audit_log": {
+      "description": "감사 로그. 예측 결과로 사업 의사결정이 이뤄지므로 필수.",
+      "fields": {
+        "audit_id":   { "type": "string", "pk": true },
+        "tenant_id":  { "type": "string", "required": true },
+        "actor_user_id": { "type": "string" },
+        "action":     { "type": "string", "example": "prediction.create" },
+        "resource_id":{ "type": "string" },
+        "request_snapshot": { "type": "object" },
+        "ip":         { "type": "string" },
+        "occurred_at":{ "type": "timestamp" }
+      },
+      "retention": "최소 3년 보관. 테넌트 삭제 시에도 익명화 후 보존."
+    }
+  },
+
+  "relationships": [
+    "tenant 1—N user, product, tenant_sales, own_store, prediction_run, scenario",
+    "product N—1 taxonomy_node  (브릿지)",
+    "taxonomy_node N—M demand_signal  (region × channel × period 축과 함께)",
+    "region 1—N region_feature (시점별 다중 행)",
+    "prediction_run 1—N prediction",
+    "tenant_sales → 모델 보정 → prediction.expected_revenue_krw 의 신뢰도 결정"
+  ]
+}

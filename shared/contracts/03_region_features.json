@@ -1,0 +1,123 @@
+{
+  "$schema_name": "SellFinder Region Model & Feature Registry",
+  "$version": "0.2.0",
+  "$owner": "jin (사람) — 에이전트 직접 수정 금지",
+  "$consumers": ["A: data-platform (생산)", "B: intelligence (소비)"],
+
+  "region_hierarchy": {
+    "levels": [
+      { "level": "sido",         "count_approx": 17,    "id_source": "행정표준코드 2자리",  "use": "권역 전략, 물류" },
+      { "level": "sigungu",      "count_approx": 250,   "id_source": "행정표준코드 5자리",  "use": "유통 확대(distribution_push) 기본 단위" },
+      { "level": "adm_dong",     "count_approx": 3500,  "id_source": "행정표준코드 8~10자리","use": "광고 타게팅, 출점 1차 스크리닝" },
+      { "level": "census_block", "count_approx": 100000,"id_source": "통계청 집계구 코드",  "use": "v2. 정밀 출점" },
+      { "level": "h3_r8",        "count_approx": 150000,"id_source": "H3 인덱스",          "use": "v2. 행정경계 무관 균일 격자" },
+      { "level": "custom_catchment", "count_approx": null, "id_source": "cst_ + ULID",   "use": "출점(store_expansion) 실사용 단위" }
+    ],
+    "rules": [
+      "region_id 는 레벨을 알 수 있어야 한다. 행정코드 자릿수 또는 접두사(h3_, cst_)로 판별한다.",
+      "행정구역 개편으로 코드가 바뀌면 region_code_mapping(old_id, new_id, effective_date, split_ratio) 테이블로 잇는다. 시계열이 끊기면 모델이 망가진다.",
+      "custom_catchment 은 반경(radius_m) 또는 도달시간(drive_time_min) 기반으로 생성하며, 내부 행정동들의 피처를 면적/인구 가중 합산해서 만든다."
+    ],
+    "tile_ownership": {
+      "$see": "ADR-001-map-tiles.md",
+      "rule": "에이전트 A 는 경계 타일을 '정적 아티팩트'로 생성한다. 타일 서빙 API 를 만들지 않는다 (그건 C 소유).",
+      "output": "regions-{level}-{vintage}.pmtiles + manifest.json 을 오브젝트 스토리지에 업로드",
+      "feature_id": "각 피처의 feature id 를 region_id 로 설정한다. 속성이 아니라 id 여야 MapLibre setFeatureState 가 동작한다.",
+      "vintage": "빈티지별로 보존하고 절대 덮어쓰지 않는다. 덮어쓰면 과거 예측을 다시 열 때 지역이 어긋난다.",
+      "never": "예측 점수를 타일에 굽지 않는다. 테넌트×실행×줌 조합이 폭발하고 CDN 캐싱이 불가능해진다."
+    }
+  },
+
+  "point_in_time_rule": {
+    "why": "2024년 매출을 학습하면서 2026년 인구 피처를 쓰면 미래 정보가 새어들어가(leakage) 백테스트 성적만 좋고 운영에서 무너진다.",
+    "how": [
+      "모든 region_feature 행은 valid_from / valid_to 를 가진다.",
+      "피처 조회 함수는 반드시 as_of 인자를 받는다. get_features(region_ids, feature_keys, as_of).",
+      "학습 시 as_of = 해당 타깃 기간의 시작일. 추론 시 as_of = prediction_run.feature_as_of.",
+      "as_of 없이 '최신값'을 가져오는 헬퍼는 만들지 않는다. 만들면 반드시 누가 학습에 쓴다."
+    ],
+    "backtest_split": "무작위 분할 금지. 반드시 시간 기준 분할(예: ~2025-12 학습 / 2026-01~06 검증) + 지역 홀드아웃 병행."
+  },
+
+  "feature_registry": {
+    "$desc": "여기 등록된 feature_key 만 region_feature 테이블에 들어갈 수 있다. 새 피처가 필요하면 CONTRACT_CHANGE_REQUEST 로 제안.",
+
+    "population": {
+      "pop_total":             { "type": "number", "unit": "명", "source_hint": "주민등록 인구통계 / 통계청 SGIS", "cadence": "monthly" },
+      "pop_age_dist":          { "type": "json",   "unit": "비율", "schema": { "0_9": "number", "10s": "number", "20s": "number", "30s": "number", "40s": "number", "50s": "number", "60plus": "number" }, "constraint": "합 = 1.0 ± 0.01" },
+      "household_count":       { "type": "number", "unit": "세대" },
+      "single_household_ratio":{ "type": "number", "unit": "비율", "notes": "HMR·편의점 카테고리의 핵심 설명변수" },
+      "daytime_pop":           { "type": "number", "unit": "명", "notes": "주간활동인구. 오피스 상권 판별의 핵심. 상주인구와 반드시 구분할 것." },
+      "daytime_night_ratio":   { "type": "number", "notes": "주간/야간 인구비. >1.3 오피스상권, <0.8 베드타운" },
+      "birth_count_12m":       { "type": "number", "unit": "명", "notes": "유아동 카테고리" },
+      "pet_registered_count":  { "type": "number", "notes": "반려동물 카테고리" }
+    },
+
+    "income_spend": {
+      "income_decile":         { "type": "number", "range": [1, 10], "notes": "절대 소득은 비공개인 경우가 많아 분위로 대체" },
+      "card_spend_per_capita": { "type": "number", "unit": "원/월", "license_check": true },
+      "spend_index_by_node":   { "type": "json", "notes": "taxonomy_node 별 전국 대비 소비 지수. demand_signal 에서 파생." },
+      "apartment_price_index": { "type": "number", "notes": "구매력 프록시" }
+    },
+
+    "traffic_access": {
+      "foot_traffic_weekday":  { "type": "number", "unit": "명/일", "channel_scope": ["offline"] },
+      "foot_traffic_weekend":  { "type": "number", "unit": "명/일", "channel_scope": ["offline"] },
+      "foot_traffic_peak_hour":{ "type": "json",   "notes": "시간대별 분포. 심야 비중은 편의점·야식 카테고리에 중요." },
+      "transit_boarding_daily":{ "type": "number", "notes": "지하철·버스 승하차" },
+      "subway_station_count":  { "type": "number" },
+      "parking_capacity":      { "type": "number", "notes": "대형마트 채널에 중요" },
+      "road_accessibility_score": { "type": "number", "range": [0, 1] }
+    },
+
+    "commercial": {
+      "store_count_by_node":   { "type": "json", "notes": "taxonomy_node 별 점포 수 = 경쟁 강도 원천", "channel_scope": ["offline"] },
+      "store_open_rate_12m":   { "type": "number", "unit": "비율", "notes": "상권 성장/쇠퇴 신호" },
+      "store_close_rate_12m":  { "type": "number", "unit": "비율", "notes": "높으면 리스크 플래그" },
+      "avg_rent_krw_per_m2":   { "type": "number", "notes": "출점 수익성 계산에 필수" },
+      "trade_area_grade":      { "type": "string", "values": ["A", "B", "C", "D"], "notes": "상권정보시스템 등급" },
+      "anchor_facility_count": { "type": "json", "notes": "대학/병원/관공서/대형오피스 등 집객시설" }
+    },
+
+    "development": {
+      "new_apartment_units_12m": { "type": "number", "notes": "선행지표. 대형가전·가구 카테고리에 강력." },
+      "redevelopment_flag":      { "type": "boolean", "notes": "true 면 예측 신뢰도를 낮춘다" },
+      "pop_growth_rate_36m":     { "type": "number", "unit": "비율" }
+    },
+
+    "online": {
+      "ecommerce_order_density":  { "type": "number", "channel_scope": ["online"], "notes": "배송지 기준. 온라인 채널 예측의 핵심." },
+      "quick_commerce_coverage":  { "type": "number", "range": [0, 1], "channel_scope": ["online"] },
+      "online_penetration_by_node": { "type": "json", "notes": "카테고리별 온라인 구매 전환 비중" }
+    },
+
+    "tenant_scoped": {
+      "$warning": "아래 피처는 테넌트별로 값이 다르다. 절대 공용 피처스토어에 넣지 말고 tenant_id 로 분리 저장한다.",
+      "own_store_count_2km":     { "type": "number", "notes": "잠식 계산" },
+      "own_distribution_points": { "type": "number", "notes": "취급 점포 수. 없으면 '수요 없음'과 '유통 없음'을 구분 못 함." },
+      "own_share_of_category":   { "type": "number", "range": [0, 1] }
+    }
+  },
+
+  "feature_quality_rules": [
+    "결측은 0으로 채우지 않는다. 0과 '모름'은 완전히 다른 의미다. null 로 두고 모델이 결측 인디케이터를 함께 학습한다.",
+    "피처 하나라도 coverage 가 50% 미만인 지역은 prediction.confidence.level 을 'low' 이하로 강제한다.",
+    "면적이 극단적으로 큰 행정동(예: 강원·경북 산간)은 인구밀도 기반 피처가 왜곡된다. area_km2 를 항상 함께 제공한다.",
+    "모든 피처는 ingested_at 과 source_id 를 가져야 한다. 출처 없는 숫자는 인제스트 단계에서 거부한다."
+  ],
+
+  "recommended_public_sources": [
+    { "name": "통계청 SGIS 통계지리정보서비스", "gives": "행정동/집계구 경계, 인구·가구 통계", "url": "https://sgis.kostat.go.kr" },
+    { "name": "행정안전부 주민등록 인구통계",     "gives": "행정동별 연령별 인구, 세대수", "url": "https://jumin.mois.go.kr" },
+    { "name": "소상공인시장진흥공단 상권정보",     "gives": "업종별 점포수, 개폐업률, 상권 등급", "url": "https://sg.sbiz.or.kr" },
+    { "name": "공공데이터포털",                   "gives": "각종 지자체 데이터, 유동인구 일부", "url": "https://www.data.go.kr" },
+    { "name": "국토교통부 실거래가",              "gives": "아파트 가격지수, 신규 입주 물량", "url": "https://rt.molit.go.kr" },
+    { "name": "서울열린데이터광장 등 지자체 포털", "gives": "생활이동인구, 상권 분석 (지역 한정)", "url": "https://data.seoul.go.kr" }
+  ],
+
+  "source_caveats": [
+    "카드 소비 데이터는 대부분 유료·라이선스 제한이 있다. data_source.commercial_use_allowed 를 확인하지 않고 프로덕션에 넣으면 계약 위반이다.",
+    "유동인구 데이터는 통신사 기반이 정확하나 유료다. 무료 대체로 대중교통 승하차 + 집객시설 수를 조합해 프록시를 만든다.",
+    "상권정보시스템 점포수는 분기 갱신이며 실제와 시차가 있다. 최신성이 중요한 의사결정에는 시차를 명시해 노출한다."
+  ]
+}

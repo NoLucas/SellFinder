@@ -1,0 +1,43 @@
+Metadata-Version: 2.4
+Name: pmtiles
+Version: 3.7.0
+Summary: Library and utilities to write and read PMTiles archives - cloud-optimized archives of map tiles.
+Home-page: https://github.com/protomaps/pmtiles
+Author: Brandon Liu
+Author-email: brandon@protomaps.com
+License: BSD-3-Clause
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: summary
+
+# pmtiles
+
+```sh
+pip install pmtiles
+```
+
+## Running Tests
+
+```sh
+python -m unittest test/test_*
+```
+
+## Uploading build
+
+```sh
+python -m build
+twine upload dist/*
+```
+
+## Status
+
+For asynchronous I/O, see [aiopmtiles](https://github.com/developmentseed/aiopmtiles)

@@ -1,0 +1,608 @@
+openapi: 3.1.0
+info:
+  title: SellFinder API
+  version: 0.2.1
+  x-owner: jin (사람) — 에이전트 직접 수정 금지
+  x-changelog:
+    - "0.2.1 (2026-08-14): 지도 타일 엔드포인트 분리. /predictions/{run_id}/tiles/*.mvt 폐기 →
+       /basemap/regions/manifest (정적 경계) + /predictions/{run_id}/scores (동적 점수).
+       근거: ADR-001-map-tiles.md"
+  description: |
+    기업이 자사 SKU를 등록하고, 지역×채널별 판매 잠재력을 예측받는 B2B API.
+
+    ## 반드시 지킬 것
+    1. **tenant_id 는 어떤 요청 파라미터로도 받지 않는다.** 액세스 토큰에서만 파생한다.
+       쿼리/바디에 tenant_id 가 오면 400 으로 거부한다.
+    2. 전국 규모 예측은 **비동기 잡**이다. POST /predictions 는 즉시 202 와 run_id 를 반환한다.
+    3. 모든 목록 응답은 **커서 페이지네이션**을 쓴다. offset 금지.
+    4. 쓰기 요청은 **Idempotency-Key** 헤더를 지원한다.
+    5. data_tier 가 T0 인 테넌트에게 expected_revenue_krw 를 반환하면 안 된다 (null 고정).
+
+servers:
+  - url: https://api.sellfinder.kr/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: products
+  - name: datasets
+  - name: predictions
+  - name: scenarios
+  - name: reference
+  - name: exports
+
+paths:
+
+  # ────────────────────────────── 제품 ──────────────────────────────
+  /products:
+    post:
+      tags: [products]
+      summary: 자사 SKU 등록
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductInput' }
+            example:
+              name: "제로슈거 콜드브루 350ml"
+              description: "무가당 원액 추출 콜드브루, 350ml 페트"
+              unit_price_krw: 3900
+              unit_cost_krw: 1450
+              channels: ["cvs", "online_marketplace"]
+              attributes: { sugar_free: true, target_age: ["20s", "30s"] }
+      responses:
+        '201':
+          description: 생성됨. taxonomy_confidence < 0.7 이면 needs_review=true.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    get:
+      tags: [products]
+      summary: SKU 목록
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: status, in: query, schema: { type: string, enum: [draft, active, archived] } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Product' } }
+                  next_cursor: { type: [string, 'null'] }
+
+  /products:classify:
+    post:
+      tags: [products]
+      summary: SKU 자동 분류 (등록 전 미리보기)
+      description: 02_taxonomy.json 의 classification_contract 를 따른다. 존재하지 않는 node_id 반환 금지.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: [string, 'null'] }
+                unit_price_krw: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                candidates:
+                  - node_id: "TX-FOOD-BEV-COFFEE-RTD"
+                    name_ko: "RTD 커피"
+                    confidence: 0.91
+                    rationale: "'콜드브루' 키워드와 350ml 용량이 RTD 커피 패턴과 일치"
+                  - node_id: "TX-FOOD-BEV-TEA"
+                    name_ko: "차·티음료"
+                    confidence: 0.06
+                    rationale: "음료 대분류 유사성"
+                suggested_channels: ["cvs", "online_marketplace"]
+                extracted_attributes: { pack_size_ml: 350, sugar_free: true }
+                needs_review: false
+
+  # ────────────────────────────── 데이터 업로드 ──────────────────────────────
+  /datasets/sales:import:
+    post:
+      tags: [datasets]
+      summary: 자사 판매 실적 업로드 (비동기)
+      description: |
+        업로드 즉시 202 를 반환하고 검증은 백그라운드에서 수행한다.
+        distribution_points 컬럼이 없으면 경고를 반환한다 — 없으면 '수요가 없어 안 팔린 것'과
+        '취급을 안 해서 안 팔린 것'을 구분할 수 없다.
+        개인식별정보(고객명/연락처/카드번호 추정 컬럼) 감지 시 전체 잡을 거부한다.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                column_mapping: { type: string, description: "JSON. 파일 컬럼 → 표준 필드" }
+      responses:
+        '202':
+          content:
+            application/json:
+              example: { job_id: "imp_01J8XKQ", status: "validating", warnings: ["distribution_points 컬럼이 없습니다. 취급률 보정이 불가능합니다."] }
+
+  /datasets/jobs/{job_id}:
+    get:
+      tags: [datasets]
+      parameters: [{ name: job_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                job_id: "imp_01J8XKQ"
+                status: "partially_succeeded"
+                row_total: 12480
+                row_accepted: 12312
+                row_rejected: 168
+                errors:
+                  - { row: 47, column: "region_id", code: "REGION_NOT_FOUND", message: "'서울 강남' 을 행정표준코드로 해석할 수 없습니다" }
+
+  # ────────────────────────────── 예측 ──────────────────────────────
+  /predictions:
+    post:
+      tags: [predictions]
+      summary: 예측 실행 생성 (비동기)
+      description: |
+        전국 3,500개 행정동 × 다수 SKU 는 동기 처리가 불가능하다. 즉시 202 + run_id 를 반환한다.
+        완료 시 webhook(prediction.succeeded) 또는 폴링으로 확인한다.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PredictionRequest' }
+            example:
+              product_ids: ["prd_01J8XK"]
+              objective: "distribution_push"
+              region_level: "sigungu"
+              region_filter: { sido: ["서울특별시", "경기도"] }
+              channels: ["cvs"]
+              horizon_months: 6
+      responses:
+        '202':
+          content:
+            application/json:
+              example:
+                run_id: "run_01J8XM2"
+                status: "queued"
+                estimated_seconds: 42
+                model_version: "factor-v1.3.0"
+                feature_as_of: "2026-08-01"
+                data_tier: "T1"
+
+  /predictions/{run_id}:
+    get:
+      tags: [predictions]
+      summary: 실행 상태 + 요약
+      parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                run_id: "run_01J8XM2"
+                status: "succeeded"
+                region_count: 78
+                model_version: "factor-v1.3.0"
+                feature_as_of: "2026-08-01"
+                data_tier: "T1"
+                summary:
+                  top_region: { region_id: "41135", name: "성남시 분당구", opportunity_score: 92.1 }
+                  score_distribution: { p25: 38.2, p50: 51.7, p75: 68.4 }
+                  low_confidence_region_count: 11
+                warnings: ["11개 지역은 데이터 커버리지 부족으로 신뢰도가 낮습니다."]
+                expires_at: "2026-11-12T00:00:00Z"
+
+  /predictions/{run_id}/regions:
+    get:
+      tags: [predictions]
+      summary: 지역별 결과 (지도 렌더링용, 페이지네이션)
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 200, maximum: 1000 } }
+        - { name: sort, in: query, schema: { type: string, enum: [score_desc, revenue_desc, profit_desc], default: score_desc } }
+        - { name: min_confidence, in: query, schema: { type: string, enum: [low, medium, high] } }
+        - name: include_geometry
+          in: query
+          schema: { type: boolean, default: false }
+          description: |
+            true 면 GeoJSON 경계를 포함한다. 응답이 매우 커지므로 지도는 별도 벡터타일 엔드포인트 사용을 권장.
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                  - region_id: "41135"
+                    region_name: "경기도 성남시 분당구"
+                    rank: 1
+                    opportunity_score: 92.1
+                    score_percentile: 0.99
+                    expected_revenue_krw: { p10: 82000000, p50: 145000000, p90: 231000000 }
+                    confidence: { level: "high", data_coverage: 0.86 }
+                next_cursor: "eyJvIjoyMDB9"
+
+  /predictions/{run_id}/regions/{region_id}:
+    get:
+      tags: [predictions]
+      summary: 지역 상세 + 요인 분해 (설명가능성)
+      description: 05_scoring_spec.md 의 factor_keys 만 사용한다. 임의 요인명 생성 금지.
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+        - { name: region_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PredictionDetail' }
+              example:
+                run_id: "run_01J8XM2"
+                product_id: "prd_01J8XK"
+                region_id: "41135"
+                region_name: "경기도 성남시 분당구"
+                channel: "cvs"
+                opportunity_score: 92.1
+                rank: 1
+                expected_revenue_krw: { p10: 82000000, p50: 145000000, p90: 231000000 }
+                expected_units: { p10: 21000, p50: 37000, p90: 59000 }
+                expected_profit_krw: { p50: 90650000 }
+                confidence:
+                  level: "high"
+                  data_coverage: 0.86
+                  backtest_wmape: 0.21
+                  comparable_region_count: 23
+                factors:
+                  - key: "addressable_demand"
+                    label: "수요 규모"
+                    log_contribution: 0.42
+                    display_effect: "+52%"
+                    value: 512000
+                    benchmark: 318000
+                    evidence: "20~30대 인구 15.2만명, 주간활동인구비 1.34 (오피스 상권)"
+                  - key: "category_penetration"
+                    label: "카테고리 침투율"
+                    log_contribution: 0.28
+                    display_effect: "+32%"
+                    value: 138
+                    benchmark: 100
+                    evidence: "RTD커피 소비지수 138 (전국 평균 100)"
+                  - key: "product_affinity"
+                    label: "제품 적합도"
+                    log_contribution: 0.19
+                    display_effect: "+21%"
+                    evidence: "무가당 제품 선호가 높은 고소득·고학력 인구 비중 상위 8%"
+                  - key: "price_acceptance"
+                    label: "가격 수용도"
+                    log_contribution: 0.11
+                    display_effect: "+12%"
+                    evidence: "소득 9분위. 3,900원 가격대 수용 양호"
+                  - key: "competition"
+                    label: "경쟁 강도"
+                    log_contribution: -0.24
+                    display_effect: "-21%"
+                    evidence: "RTD커피 취급 편의점 412개소, 전국 상위 3% 밀집"
+                  - key: "channel_availability"
+                    label: "채널 접근성"
+                    log_contribution: 0.08
+                    display_effect: "+8%"
+                    evidence: "편의점 점포수 412개, 인구 1만명당 27.1개"
+                  - key: "seasonality"
+                    label: "계절성"
+                    log_contribution: 0.05
+                    display_effect: "+5%"
+                    evidence: "예측 구간(9~2월) RTD커피 지수 평균 0.96 → 보정 후 +5%"
+                comparable_regions:
+                  - { region_id: "41131", name: "수정구", similarity: 0.91, actual_revenue_krw: 121000000, note: "자사 실적 보유" }
+                  - { region_id: "11650", name: "서초구", similarity: 0.88, actual_revenue_krw: 168000000 }
+                cannibalization:
+                  nearby_own_stores: 0
+                  estimated_uplift_ratio: 1.0
+                risks:
+                  - "경쟁 밀집도가 전국 상위 3%로, 신규 진입 시 매대 확보 난이도가 높습니다."
+                  - "상권정보 점포수 데이터는 2026-06 기준으로 2개월 시차가 있습니다."
+                data_freshness:
+                  - { source: "행정안전부 주민등록 인구통계", as_of: "2026-07-31" }
+                  - { source: "소상공인시장진흥공단 상권정보", as_of: "2026-06-30" }
+
+  # ⚠ v0.2.0 의 /predictions/{run_id}/tiles/{z}/{x}/{y}.mvt 는 v0.2.1 에서 폐기되었습니다.
+  #   경계 기하와 예측 점수를 한 타일에 담으면 테넌트×실행×줌 조합이 폭발하고 CDN 캐싱이 불가능합니다.
+  #   아래 두 엔드포인트로 분리하고 클라이언트에서 join 합니다. 근거: ADR-001-map-tiles.md
+
+  /basemap/regions/manifest:
+    get:
+      tags: [predictions]
+      summary: 지역 경계 타일 매니페스트 (정적·공용)
+      description: |
+        에이전트 A 가 생성한 정적 .pmtiles 아티팩트의 위치를 반환한다.
+        백엔드는 타일을 생성하거나 프록시하지 않고 URL(필요 시 서명 URL)만 발급한다.
+        테넌트 무관하므로 캐시 가능: Cache-Control: public, max-age=3600
+      parameters:
+        - { name: level, in: query, required: true, schema: { type: string, enum: [sido, sigungu, adm_dong] } }
+        - name: vintage
+          in: query
+          schema: { type: string, format: date }
+          description: |
+            경계 빈티지. 생략 시 최신.
+            저장된 예측을 다시 열 때는 반드시 prediction_run.boundary_vintage 를 넘겨야 한다.
+            최신 타일을 로드하면 행정구역 개편으로 지역이 어긋나 엉뚱한 곳이 칠해진다.
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                level: "adm_dong"
+                boundary_vintage: "2026-01-01"
+                tile_url: "https://cdn.sellfinder.kr/tiles/regions-adm_dong-2026-01-01.pmtiles"
+                source_layer: "regions"
+                feature_id_property: "region_id"
+                minzoom: 5
+                maxzoom: 12
+                attribution: "통계청 SGIS"
+                available_vintages: ["2026-01-01", "2025-01-01", "2024-01-01"]
+
+  /predictions/{run_id}/scores:
+    get:
+      tags: [predictions]
+      summary: 지도 렌더링용 경량 점수 배열
+      description: |
+        지도는 전체 지역을 한 번에 칠해야 하므로 **이 엔드포인트만 커서 페이지네이션 규칙의 예외다.**
+        3,500개 행정동 × 3필드는 압축 시 약 30KB 로, 분할 전송할 이유가 없다.
+        객체 배열 대신 튜플 배열 + schema 를 써서 키 반복을 제거한다 (페이로드 약 60% 절감).
+        금액(expected_revenue_krw)은 여기 담지 않는다 — T0 금지 규칙을 상세 조회 한 곳에서만 지키기 위함.
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+        - { name: product_id, in: query, schema: { type: string }, description: 다중 SKU run 에서 하나 선택 }
+        - { name: channel, in: query, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                run_id: "run_01J8XM2"
+                region_level: "adm_dong"
+                boundary_vintage: "2026-01-01"
+                objective: "distribution_push"
+                data_tier: "T1"
+                schema: ["region_id", "opportunity_score", "confidence_level"]
+                scores:
+                  - ["1111051500", 87.4, "high"]
+                  - ["1111052000", 62.1, "medium"]
+                  - ["1111053000", 31.8, "low"]
+                score_range: { min: 12.3, max: 94.8, p50: 51.7 }
+                custom_geometries: null
+
+  # ────────────────────────────── 시나리오 ──────────────────────────────
+  /scenarios:
+    post:
+      tags: [scenarios]
+      summary: What-if 시나리오 생성 (가격/채널/출시시점 변경)
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: "가격 4,500원 인상안"
+              base_product_id: "prd_01J8XK"
+              overrides: { unit_price_krw: 4500, channels: ["cvs", "hypermarket"] }
+      responses:
+        '201': { content: { application/json: { example: { scenario_id: "scn_01J8XP" } } } }
+
+  /scenarios/{scenario_id}:compare:
+    post:
+      tags: [scenarios]
+      summary: 기준 예측과 시나리오 예측 비교
+      responses:
+        '202':
+          content:
+            application/json:
+              example: { comparison_run_id: "run_01J8XQ", base_run_id: "run_01J8XM2" }
+
+  # ────────────────────────────── 참조 데이터 ──────────────────────────────
+  /taxonomy:
+    get:
+      tags: [reference]
+      summary: 상품 택소노미 + 채널 목록
+      responses: { '200': { description: 02_taxonomy.json 내용 } }
+
+  /regions/{region_id}/profile:
+    get:
+      tags: [reference]
+      summary: 지역 프로파일 (피처 원본값 + 전국 대비 백분위)
+      parameters:
+        - { name: region_id, in: path, required: true, schema: { type: string } }
+        - { name: as_of, in: query, schema: { type: string, format: date }, description: 시점 정합 조회 }
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                region_id: "41135"
+                features:
+                  - { key: "pop_total", value: 481000, percentile: 0.97, as_of: "2026-07-31", source: "행정안전부 주민등록 인구통계" }
+                  - { key: "daytime_night_ratio", value: 1.34, percentile: 0.88, as_of: "2026-06-30", source: "통신사 유동인구" }
+
+  /models/{model_version}/card:
+    get:
+      tags: [reference]
+      summary: 모델 카드 (백테스트 성적 · 한계 · 사용 금지 영역)
+      description: 기업 고객이 도입 검토 시 요구하는 문서. 05_scoring_spec.md §5 참조.
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                model_version: "factor-v1.3.0"
+                trained_at: "2026-07-15"
+                backtest:
+                  split: "temporal: train ~2025-12 / valid 2026-01~06"
+                  spearman_rho: 0.64
+                  wmape: 0.23
+                  top_decile_lift: 2.31
+                  by_region_type:
+                    metro: { spearman_rho: 0.71, wmape: 0.18 }
+                    rural: { spearman_rho: 0.42, wmape: 0.39 }
+                known_limitations:
+                  - "인구 3만명 미만 행정동은 표본 부족으로 오차가 큽니다."
+                  - "재개발 진행 지역은 예측 신뢰도가 낮습니다."
+                do_not_use_for:
+                  - "개별 점포 단위 매출 보증"
+                  - "신규 카테고리(택소노미 미매핑 제품)"
+
+  # ────────────────────────────── 내보내기 ──────────────────────────────
+  /exports:
+    post:
+      tags: [exports]
+      summary: 결과 내보내기 (xlsx / csv / geojson)
+      requestBody:
+        content:
+          application/json:
+            example: { run_id: "run_01J8XM2", format: "xlsx", include_factors: true }
+      responses:
+        '202': { content: { application/json: { example: { export_id: "exp_01J8XR", status: "queued" } } } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: 동일 키로 24시간 내 재요청 시 원 결과를 그대로 반환한다.
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              code: "TENANT_ID_NOT_ALLOWED"
+              message: "tenant_id 는 요청 파라미터로 전달할 수 없습니다. 액세스 토큰에서 파생됩니다."
+              request_id: "req_01J8XS"
+
+  schemas:
+    Error:
+      type: object
+      description: 모든 4xx/5xx 는 이 봉투 형식을 따른다.
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:    { type: string }
+            message: { type: string }
+            details: { type: array, items: { type: object } }
+            request_id: { type: string }
+
+    ProductInput:
+      type: object
+      required: [name, unit_price_krw, channels]
+      properties:
+        sku_code: { type: [string, 'null'] }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        taxonomy_node_id: { type: [string, 'null'], description: "미지정 시 자동 분류" }
+        channels: { type: array, items: { type: string } }
+        unit_price_krw: { type: integer }
+        unit_cost_krw: { type: [integer, 'null'] }
+        pack_size: { type: [string, 'null'] }
+        attributes: { type: object }
+
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductInput'
+        - type: object
+          properties:
+            product_id: { type: string }
+            taxonomy_confidence: { type: number }
+            price_tier: { type: string, enum: [value, mid, premium, luxury] }
+            needs_review: { type: boolean }
+
+    PredictionRequest:
+      type: object
+      required: [product_ids, objective, region_level]
+      properties:
+        product_ids: { type: array, items: { type: string }, maxItems: 50 }
+        objective:
+          type: string
+          enum: [store_expansion, distribution_push, ad_targeting]
+          description: |
+            랭킹 기준이 달라진다. 05_scoring_spec.md §3 참조.
+            store_expansion 은 offline 채널에서만 유효.
+        region_level: { type: string, enum: [sido, sigungu, adm_dong, custom_catchment] }
+        region_filter:
+          type: object
+          properties:
+            sido: { type: array, items: { type: string } }
+            region_ids: { type: array, items: { type: string } }
+            bounds: { type: object, properties: { sw_lat: {type: number}, sw_lng: {type: number}, ne_lat: {type: number}, ne_lng: {type: number} } }
+        channels: { type: array, items: { type: string } }
+        horizon_months: { type: integer, minimum: 1, maximum: 12, default: 6 }
+        scenario_id: { type: [string, 'null'] }
+        exclude_own_store_regions: { type: boolean, default: false }
+
+    PredictionDetail:
+      type: object
+      required: [run_id, product_id, region_id, opportunity_score, confidence, factors]
+      properties:
+        opportunity_score: { type: number, minimum: 0, maximum: 100 }
+        expected_revenue_krw:
+          type: [object, 'null']
+          description: "data_tier=T0 이면 반드시 null. 근거 없는 금액 추정 금지."
+          properties: { p10: {type: integer}, p50: {type: integer}, p90: {type: integer} }
+        confidence:
+          type: object
+          required: [level, data_coverage]
+          properties:
+            level: { type: string, enum: [low, medium, high] }
+            data_coverage: { type: number, minimum: 0, maximum: 1 }
+            backtest_wmape: { type: [number, 'null'] }
+            comparable_region_count: { type: integer }
+        factors:
+          type: array
+          items:
+            type: object
+            required: [key, label, log_contribution, evidence]
+            properties:
+              key: { type: string, enum: [addressable_demand, category_penetration, product_affinity, price_acceptance, competition, channel_availability, seasonality, tenant_calibration] }
+              label: { type: string }
+              log_contribution: { type: number, description: "로그공간 기여도. 전체 합 = ln(최종 배수)" }
+              display_effect: { type: string, description: "사용자 표시용. 예 '+52%'" }
+              evidence: { type: string, description: "근거 문장. 반드시 실제 피처값을 인용할 것." }
+
+x-webhooks:
+  prediction.succeeded:
+    post:
+      requestBody:
+        content:
+          application/json:
+            example: { event: "prediction.succeeded", run_id: "run_01J8XM2", tenant_id: "tnt_...", occurred_at: "2026-08-14T09:12:00Z" }
+
+x-rate-limits:
+  default: "600 req/min per tenant"
+  predictions_create: "20 req/min per tenant"
+
+x-conventions:
+  timestamps: RFC3339 UTC
+  currency: KRW 정수, 필드 접미사 _krw
+  pagination: 커서 기반 (next_cursor). offset 금지.
+  versioning: URL 경로 (/v1). 파괴적 변경 시에만 버전 증가.
