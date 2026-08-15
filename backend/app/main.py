@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.routers import health
+from app.routers import basemap, health, predictions
 
 app = FastAPI(
     title="SellFinder API",
@@ -11,6 +11,8 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
+app.include_router(basemap.router)
+app.include_router(predictions.router)
 
 
 @app.exception_handler(HTTPException)
