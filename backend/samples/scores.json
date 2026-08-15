@@ -1,0 +1,45 @@
+{
+  "run_id": "run_demo01",
+  "region_level": "adm_dong",
+  "boundary_vintage": "2026-01-01",
+  "objective": "distribution_push",
+  "data_tier": "T1",
+  "schema": [
+    "region_id",
+    "opportunity_score",
+    "confidence_level"
+  ],
+  "scores": [
+    [
+      "41135",
+      92.1,
+      "high"
+    ],
+    [
+      "11650",
+      88.4,
+      "high"
+    ],
+    [
+      "11680",
+      86.9,
+      "medium"
+    ],
+    [
+      "28245",
+      74.2,
+      "medium"
+    ],
+    [
+      "41461",
+      61.8,
+      "low"
+    ]
+  ],
+  "score_range": {
+    "min": 61.8,
+    "max": 92.1,
+    "p50": 86.9
+  },
+  "custom_geometries": null
+}

@@ -3,15 +3,16 @@
 Placeholder until the real async job pipeline (RECONCILIATION.md #5 step 4)
 and a real datastore exist — /intelligence has no code yet either
 (intelligence/RECONCILIATION.md #1), so there is nothing real to call.
-This exists so `GET /predictions/{run_id}/regions` has something to serve,
-and to demonstrate recording `boundary_vintage` on a run at creation time as
-instructed. `create_run` is not wired to a `POST /predictions` endpoint yet
-(out of scope for this change) — it seeds one demo run below.
+This exists so `GET /predictions/{run_id}/regions` and `GET
+/predictions/{run_id}/scores` have something to serve, and to demonstrate
+recording `boundary_vintage` on a run at creation time per ADR-001.
+`create_run` is not wired to a `POST /predictions` endpoint yet (out of
+scope for this change) — it seeds one demo run below.
 """
 
 from dataclasses import dataclass
 
-from app.services.basemap_registry import BOUNDARY_VINTAGE
+from app.services import basemap_registry
 
 
 @dataclass
@@ -33,6 +34,8 @@ class PredictionRun:
     run_id: str
     tenant_id: str
     data_tier: str
+    region_level: str
+    objective: str
     boundary_vintage: str
     regions: list[RegionScore]
 
@@ -69,14 +72,23 @@ def _build_demo_regions() -> list[RegionScore]:
 _RUNS: dict[str, PredictionRun] = {}
 
 
-def create_run(run_id: str, tenant_id: str, data_tier: str = "T1") -> PredictionRun:
-    """Records boundary_vintage at creation time (from the manifest currently
-    in effect), so it stays fixed for this run even if A republishes later."""
+def create_run(
+    run_id: str,
+    tenant_id: str,
+    data_tier: str = "T1",
+    region_level: str = "adm_dong",
+    objective: str = "distribution_push",
+) -> PredictionRun:
+    """Records boundary_vintage at creation time (the level's latest vintage
+    right now), so it stays fixed for this run even if A republishes later
+    (ADR-001 "경계 빈티지" §2)."""
     run = PredictionRun(
         run_id=run_id,
         tenant_id=tenant_id,
         data_tier=data_tier,
-        boundary_vintage=BOUNDARY_VINTAGE,
+        region_level=region_level,
+        objective=objective,
+        boundary_vintage=basemap_registry.latest_vintage(region_level),
         regions=_build_demo_regions(),
     )
     _RUNS[run_id] = run

@@ -1,0 +1,15 @@
+{
+  "level": "adm_dong",
+  "boundary_vintage": "2026-01-01",
+  "tile_url": "https://cdn.sellfinder.kr/tiles/regions-adm_dong-2026-01-01.pmtiles?expires=1786787990&sig=3514f9a20dae79c365d867b434027a2f50aa248c29fab45b69ce1ba0c242704b",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 5,
+  "maxzoom": 12,
+  "attribution": "통계청 SGIS",
+  "available_vintages": [
+    "2026-01-01",
+    "2025-01-01",
+    "2024-01-01"
+  ]
+}

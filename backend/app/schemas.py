@@ -14,15 +14,16 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-class BasemapLevelArtifact(BaseModel):
-    level: str
-    format: str
-    url: str
-
-
 class BasemapManifestResponse(BaseModel):
+    level: str
     boundary_vintage: str
-    levels: list[BasemapLevelArtifact]
+    tile_url: str
+    source_layer: str
+    feature_id_property: str
+    minzoom: int
+    maxzoom: int
+    attribution: str
+    available_vintages: list[str]
 
 
 class ExpectedRevenue(BaseModel):
@@ -49,4 +50,3 @@ class RegionScoreItem(BaseModel):
 class RegionScoresResponse(BaseModel):
     data: list[RegionScoreItem]
     next_cursor: str | None
-    boundary_vintage: str

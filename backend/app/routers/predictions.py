@@ -91,4 +91,60 @@ def get_prediction_regions(
         for r in page
     ]
 
-    return RegionScoresResponse(data=data, next_cursor=next_cursor, boundary_vintage=run.boundary_vintage)
+    return RegionScoresResponse(data=data, next_cursor=next_cursor)
+
+
+@router.get(
+    "/v1/predictions/{run_id}/scores",
+    responses={404: {"description": "run_id를 찾을 수 없거나 다른 테넌트 소유입니다."}},
+)
+def get_prediction_scores(
+    run_id: str,
+    tenant_id: str = Depends(get_tenant_id),
+    product_id: str | None = Query(default=None, description="다중 SKU run에서 하나 선택"),
+    channel: str | None = Query(default=None),
+) -> dict:
+    """Lightweight map-rendering payload — the one exception to cursor
+    pagination (the whole region set is returned in one call so the map can
+    be painted in a single pass). Tuple array + schema, not an object array,
+    to cut payload size on ~3,500 rows. Never carries expected_revenue_krw —
+    the T0-null rule is enforced in exactly one place, the region-detail
+    endpoint. Returned as a plain dict (not a pydantic model) because
+    `schema` collides with BaseModel's own namespace.
+
+    `product_id`/`channel` are accepted per contract but not yet applied —
+    the mock store doesn't stratify demo regions by product/channel.
+    """
+    run = prediction_store.get_run(run_id, tenant_id)
+    if run is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "PREDICTION_RUN_NOT_FOUND",
+                "message": f"run_id '{run_id}'를 찾을 수 없습니다.",
+            },
+        )
+
+    regions = sorted(run.regions, key=lambda r: r.opportunity_score, reverse=True)
+    scores = [[r.region_id, r.opportunity_score, r.confidence_level] for r in regions]
+
+    values = sorted(r.opportunity_score for r in regions)
+    score_range = {
+        "min": values[0],
+        "max": values[-1],
+        "p50": values[len(values) // 2],
+    }
+
+    return {
+        "run_id": run.run_id,
+        "region_level": run.region_level,
+        "boundary_vintage": run.boundary_vintage,
+        "objective": run.objective,
+        "data_tier": run.data_tier,
+        "schema": ["region_id", "opportunity_score", "confidence_level"],
+        "scores": scores,
+        "score_range": score_range,
+        # Only set for region_level="custom_catchment" — standard admin
+        # boundaries always come from the manifest's .pmtiles, never inline.
+        "custom_geometries": None,
+    }

@@ -12,11 +12,11 @@ def test_regions_requires_auth() -> None:
     assert resp.status_code == 401
 
 
-def test_regions_returns_boundary_vintage_and_scores() -> None:
+def test_regions_returns_ranked_scores() -> None:
     resp = client.get("/v1/predictions/run_demo01/regions", headers=AUTH)
     assert resp.status_code == 200
     body = resp.json()
-    assert body["boundary_vintage"] == "2026-08"
+    assert "boundary_vintage" not in body  # stays on /scores only, per ADR-001
     assert len(body["data"]) > 0
     scores = [r["opportunity_score"] for r in body["data"]]
     assert scores == sorted(scores, reverse=True)
