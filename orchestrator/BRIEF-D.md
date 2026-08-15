@@ -1,7 +1,9 @@
 # BRIEF-D — console (에이전트 D)
 
-**개정 2** · 근거: `orchestrator/STATUS.md` (스윕 08-15 19:5x, HEAD `33fe4ac`)
-읽는 순서: 이 파일 → **`shared/contracts/ADR-002-artifact-publishing.md`**,
+**개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
+`verification/FINDINGS.md` **1회차**
+읽는 순서: 이 파일 → **`verification/FINDINGS.md` VF-003·VF-009** →
+**`shared/contracts/ADR-002-artifact-publishing.md`**,
 **`ADR-003-auth.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md` §7
 
 > **ADR-002 와 ADR-003 은 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
@@ -58,9 +60,47 @@ C 가 고친다. 픽스처 타일도 `sigungu` 라 **샘플과 타일 레벨이 
 
 ---
 
+## 검증 1회차 findings — 네 담당
+
+### VF-009 (S3) — console 에 실행 가능한 테스트가 0개다
+
+`tsc --noEmit` 은 통과한다(exit 0). 하지만 테스트 러너도 테스트 파일도 없다.
+그래서 추적 매트릭스에서 **네 관련 조항이 전부 구멍**이다 — 조인 키 일치, `score_range` 로
+색상 스케일 고정, `confidence='low'` 패턴 구분, T0 금액 자리 표기, T0 UI 문구.
+
+검증자가 코드를 읽어 확인한 바로는 **구현은 맞다** (`scoreScale.ts` 가 `score_range` 를 받고
+`PredictionMap.tsx:118` 이 전달한다). 문제는 누가 되돌려도 아무도 모른다는 것이다.
+그리고 실제로 그 구멍 안에서 VF-003 이 살아남았다 — 세 폴더 전부 초록불인데 지도는 비어 있었다.
+
+최소 한 개: `backend/samples/*.json` 을 입력으로 **파서 → `setFeatureState` 키 생성 →
+fill expression** 까지 가는 노드 테스트. `verification/fixtures/vf_56_join.mjs` 가 참고 구현이다
+(MapLibre 의 `getId()` 와 `String(featureId)` 강제 변환까지 원본에서 옮겨 놨다). 아래 1번과 같이 해라.
+
+### VF-003 (S2) — 조인이 실제로 0/5 다. **네 잘못이 아니다. jin 결정 대기.**
+
+A 의 실제 `.pmtiles` + C 의 실제 매니페스트 + 네 조인 코드를 붙인 결과:
+
+```
+manifest.feature_id_property = "region_id"
+tile feature ids (A, real)   = 11, 26, 28, 41, 50
+tile feature properties keys = ["name","level","is_synthetic_placeholder"]   ← region_id 가 없다
+features that received a score : 0/5
+→ 전 지역이 NO_DATA 회색. 에러도 콘솔 경고도 없다.
+```
+
+**너는 계약대로 했다.** `promoteId` 에 `feature_id_property` 를 쓰는 것이 v0.2.1 규약이다.
+A 는 브리프 지시대로 `region_id` 를 속성이 아니라 숫자 feature id 로 실었다. 계약이 두 방식을
+동시에 말하고 있는 것이 원인이고, jin 이 둘 중 하나로 정한다.
+**결정 전에 `promoteId` 를 임의로 빼거나 조인 키를 바꾸지 마라.** 결정이 나면 매니페스트 값만 바뀐다.
+
+> 참고: 지금은 레벨도 안 맞는다 (A=시도 2자리 / C 샘플=시군구 5자리). 그건 A 의 픽스처 타일(D-12)과
+> C 의 샘플 정정(D-15)으로 닫힌다. 네가 할 일은 없다.
+
+---
+
 ## 다음 작업 (우선순위 순)
 
-1. **A 의 픽스처 타일 + C 의 정정된 샘플로 통합 테스트를 끝내라.**
+1. **A 의 픽스처 타일 + C 의 정정된 샘플로 통합 테스트를 끝내라. 이번엔 테스트로 남겨라 (VF-009).**
    `setFeatureState` 조인이 실제 `.pmtiles` 위에서 도는 것까지 확인한다.
    **`tile_url` 을 하드코딩하지 마라.** 매니페스트 응답에서 받아 써라 — 개발/운영 URL 이 바뀌어도
    코드가 안 바뀌어야 한다. (ADR-002 "D 가 할 일" 2번)

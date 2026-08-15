@@ -1,8 +1,9 @@
 # BRIEF-B — intelligence (에이전트 B)
 
-**개정 2** · 근거: `orchestrator/STATUS.md` (스윕 08-15 19:5x, HEAD `33fe4ac`)
-읽는 순서: 이 파일 → **`shared/contracts/ADR-004-taxonomy-mapping.md`** →
-`orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
+**개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
+`verification/FINDINGS.md` **1회차**
+읽는 순서: 이 파일 → **`verification/FINDINGS.md` VF-001·VF-007** →
+**`shared/contracts/ADR-004-taxonomy-mapping.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
 
 > **ADR-004 는 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는 `00`~`06` 만
 > 나열하고 ADR 을 포함하지 않는다. 표만 보고 넘어가면 네 모델 전제가 바뀐 걸 놓친다.
@@ -47,7 +48,53 @@
 
 ---
 
+## 검증 1회차 findings — 네 담당 2건
+
+**먼저 좋은 소식이다. 네 모델은 정상이다.** 검증자가 네 테스트를 재사용하지 않고 독립적으로
+2,863건의 예측을 만들어 요인 합을 검사했고, 최대 편차는 `1.110e-16` 이었다 (계약 한계 1e-6).
+`expected_demand = base × Π f_i` 형태로도, 요인별 `value/benchmark` 비율로도 전부 맞는다.
+**깨진 것은 모델이 아니라 그것을 지키는 안전망이다.**
+
+### VF-001 (S2) — 불변식 테스트가 항등식이라 아무것도 강제하지 못한다
+
+`intelligence/tests/test_factor_model.py:49` 의
+`test_log_contribution_sum_matches_log_of_total_multiplier` 는 **항상 참**이다.
+`total_multiplier` 자체가 `log_contribution` 들로부터 계산되기 때문이다.
+
+검증자가 런타임 변이를 주입해(네 파일은 수정하지 않았다) 네 12개 테스트를 다시 돌린 결과:
+
+```
+[M1] log_contribution 을 소수 2자리로 반올림   → ran=12 failures=0   *** 생존 ***
+[M2] price_acceptance 기여도만 x0.5            → ran=12 failures=0   *** 생존 ***
+[M3] 마지막 요인을 출력에서 제거               → ran=12 failures=1   잡힘
+```
+
+**분해를 거짓으로 만드는 두 변이가 네 테스트를 전부 통과한다.** 화면에 보여준 요인 분해가
+실제 점수와 무관해져도 아무도 모른다는 뜻이고, 그게 D-04 가 막으려던 바로 그것이다.
+
+닫는 방법은 이미 증명돼 있다 — **합에서 파생되지 않은 외부 증인과 대조**해라.
+`display_effect`(실제 배수에서 파생) 또는 요인의 `value/benchmark` 비율로 대조하면 M2 가 잡힌다:
+
+```
+python verification/fixtures/vf_51_independent_catch.py M2
+→ tautological check: pass  /  independent check: worst dev = 3.674e-01 → FAIL
+```
+
+**백테스트(아래 1번)보다 이걸 먼저 해라.** 30분짜리이고, 3단계에서 모델을 건드리기 시작하면
+이 안전망 없이 움직이게 된다.
+
+### VF-007 (S4) — `tenant_scoped` 키 목록을 계약에서 읽지 않고 복사했다
+
+`intelligence/tests/test_synthetic_generator.py:38` 이 세 키를 하드코딩한다.
+지금은 `03_region_features.json` 과 일치하지만(검증자 대조 확인), 계약에 네 번째 키가 추가되면
+테스트는 28 passed 그대로인 채 그 키가 공용 피처스토어로 샌다. **계약 파일에서 읽어라.**
+아래 2번(ADR-004 반영)에서 계약을 어차피 다시 읽게 되니 그때 같이 고치면 된다.
+
+---
+
 ## 다음 작업 (우선순위 순)
+
+0. **VF-001 을 먼저 닫아라.** 위 참조. 1번보다 앞선다.
 
 1. **3단계 — 백테스트 하네스 (`05_scoring_spec.md` §5). 승인됨, 지금 시작해라.**
    - 시간 분할 + 지역 홀드아웃, `as_of` 는 타깃 기간 시작일로 고정

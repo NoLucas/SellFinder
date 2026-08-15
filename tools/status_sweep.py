@@ -428,6 +428,15 @@ def parse_findings() -> dict:
                 section = None
             continue
 
+        # '확인 불가' 는 결함이 아니라 '확인하지 못한 영역' 이라 VF 번호가 없는 것이 정상이다
+        # (CHARTER §8 예시도 번호를 붙이지 않는다). 번호를 요구하면 항상 0 으로 집계돼
+        # STATUS 가 "확인 불가 없음" 이라고 거짓말한다.
+        if section == "unknown" and line.startswith(("- ", "### ")):
+            vf_u = re.search(r"\b(VF-\d+)", line)
+            label = vf_u.group(1) if vf_u else re.sub(r"[*`]", "", line.lstrip("-# ").strip())[:40]
+            result["unknown"].append(label)
+            continue
+
         vf = re.search(r"\b(VF-\d+)(\?)?", line)
         if not vf or section is None:
             continue
@@ -439,8 +448,6 @@ def parse_findings() -> dict:
             result["tentative"].append(vid)
         elif section == "resolved" and line.startswith("- "):
             result["resolved"].append(vid)
-        elif section == "unknown" and line.startswith(("- ", "### ")):
-            result["unknown"].append(vid)
 
     return result
 
@@ -589,6 +596,17 @@ def section_decisions(out: list[str], meta: dict, agents: dict, stale: list[str]
                 f"**`{pattern}` 부재** — 생산자 {d['producer']} 의 산출물이 없어 "
                 f"소비자({', '.join(d['consumers'])})가 차단될 수 있다."
             )
+
+    # S2 도 계약 위반이라 대개 jin 이 배분·판정할 대상이다. 목록에 없으면 §7 을 따로 열어보지
+    # 않는 한 눈에 안 띈다 — 실제로 1회차에서 '어느 폴더도 단독으로 못 고치는' S2 가 나왔다.
+    if verif.get("exists") and verif["open"]["S2"]:
+        items.insert(0, (
+            "**검증자 S2(심각) 미해결 "
+            + str(len(verif["open"]["S2"]))
+            + "건** — "
+            + ", ".join(f"`{v}`" for v in verif["open"]["S2"])
+            + ". §7 참조. 계약 위반이거나 다른 에이전트를 깨뜨리는 건이다."
+        ))
 
     if verif.get("exists") and verif["open"]["S1"]:
         items.insert(0, (

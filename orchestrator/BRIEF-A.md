@@ -1,7 +1,8 @@
 # BRIEF-A — data-platform (에이전트 A)
 
-**개정 2** · 근거: `orchestrator/STATUS.md` (스윕 08-15 19:5x, HEAD `33fe4ac`)
-읽는 순서: 이 파일 → **`shared/contracts/ADR-002-artifact-publishing.md`**,
+**개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
+`verification/FINDINGS.md` **1회차**
+읽는 순서: 이 파일 → **`verification/FINDINGS.md` VF-003** → **`shared/contracts/ADR-002-artifact-publishing.md`**,
 **`ADR-004-taxonomy-mapping.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
 
 > **ADR-002 와 ADR-004 는 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
@@ -44,6 +45,41 @@
 
 5. **`.pmtiles` 파이프라인은 여전히 되돌릴 필요 없다.** ADR-001 대로다.
    다른 에이전트의 코드·CCR 을 계약으로 오인하지 마라 (`DECISIONS.md` D-10).
+
+---
+
+## 검증 1회차 findings — 네 담당
+
+### VF-003 (S2) — 네 타일과 D 의 조인 키가 안 맞는다. **jin 결정 대기.**
+
+검증자가 네 **실제** `.pmtiles` 를 디코드해 C 의 매니페스트·D 의 조인 코드에 붙였다:
+
+```
+manifest.feature_id_property = "region_id"
+tile feature ids (A, real)   = 11, 26, 28, 41, 50
+tile feature properties keys = ["name","level","is_synthetic_placeholder"]   ← region_id 가 없다
+features that received a score : 0/5   → 전 지역 회색, 에러도 경고도 없음
+```
+
+원인: `src/boundary_tiles/tiler.py:56-63` 이 `region_id` 를 properties 에서 **제거**하고
+숫자 feature id 로만 싣는다. 이건 네가 받은 브리프 지시("속성이 아니라 feature id 로 실어라",
+`feature_id.py` 독스트링)를 정확히 따른 결과다. 그런데 계약과 D 는 `feature_id_property` 로
+그 속성을 찾는다. **너도 D 도 각자 자기 문서를 지켰고, 계약이 두 방식을 동시에 말하고 있는 것이 원인이다.**
+
+한 가지는 지금 확실하다: **네 매니페스트가 `feature_id_property: "region_id"` 라고 적는 것은
+네 산출물과 모순이다.** 타일에 그 속성이 없다.
+
+jin 이 정할 선택지는 둘이다 —
+(1) properties 에도 `region_id` 를 싣는다, (2) 계약이 "네이티브 feature id" 규약을 명시하고
+`id_map.json` 을 계약에 올린다. **네 `id_map_path` 는 (2) 쪽 설계가 이미 실재한다는 증거다.**
+결정 전에 파이프라인을 되돌리지 마라. 결정되면 한쪽은 몇 줄이다.
+
+> 아래 2번(`sigungu` 픽스처 타일)은 이 결정과 무관하게 지금 해라. **D 를 막고 있는 건 여전히 그 파일이다.**
+> 픽스처를 만들 때 위 모순만 남기지 마라 — 매니페스트가 광고하는 것과 타일에 실제로 든 것이 같아야 한다.
+
+**VF-004 는 네 것이 아니다.** C 가 빈티지·줌을 지어낸 건이고 이미 D-13/D-14 로 정리됐다.
+다만 검증에서 나온 사실 하나는 알아둬라: C 는 `sido/2026-07-01`(네가 실제로 만든 것)을 404 로 막고,
+`sido/2025-01-01`(없는 것)을 목록에 넣고 있다. 네 매니페스트가 유일한 출처가 되면 둘 다 사라진다.
 
 ---
 

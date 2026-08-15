@@ -1,7 +1,8 @@
 # BRIEF-C — backend (에이전트 C)
 
-**개정 2** · 근거: `orchestrator/STATUS.md` (스윕 08-15 19:5x, HEAD `33fe4ac`)
-읽는 순서: 이 파일 → **`shared/contracts/ADR-003-auth.md`**,
+**개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
+`verification/FINDINGS.md` **1회차**
+읽는 순서: 이 파일 → **`verification/FINDINGS.md` (네 담당 6건)** → **`shared/contracts/ADR-003-auth.md`**,
 **`ADR-002-artifact-publishing.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
 
 > **ADR-002 와 ADR-003 은 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
@@ -49,7 +50,52 @@
 
 ---
 
+## 검증 1회차 findings — 네 담당 6건
+
+검증 에이전트가 실제로 실행해서 확인한 것이다. **추측이 아니다.** 재현 명령은 `verification/FINDINGS.md` 에 있고
+픽스처는 `verification/fixtures/` 에 있다. 아래 번호는 재사용되지 않는다.
+
+| VF | 등급 | 무엇 | 아래 작업 |
+|---|---|---|---|
+| **VF-005** | S2 | **T0 run 이 `confidence.level="high"` 를 반환한다** (5건 중 2건) | **신규 0번** |
+| VF-002 | S2 | `tenant_id` 를 쿼리·헤더로 넣으면 400 이 아니라 **200 무시** (6경로 전부 확인) | 기존 4번 |
+| VF-004 | S2 | 네가 광고하는 빈티지·줌이 A 실물과 **양방향 불일치** | 기존 2번 |
+| VF-006 | S3 | 인증 응답에 `Cache-Control: public` + **서명 URL** 이 같이 나간다 | 기존 4번 |
+| **VF-008** | S3 | T0 run 을 만드는 테스트가 **하나도 없다** → T0 분기 전체 미실행 | **신규 0번** |
+| VF-010 | S4 | `suppressed` 차단이 백엔드에 없다 (`backend/app` grep 0건) | 기존 8번 뒤 |
+
+**VF-004·VF-002·VF-006 은 이미 아래 작업에 들어 있다.** 새로 할 일이 생긴 게 아니라,
+"아직 안 고쳐졌다"가 실행으로 확정된 것이다. 우선순위를 낮추지 마라.
+
+**VF-005 와 VF-008 은 개정 2 에 없던 새 항목이다.** 아래 0번으로 넣는다.
+
+> 오해 방지: 금액 차단(`expected_revenue_krw`)은 **정상 동작한다.** 검증자가 T0 run 을 직접 만들어
+> 확인했고 5행 전부 null 이었다. 깨진 것은 **신뢰도 상한**이다. 금액만 막고 신뢰도를 안 막으면
+> "자사 데이터가 없는데 높은 신뢰도"라고 말하는 것이고, D-03 이 막으려던 것과 같은 종류의 거짓이다.
+
+### VF-003 (S2, 지도 조인) — **jin 결정 대기. 지금 손대지 마라.**
+
+A 의 실제 타일 + 네 매니페스트 + D 의 조인 코드를 붙이면 **5개 중 0개가 매칭된다.**
+에러도 경고도 없이 지도 전체가 회색으로 칠해진다. 원인은 네 코드가 아니다 —
+A 는 `region_id` 를 properties 에서 빼고 숫자 feature id 로 싣는데, 계약과 D 는
+`feature_id_property` 로 그 속성을 찾는다. **A 도 D 도 각자 자기 문서를 지켰다.**
+jin 이 계약을 정리하면 네가 할 일은 하나다: `FEATURE_ID_PROPERTY` 하드코딩
+(`basemap_registry.py:29`)을 지우고 **A 매니페스트 값을 그대로 전달**한다 — 아래 2번과 같은 성격이다.
+결정 전에 추측으로 고치지 마라.
+
+---
+
 ## 다음 작업 (우선순위 순)
+
+0. **T0 상한을 적용하고, T0 을 테스트로 고정해라 (VF-005 · VF-008). 여기부터 해라.**
+   - `routers/predictions.py:89` (`/regions`) 와 `:129` (`/scores`) 가 저장된 `confidence_level` 을
+     그대로 내보낸다. **T0 이면 `high` → `medium` 으로 낮춰야 한다** (`05_scoring_spec.md` §2).
+   - 금액과 같은 곳에서 막아라. `:82-88` 의 T0 분기가 이미 있다 — 신뢰도가 그 분기에 없을 뿐이다.
+   - **`data_tier="T0"` 인 run 을 만드는 테스트가 backend 에 하나도 없다.** 시드는 `run_demo01`(T1)
+     하나뿐이라(`prediction_store.py:106`) T0 코드 경로를 19개 테스트 중 무엇도 실행하지 않는다.
+     VF-005 가 여기까지 살아남은 이유가 그것이다.
+   - 재현·참고: `backend/.venv/Scripts/python.exe verification/fixtures/vf_t0_api.py`
+     — 이 픽스처가 하는 일이 곧 빠져 있는 테스트다.
 
 1. **`backend/samples/scores.json` 을 정정해라 (ADR-002 결정 5). 한 줄이고, D 가 이걸 기다린다.**
    - `region_level` → `"sigungu"` (`region_id` 는 그대로 둔다 — 이미 5자리 sigungu 코드다)
@@ -94,6 +140,12 @@
 
 8. **나머지 §5 순서 재개.** 에러 봉투(`request_id`) → 커서 페이지네이션 → `Idempotency-Key`
    → RBAC(`rbac_matrix`) → `/products`, `POST /products:classify`(mock) → 감사 로그 미들웨어.
+
+9. **`coverage_flag='suppressed'` 처리 경로를 만들어라 (VF-010, S4).**
+   `backend/app` 전체에 `suppressed` 문자열이 **한 번도 안 나온다.** 지금은 내보내기 기능이 없어
+   실제 유출 경로가 없지만, **내보내기(xlsx/csv)나 상세 조회를 붙이는 순간 S1 후보로 승격된다.**
+   B 가 `coverage_flag` 를 응답까지 전달하는 경로를 정의하면 그때 응답·로그·에러 메시지 세 곳을
+   동시에 막아라. 한 겹만 막는 것은 VF-005 에서 이미 실패한 방식이다.
 
 ---
 
