@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "_note": "합성 표본 경계 — 실제 행정구역 형상이 아니라 파이프라인 검증용 사각형이다. 실제 소스(통계청 SGIS 등) 연동 전까지의 자리표시자.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "region_id": "11", "name": "서울특별시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[126.76, 37.41], [127.18, 37.41], [127.18, 37.70], [126.76, 37.70], [126.76, 37.41]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "26", "name": "부산광역시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[128.75, 34.98], [129.30, 34.98], [129.30, 35.35], [128.75, 35.35], [128.75, 34.98]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "28", "name": "인천광역시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[126.35, 37.35], [126.80, 37.35], [126.80, 37.60], [126.35, 37.60], [126.35, 37.35]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "41", "name": "경기도", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[126.45, 36.90], [127.85, 36.90], [127.85, 38.10], [126.45, 38.10], [126.45, 36.90]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "50", "name": "제주특별자치도", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[126.10, 33.10], [126.95, 33.10], [126.95, 33.60], [126.10, 33.60], [126.10, 33.10]]]
+      }
+    }
+  ]
+}

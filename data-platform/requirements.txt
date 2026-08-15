@@ -1,0 +1,5 @@
+pmtiles>=3.2
+mapbox-vector-tile>=2.1
+mercantile>=1.2
+shapely>=2.1
+pytest>=8.0

@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "_note": "합성 표본 경계(두 번째 빈티지) — 첫 vintage 대비 세종(36) 하나가 추가된 것으로 가정한 테스트용 변경.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "region_id": "11", "name": "서울특별시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[126.76, 37.41], [127.18, 37.41], [127.18, 37.70], [126.76, 37.70], [126.76, 37.41]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "26", "name": "부산광역시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[128.75, 34.98], [129.30, 34.98], [129.30, 35.35], [128.75, 35.35], [128.75, 34.98]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "region_id": "36", "name": "세종특별자치시", "level": "sido", "is_synthetic_placeholder": true },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[127.20, 36.45], [127.35, 36.45], [127.35, 36.60], [127.20, 36.60], [127.20, 36.45]]]
+      }
+    }
+  ]
+}
