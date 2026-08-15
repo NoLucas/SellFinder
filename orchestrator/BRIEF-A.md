@@ -108,7 +108,11 @@ features that received a score : 0/5   → 전 지역 회색, 에러도 경고�
    - `data-platform/fixtures/regions-sigungu-fixture.pmtiles` — 250개, 기하 단순화, **5MB 이하**
    - `data-platform/fixtures/manifest-fixture.json` — `boundary_vintage: "fixture"`
    D 는 이 픽스처로 통합 테스트를 끝낼 수 있고, 실 아티팩트가 나오면 `tile_url` 만 바뀐다.
-   **다른 어떤 작업보다 이게 먼저다. 지금 D 를 막고 있는 건 이 파일 하나다.**
+   **개정 3 정정 — 이 작업의 순서가 바뀌었다.** 개정 2 는 *"다른 어떤 작업보다 이게 먼저"* 라고 했으나,
+   그 상태로 픽스처를 구우면 **`region_id` 속성이 없는 픽스처**가 나온다 (VF-003).
+   D 는 뚫린 줄 알고 붙였다가 또 회색 지도를 본다.
+   **위 VF-003 작업(properties 유지 + 빌드 자체 검증)을 끝낸 파이프라인으로 이 픽스처를 구워라.**
+   순서만 바뀌었을 뿐, D 를 막고 있는 게 이 파일이라는 사실은 그대로다.
 
 3. **레벨 산출 순서를 `sigungu` → `adm_dong` → `sido` 로 바꿔라 (결정 3).**
    지금 너는 `sido` 만 냈다. 픽스처·샘플·기본 objective 가 전부 `sigungu` 라서 순서가 뒤집혔다.
