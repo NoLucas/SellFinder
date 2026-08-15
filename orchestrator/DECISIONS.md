@@ -96,6 +96,78 @@ GeoJSON 은 `/scores` 응답의 `custom_geometries` 필드에만 인라인으로
 
 ---
 
+## 아티팩트 발행 · 지역 레벨 · 줌 (ADR-002)
+
+근거: `shared/contracts/ADR-002-artifact-publishing.md`
+총괄자 첫 스윕이 발견한 차단 요인에 대한 응답이다.
+
+### D-11. 매니페스트는 git 에 커밋하고, `.pmtiles` 는 커밋하지 않는다
+`output/` 을 `manifest/`(추적 O) 와 `tiles/`(추적 X) 로 분리한다.
+`.pmtiles` 는 한 번 들어가면 히스토리에서 지울 수 없고 빈티지마다 저장소가 불어난다.
+매니페스트는 계약 형태의 인수인계물이므로 반대로 반드시 추적한다.
+
+### D-12. `sigungu` 픽스처 타일을 커밋해 D 를 지금 뚫는다
+`data-platform/fixtures/regions-sigungu-fixture.pmtiles` (5MB 이하) + `manifest-fixture.json`
+(`boundary_vintage: "fixture"`). 오브젝트 스토리지는 v1 배포 과제이고, 그때까지 D 를 세워두지 않는다.
+개발 `tile_url` 은 `http://localhost:{PORT}/artifacts/...` — 절대 URL 규약은 개발에서도 지킨다.
+
+### D-13. C 는 빈티지를 지어내지 않는다. A 의 매니페스트를 읽는다
+`available_vintages` 하드코딩 금지. `data-platform/output/manifest/*.json` 을 읽어 구성한다.
+파일이 없으면 **빈 배열이 아니라 503 + 사유** — 빈 배열은 "빈티지가 없다"는 거짓 정보다.
+A 의 레벨 산출 순서는 `sigungu` → `adm_dong` → `sido`.
+
+### D-14. 레벨은 사용자가 고른다. 줌으로 자동 전환하지 않는다
+| level | minzoom | maxzoom |
+|---|---|---|
+| `sido` | 0 | 10 |
+| `sigungu` | 4 | 12 |
+| `adm_dong` | 5 | 14 |
+
+겹쳐도 무방하다. maxzoom 초과는 오버줌으로 처리하고 타일을 더 만들지 않는다.
+레벨별 실제 값은 A 의 매니페스트가 정하고 C 는 그대로 전달한다.
+
+### D-15. `backend/samples/scores.json` 은 `sigungu` 로 정정한다
+`region_level` 을 `"sigungu"` 로, `boundary_vintage` 를 `"fixture"` 로. `region_id` 는 그대로 둔다.
+픽스처 타일이 `sigungu` 이고 `distribution_push` 기본 단위도 `sigungu` 다.
+
+---
+
+## 인증 (ADR-003)
+
+근거: `shared/contracts/ADR-003-auth.md`
+
+### D-16. 토큰 형태는 지금 확정하고 IdP 선택은 미룬다
+JWT 클레임 고정: `sub` / `tenant_id` / `role` / `region_scope` / `exp`.
+`region_scope` 는 지역코드 **접두사 매칭** (`"41"` → `41135` 포함), 비었으면 전체.
+검증은 `verify_token(raw) -> TokenClaims` **단일 지점**으로 추상화한다 — 애플리케이션 코드는
+`TokenClaims` 만 보고, 토큰 원문을 다른 곳에서 파싱하지 않는다. IdP 벤더는 이 함수 뒤에 숨는다.
+콘솔 v1 로그인은 이메일 + 매직링크.
+
+### D-17. 개발 전용 토큰 엔드포인트는 운영에 존재하면 S1 이다
+`POST /v1/dev/token` 은 `SELLFINDER_ENV=development` 일 때만 등록한다.
+운영 빌드에 이 경로가 있으면 **S1 치명 결함**이며 검증 에이전트의 확인 항목이다.
+그 외 재확인: `tenant_id` 가 요청에 오면 400 `TENANT_ID_NOT_ALLOWED`(조용히 무시 금지),
+`tenant_id` 를 DB 세션 변수에 넣어 RLS 로 강제, **캐시 키에 `tenant_id` 포함**,
+`region_scope` 는 조회·내보내기·타일 **전 경로**에 적용. D 는 토큰을 `localStorage` 에 넣지 않는다.
+
+---
+
+## 택소노미 (ADR-004)
+
+근거: `shared/contracts/ADR-004-taxonomy-mapping.md`
+
+### D-18. 1차 조인 키는 `sbiz`. `ksic` 는 보조, `card_mcc` 는 후속
+`competition` 요인의 원천인 점포 수를 무료로 얻을 수 있는 유일한 경로가 `sbiz` 다.
+`card_mcc` 는 라이선스 확보 전까지 스키마에만 두고 파이프라인에 넣지 않는다.
+따라서 `demand_signal.spend_krw` 는 당분간 항상 null 이고, `spend_index` 를 점포 수와
+지역 소비력 프록시로 유도한다. 이는 D-03(T0 금액 null)과 충돌하지 않는다 — 일관성 확인이다.
+
+### D-19. 택소노미 매핑이 없는 노드는 confidence 를 강제 하향한다
+상위 노드 매핑을 상속하고, 그래도 없으면 `confidence.level = 'low'` 로 내린다
+(`05_scoring_spec.md` §4 의 강제 하향 조건). **조용히 0 으로 채우지 마라.**
+
+---
+
 ## 기록 규칙
 
 새 결정이 확정되면 여기에 `D-NN` 으로 추가한다. 항목은 삭제하지 않는다.

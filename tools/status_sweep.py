@@ -47,6 +47,13 @@ HANDOFFS = [
 # 에이전트가 막혔다고 보고할 수 있는 검증기 플래그. 소스에 없으면 미지원이다.
 EXPECTED_VALIDATOR_FLAGS = ["--check-response", "--check-scores", "--check-manifest"]
 
+# 검증 에이전트(6번째). A~D 와 지표가 다르므로 §2 표에 넣지 않고 별도 절로 다룬다.
+# 산출물이 코드가 아니라 findings 이기 때문이다.
+VERIFICATION_DIR = "verification"
+FINDINGS_PATH = "verification/FINDINGS.md"
+SEVERITIES = ["S1", "S2", "S3", "S4"]
+SEVERITY_LABEL = {"S1": "치명", "S2": "심각", "S3": "보통", "S4": "낮음"}
+
 
 # ────────────────────────────── git 헬퍼 ──────────────────────────────
 def git(*args: str) -> str:
@@ -342,16 +349,199 @@ def section_cross_freshness(out: list[str], handoffs: dict, agents: dict) -> lis
                     f"{consumer} 가 제기한 {d['producer']} 관련 이슈는 이미 해소됐을 가능성이 있다."
                 )
 
+    # 검증 에이전트도 소비자다. 검증자가 A~D 보다 이르면 그 변경은 아직 검증되지 않았다.
+    v = last_commit(VERIFICATION_DIR)
+    unverified = []
+    if v:
+        for agent, d in agents.items():
+            c = d.get("last")
+            if not c:
+                continue
+            delta = hours_between(v["ts"], c["ts"])  # 양수면 에이전트가 검증자보다 뒤
+            if delta is not None and delta > 0:
+                unverified.append(
+                    f"- **{agent} 의 최신 변경은 아직 검증되지 않았다** "
+                    f"({agent}: `{c['sha']}` {short(c['iso'])} / 검증자: `{v['sha']}` {short(v['iso'])} "
+                    f"— {delta:.1f}시간 뒤처짐)  \n"
+                    f"  → 검증 회차가 {agent} 의 최신 커밋을 아직 보지 않았다. §7 참조."
+                )
+
     if flags:
         out.extend(flags)
-    else:
+    if unverified:
+        out.append("")
+        out.append("### 검증 신선도\n")
+        out.extend(unverified)
+    if not flags and not unverified:
         out.append("플래그 없음 — 모든 소비자가 생산자 산출물 이후에 커밋했다.")
     out.append("")
-    return flags
+    return flags + unverified
+
+
+# ────────────────────────── 7. 검증 현황 ──────────────────────────
+def parse_findings() -> dict:
+    """verification/FINDINGS.md 를 읽어 심각도별 미해결 건수를 센다.
+
+    형식은 verification/CHARTER.md §8 기준:
+      `## S1 — 즉시 조치` 아래 `### VF-012 · 제목 (담당)`
+      `### VF-018? · ...` 처럼 `?` 가 붙으면 추정이므로 확정 건수에서 제외한다.
+      `## 해결 확인됨` 아래는 불릿(`- VF-007 ...`)이다.
+    """
+    path = ROOT / FINDINGS_PATH
+    result = {
+        "exists": path.is_file(),
+        "open": {s: [] for s in SEVERITIES},
+        "tentative": [],
+        "resolved": [],
+        "unknown": [],
+        "round_header": None,
+    }
+    if not result["exists"]:
+        return result
+
+    text = path.read_text(encoding="utf-8", errors="replace")
+    section = None
+    for raw in text.splitlines():
+        line = raw.strip()
+
+        m = re.match(r"^#\s*검증 결과\s*[—-]\s*(.+)$", line)
+        if m:
+            result["round_header"] = m.group(1).strip()
+            continue
+        m = re.match(r"^##\s*회차:\s*(.+)$", line)
+        if m:
+            result["round_header"] = m.group(1).strip()
+            continue
+
+        if line.startswith("## "):
+            head = line[3:].strip()
+            sev = re.match(r"^(S[1-4])\b", head)
+            if sev:
+                section = sev.group(1)
+            elif head.startswith("추정"):
+                section = "tentative"
+            elif head.startswith("해결"):
+                section = "resolved"
+            elif head.startswith("확인 불가"):
+                section = "unknown"
+            else:
+                section = None
+            continue
+
+        vf = re.search(r"\b(VF-\d+)(\?)?", line)
+        if not vf or section is None:
+            continue
+        vid, uncertain = vf.group(1), bool(vf.group(2))
+
+        if section in SEVERITIES and line.startswith("### "):
+            (result["tentative"] if uncertain else result["open"][section]).append(vid)
+        elif section == "tentative" and line.startswith("### "):
+            result["tentative"].append(vid)
+        elif section == "resolved" and line.startswith("- "):
+            result["resolved"].append(vid)
+        elif section == "unknown" and line.startswith(("- ", "### ")):
+            result["unknown"].append(vid)
+
+    return result
+
+
+def finding_first_seen(vf_id: str) -> dt.datetime | None:
+    """해당 VF 번호가 FINDINGS.md 에 처음 등장한 커밋 시각. 미커밋이면 None."""
+    out = git("log", "--reverse", "--format=%cI", "-S", vf_id, "--", FINDINGS_PATH)
+    if not out:
+        return None
+    return parse_iso(out.splitlines()[0].strip())
+
+
+def section_verification(out: list[str], verif: dict, agents: dict) -> None:
+    out.append("## 7. 검증 현황\n")
+    out.append(
+        "검증 에이전트는 산출물이 코드가 아니라 findings 라서 §2 의 에이전트 표와 지표가 다르다. "
+        "여기서는 '무엇을 커밋했는가'가 아니라 '무엇이 아직 열려 있는가'를 본다.\n"
+    )
+
+    if not verif["exists"]:
+        out.append(f"`{FINDINGS_PATH}` 없음 — 검증 에이전트가 아직 회차를 시작하지 않았다.\n")
+        return
+
+    lc = last_commit(VERIFICATION_DIR)
+    out.append(
+        f"- **마지막 `{VERIFICATION_DIR}/` 커밋**: "
+        + (f"`{lc['sha']}` {short(lc['iso'])} — {lc['subject']}" if lc else "없음")
+    )
+    out.append(f"- **FINDINGS.md 회차 표기**: {verif['round_header'] or '(표기 없음)'}")
+
+    total_open = sum(len(v) for v in verif["open"].values())
+    out.append("")
+    out.append("| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨 | 확인 불가 |")
+    out.append("|---|---|---|---|---|---|---|---|")
+    out.append(
+        "| "
+        + " | ".join(str(len(verif["open"][s])) for s in SEVERITIES)
+        + f" | **{total_open}** | {len(verif['tentative'])} | "
+        f"{len(verif['resolved'])} | {len(verif['unknown'])} |"
+    )
+    out.append("")
+
+    # 가장 오래된 미해결 findings 의 나이
+    now = dt.datetime.now().astimezone()
+    aged = []
+    for sev in SEVERITIES:
+        for vid in verif["open"][sev]:
+            seen = finding_first_seen(vid)
+            if seen is not None:
+                aged.append((vid, sev, (now - seen).total_seconds() / 86400.0))
+    if aged:
+        aged.sort(key=lambda t: -t[2])
+        vid, sev, age = aged[0]
+        out.append(
+            f"- **가장 오래된 미해결**: `{vid}` ({sev} {SEVERITY_LABEL[sev]}) — **{age:.1f}일**"
+        )
+        old = [a for a in aged if a[2] >= 7.0]
+        if old:
+            out.append(
+                f"  - 7일 이상 방치된 항목 {len(old)}건: "
+                + ", ".join(f"`{v}`({s})" for v, s, _ in old[:8])
+            )
+    elif total_open:
+        out.append("- **가장 오래된 미해결**: 나이 산출 불가 (아직 커밋되지 않은 findings)")
+    else:
+        out.append("- **가장 오래된 미해결**: 없음")
+
+    # 마지막 회차 이후 A~D 변경량 → 다음 검증 필요 여부
+    folders = [d["folder"] for d in agents.values()]
+    if lc:
+        changed = git("diff", "--name-only", f"{lc['sha']}..HEAD", "--", *folders)
+        files = [f for f in changed.splitlines() if f.strip()] if changed else []
+        by_agent: dict[str, int] = {}
+        for f in files:
+            top = f.split("/", 1)[0]
+            by_agent[top] = by_agent.get(top, 0) + 1
+        detail = ", ".join(f"{k} {v}개" for k, v in sorted(by_agent.items())) or "없음"
+        out.append(f"- **마지막 검증 이후 A~D 변경 파일**: **{len(files)}개** ({detail})")
+        if len(files) == 0:
+            out.append("  - → 새로 검증할 변경분이 없다. 미해결 항목 재확인만 하면 된다.")
+        elif len(files) >= 10:
+            out.append("  - → **다음 검증 회차가 필요하다.** 변경분이 쌓였다.")
+        else:
+            out.append("  - → 변경분이 소량이다. 미해결 항목과 함께 묶어서 보면 된다.")
+    else:
+        out.append("- **마지막 검증 이후 A~D 변경 파일**: 검증 커밋이 없어 산출 불가")
+
+    if verif["open"]["S1"]:
+        out.append("")
+        out.append(
+            "> **S1 미해결 "
+            + str(len(verif["open"]["S1"]))
+            + "건: "
+            + ", ".join(f"`{v}`" for v in verif["open"]["S1"])
+            + "** — 다른 작업보다 우선한다."
+        )
+    out.append("")
 
 
 # ────────────────────── 6. jin 결정이 필요한 항목 ──────────────────────
-def section_decisions(out: list[str], meta: dict, agents: dict, stale: list[str], flags: list[str], handoffs: dict) -> None:
+def section_decisions(out: list[str], meta: dict, agents: dict, stale: list[str], flags: list[str], handoffs: dict, verif: dict) -> None:
     out.append("## 6. jin 결정이 필요한 항목\n")
     items = []
 
@@ -400,6 +590,15 @@ def section_decisions(out: list[str], meta: dict, agents: dict, stale: list[str]
                 f"소비자({', '.join(d['consumers'])})가 차단될 수 있다."
             )
 
+    if verif.get("exists") and verif["open"]["S1"]:
+        items.insert(0, (
+            "**검증자 S1(치명) 미해결 "
+            + str(len(verif["open"]["S1"]))
+            + "건** — "
+            + ", ".join(f"`{v}`" for v in verif["open"]["S1"])
+            + ". §7 참조. 다른 모든 항목보다 우선한다."
+        ))
+
     if not items:
         out.append("없음.\n")
         return
@@ -438,7 +637,10 @@ def build_report() -> str:
     out.append("---\n")
     flags = section_cross_freshness(out, handoffs, agents)
     out.append("---\n")
-    section_decisions(out, meta, agents, stale, flags, handoffs)
+    verif = parse_findings()
+    section_decisions(out, meta, agents, stale, flags, handoffs, verif)
+    out.append("---\n")
+    section_verification(out, verif, agents)
 
     return "\n".join(out).rstrip() + "\n"
 
