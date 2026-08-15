@@ -1,0 +1,50 @@
+[
+  {
+    "source_id": "src_syn_public",
+    "name": "(합성) 공공 인구·상권·개발 통계",
+    "provider": "synthetic",
+    "license": "N/A (generated data)",
+    "commercial_use_allowed": true,
+    "refresh_cadence": "monthly",
+    "granularity": "adm_dong / monthly",
+    "known_limitations": [
+      "합성 데이터입니다. 실제 통계가 아닙니다."
+    ]
+  },
+  {
+    "source_id": "src_syn_card",
+    "name": "(합성) 카드 소비 통계",
+    "provider": "synthetic",
+    "license": "N/A (generated data)",
+    "commercial_use_allowed": true,
+    "refresh_cadence": "monthly",
+    "granularity": "adm_dong / monthly",
+    "known_limitations": [
+      "합성 데이터입니다. 실제 카드사 라이선스 검토가 필요 없습니다."
+    ]
+  },
+  {
+    "source_id": "src_syn_online",
+    "name": "(합성) 이커머스 주문 밀도",
+    "provider": "synthetic",
+    "license": "N/A (generated data)",
+    "commercial_use_allowed": true,
+    "refresh_cadence": "monthly",
+    "granularity": "adm_dong / monthly",
+    "known_limitations": [
+      "합성 데이터입니다."
+    ]
+  },
+  {
+    "source_id": "src_syn_demand",
+    "name": "(합성) 업종별 소비 신호 (demand_signal)",
+    "provider": "synthetic",
+    "license": "N/A (generated data)",
+    "commercial_use_allowed": true,
+    "refresh_cadence": "monthly",
+    "granularity": "adm_dong × taxonomy_node × channel / monthly",
+    "known_limitations": [
+      "합성 데이터입니다. ground_truth.json의 planted relationship 계수가 반영되어 있습니다."
+    ]
+  }
+]

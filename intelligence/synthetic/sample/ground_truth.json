@@ -1,0 +1,149 @@
+{
+  "planted_relationships": [
+    {
+      "id": "rtd_coffee_young_affluent",
+      "taxonomy_node_id": "TX-FOOD-BEV-COFFEE-RTD",
+      "target_field": "demand_signal.spend_index",
+      "derived_metric": "age_2030_share",
+      "quantile_threshold": 0.75,
+      "resolved_cutoff_value": 0.4045,
+      "extra_condition": "income_decile >= 7",
+      "multiplier": 1.6,
+      "description": "20-30대 인구 비중 상위 25% 지역이면서 income_decile>=7인 지역은 RTD 커피 spend_index가 1.6배.",
+      "qualifying_region_count": 8,
+      "qualifying_region_ids": [
+        "91001005",
+        "91002002",
+        "91002003",
+        "91002005",
+        "91003001",
+        "91003002",
+        "91003003",
+        "91003004"
+      ]
+    },
+    {
+      "id": "hmr_single_household",
+      "taxonomy_node_id": "TX-FOOD-PROC-HMR",
+      "target_field": "demand_signal.spend_index",
+      "derived_metric": "single_household_ratio",
+      "quantile_threshold": 0.667,
+      "resolved_cutoff_value": 0.389,
+      "extra_condition": null,
+      "multiplier": 1.4,
+      "description": "1인가구 비중 상위 1/3 지역은 간편식(HMR) spend_index가 1.4배.",
+      "qualifying_region_count": 17,
+      "qualifying_region_ids": [
+        "91001001",
+        "91001002",
+        "91001003",
+        "91001005",
+        "91001006",
+        "91002002",
+        "91002003",
+        "91002005",
+        "91003001",
+        "91003002",
+        "91003003",
+        "91003004",
+        "91003005",
+        "92001001",
+        "92002003",
+        "93002002",
+        "93002004"
+      ]
+    },
+    {
+      "id": "babyfood_birth_rate",
+      "taxonomy_node_id": "TX-KIDS-BABYFOOD",
+      "target_field": "demand_signal.spend_index",
+      "derived_metric": "birth_count_12m",
+      "quantile_threshold": 0.75,
+      "resolved_cutoff_value": 1016,
+      "extra_condition": null,
+      "multiplier": 1.8,
+      "description": "최근 12개월 출생아 수 상위 25% 지역은 분유·이유식 spend_index가 1.8배.",
+      "qualifying_region_count": 13,
+      "qualifying_region_ids": [
+        "91001001",
+        "91001002",
+        "91001003",
+        "91001006",
+        "91002001",
+        "91002003",
+        "91002005",
+        "91003003",
+        "91003004",
+        "91003005",
+        "92001001",
+        "92002001",
+        "92002004"
+      ]
+    },
+    {
+      "id": "large_appliance_new_apartments",
+      "taxonomy_node_id": "TX-ELEC-LARGE",
+      "target_field": "demand_signal.spend_index",
+      "derived_metric": "new_apartment_units_12m",
+      "quantile_threshold": 0.75,
+      "resolved_cutoff_value": 214,
+      "extra_condition": null,
+      "multiplier": 1.5,
+      "description": "최근 12개월 신규 입주 물량 상위 25% 지역은 대형가전 spend_index가 1.5배.",
+      "qualifying_region_count": 13,
+      "qualifying_region_ids": [
+        "91001006",
+        "91003003",
+        "92001002",
+        "92002002",
+        "92002003",
+        "92002004",
+        "92003001",
+        "93001005",
+        "93002002",
+        "93002004",
+        "93003001",
+        "93003003",
+        "93003005"
+      ]
+    },
+    {
+      "id": "pet_supplies_registration",
+      "taxonomy_node_id": "TX-LIVING-PET",
+      "target_field": "demand_signal.spend_index",
+      "derived_metric": "pet_registered_count",
+      "quantile_threshold": 0.75,
+      "resolved_cutoff_value": 9696,
+      "extra_condition": null,
+      "multiplier": 1.5,
+      "description": "반려동물 등록 두수 상위 25% 지역은 반려동물 용품 spend_index가 1.5배.",
+      "qualifying_region_count": 13,
+      "qualifying_region_ids": [
+        "91001001",
+        "91001003",
+        "91001005",
+        "91001006",
+        "91002001",
+        "91002002",
+        "91002005",
+        "91003001",
+        "91003002",
+        "91003004",
+        "91003005",
+        "92001002",
+        "92002004"
+      ]
+    }
+  ],
+  "leakage_trap": {
+    "feature_key": "leak_trap_future_rtd_signal",
+    "cutoff_valid_from": "2026-01-01",
+    "source_node_for_proxy": "TX-FOOD-BEV-COFFEE-RTD",
+    "description": "NOT a real contract feature (absent from 03_region_features.json's feature_registry). Exists only from valid_from=2026-01-01 onward, and its value is derived from each region's own 2026-01..2026-06 (validation-window) RTD-coffee spend_index. A correctly as_of-scoped backtest harness must never see this feature for as_of < 2026-01-01 - if it does (or if a 'get latest feature value' helper is used anywhere), the harness has a leakage bug. See 03_region_features.json's point_in_time_rule."
+  },
+  "generation_params": {
+    "seed": 42,
+    "start_period": "2025-01",
+    "end_period": "2026-06"
+  }
+}

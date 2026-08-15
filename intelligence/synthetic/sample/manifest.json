@@ -1,0 +1,52 @@
+{
+  "seed": 42,
+  "start_period": "2025-01",
+  "end_period": "2026-06",
+  "periods": [
+    "2025-01",
+    "2025-02",
+    "2025-03",
+    "2025-04",
+    "2025-05",
+    "2025-06",
+    "2025-07",
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05",
+    "2026-06"
+  ],
+  "region_count": 63,
+  "adm_dong_count": 50,
+  "adm_dong_count_by_type": {
+    "metro": 16,
+    "major_city": 10,
+    "mid_city": 14,
+    "rural": 10
+  },
+  "region_feature_row_count": 28200,
+  "demand_signal_row_count": 27000,
+  "curated_taxonomy_nodes": [
+    "TX-FOOD-BEV-COFFEE-RTD",
+    "TX-FOOD-BEV-TEA",
+    "TX-FOOD-PROC-HMR",
+    "TX-KIDS-BABYFOOD",
+    "TX-ELEC-LARGE",
+    "TX-LIVING-PET",
+    "TX-FNB-CAFE",
+    "TX-FASHION-WOMEN",
+    "TX-BEAUTY-SKINCARE",
+    "TX-HEALTH-FITNESS"
+  ],
+  "suggested_backtest_split": {
+    "train": "2025-01..2025-12",
+    "validation": "2026-01..2026-06",
+    "note": "05_scoring_spec.md §5.1 예시와 동일한 경계. leakage trap feature (leak_trap_future_rtd_signal)도 이 경계(2026-01-01)부터 존재한다."
+  }
+}
