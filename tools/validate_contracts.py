@@ -9,6 +9,8 @@ SellFinder 계약 준수 검증기.
     python tools/validate_contracts.py                       # 전체 정적 검사
     python tools/validate_contracts.py --base origin/master --agent A
     python tools/validate_contracts.py --check-response out.json
+    python tools/validate_contracts.py --check-scores backend/samples/scores.json
+    python tools/validate_contracts.py --check-manifest backend/samples/manifest.json
 
 표준 라이브러리만 사용한다 (에이전트 환경마다 의존성이 다르므로).
 """
@@ -280,11 +282,168 @@ def check_prediction_response(path: pathlib.Path) -> None:
     print(f"  응답 검증: 요인 {len(factors)}개, 로그 기여도 합 {log_sum:+.6f}")
 
 
+# ─────────────────── 6. /predictions/{run_id}/scores 검증 ───────────────────
+SCORES_SCHEMA = ["region_id", "opportunity_score", "confidence_level"]
+
+# 03_region_features.json region_hierarchy: 코드 자릿수로 레벨을 판별한다.
+_LEVEL_ID_DIGITS = {"sido": (2, 2), "sigungu": (5, 5), "adm_dong": (8, 10)}
+
+
+def _find_key_deep(node, target: str) -> bool:
+    """중첩 구조 어디에든 target 키가 있는지 검사."""
+    if isinstance(node, dict):
+        if target in node:
+            return True
+        return any(_find_key_deep(v, target) for v in node.values())
+    if isinstance(node, list):
+        return any(_find_key_deep(v, target) for v in node)
+    return False
+
+
+def check_scores_response(path: pathlib.Path) -> None:
+    """지도용 점수 응답(ADR-001) 검증. 튜플배열+schema 형식이 핵심이다."""
+    data = load_json(path)
+    if not data:
+        return
+    if not isinstance(data, dict):
+        err("[점수] 최상위가 객체가 아닙니다.")
+        return
+
+    for k in ("run_id", "region_level", "boundary_vintage", "schema", "scores", "score_range"):
+        if k not in data:
+            err(f"[점수] 필수 필드 누락: {k}")
+
+    # 튜플배열 강제 — 객체 배열이면 3,500행에서 키가 반복돼 페이로드가 약 2.5배가 된다.
+    rows = data.get("scores")
+    if not isinstance(rows, list):
+        err("[점수] scores 는 배열이어야 합니다.")
+        rows = []
+    elif rows and isinstance(rows[0], dict):
+        err("[점수] scores 가 객체 배열입니다. 계약은 튜플배열 + schema 형식입니다 "
+            '({"schema":["region_id","opportunity_score","confidence_level"], '
+            '"scores":[["1111051500",87.4,"high"]]}). '
+            "3,500행에서 키 반복이 사라져 페이로드가 약 60% 줄어듭니다.")
+        rows = []
+
+    schema = data.get("schema")
+    if schema != SCORES_SCHEMA:
+        err(f"[점수] schema 가 계약과 다릅니다. 기대 {SCORES_SCHEMA}, 실제 {schema}")
+
+    width = len(schema) if isinstance(schema, list) else len(SCORES_SCHEMA)
+    level = data.get("region_level")
+    digits = _LEVEL_ID_DIGITS.get(level)
+
+    for i, row in enumerate(rows):
+        if not isinstance(row, list):
+            err(f"[점수] scores[{i}] 가 배열이 아닙니다: {row!r}")
+            continue
+        if len(row) != width:
+            err(f"[점수] scores[{i}] 길이 {len(row)} != schema 길이 {width}")
+            continue
+
+        rid, score, conf = row[0], row[1], row[2]
+
+        if not isinstance(score, (int, float)) or isinstance(score, bool):
+            err(f"[점수] scores[{i}] opportunity_score 가 숫자가 아닙니다: {score!r}")
+        elif not (0 <= score <= 100):
+            err(f"[점수] scores[{i}] opportunity_score 범위 위반: {score} (0~100)")
+
+        if conf not in CONFIDENCE_LEVELS:
+            err(f"[점수] scores[{i}] confidence_level 값 위반: {conf!r} (low|medium|high)")
+
+        # region_id 는 자기 레벨을 알 수 있어야 한다 (03_region_features.json rules).
+        if digits and isinstance(rid, str) and rid.isdigit():
+            lo, hi = digits
+            if not (lo <= len(rid) <= hi):
+                warn(f"[점수] scores[{i}] region_id '{rid}' 는 {len(rid)}자리인데 "
+                     f"region_level={level} 은 {lo}~{hi}자리입니다. 레벨/코드 불일치.")
+
+    # 색상 스케일 고정용. 없으면 필터를 바꿀 때마다 지도 색이 흔들린다.
+    rng = data.get("score_range")
+    if not isinstance(rng, dict):
+        err("[점수] score_range 가 객체가 아닙니다.")
+    else:
+        for k in ("min", "max"):
+            if not isinstance(rng.get(k), (int, float)):
+                err(f"[점수] score_range.{k} 가 없습니다. 클라이언트가 색상 스케일을 "
+                    "고정하지 못해 필터를 바꿀 때마다 색이 흔들립니다.")
+
+    # 금액은 상세 조회 전용이다.
+    if _find_key_deep(data, "expected_revenue_krw"):
+        err("[점수] 응답에 expected_revenue_krw 가 있습니다. 지도용 점수 응답에 금액을 담지 "
+            "않습니다 (상세 조회 전용, ADR-001).")
+
+    geoms = data.get("custom_geometries")
+    if level == "custom_catchment":
+        if not geoms:
+            err("[점수] region_level=custom_catchment 인데 custom_geometries 가 없습니다.")
+    elif geoms is not None:
+        err(f"[점수] region_level={level} 인데 custom_geometries 가 채워졌습니다. "
+            "표준 행정경계는 전부 타일로 나갑니다 (null 이어야 함).")
+
+    print(f"  점수 응답 검증: {len(rows)}행, level={level}")
+
+
+# ────────────────── 7. /basemap/regions/manifest 검증 ──────────────────
+def check_manifest_response(path: pathlib.Path) -> None:
+    """경계 타일 매니페스트(ADR-001) 검증."""
+    data = load_json(path)
+    if not data:
+        return
+    if not isinstance(data, dict):
+        err("[매니페스트] 최상위가 객체가 아닙니다.")
+        return
+
+    for k in ("level", "boundary_vintage", "tile_url", "source_layer",
+              "feature_id_property", "minzoom", "maxzoom", "available_vintages"):
+        if k not in data:
+            err(f"[매니페스트] 필수 필드 누락: {k}")
+
+    fid = data.get("feature_id_property")
+    if fid != "region_id":
+        err(f"[매니페스트] feature_id_property 는 반드시 'region_id' 여야 합니다. 현재 {fid!r}. "
+            "D 가 이 값을 setFeatureState 키로 사용합니다.")
+
+    vintages = data.get("available_vintages")
+    if not isinstance(vintages, list) or not vintages:
+        err("[매니페스트] available_vintages 가 비어 있습니다. "
+            "빈티지를 고를 수 없으면 '최신' 추측이 들어가고 시계열이 어긋납니다.")
+    elif data.get("boundary_vintage") not in vintages:
+        err(f"[매니페스트] available_vintages 에 boundary_vintage"
+            f"({data.get('boundary_vintage')!r}) 가 없습니다: {vintages}")
+
+    url = data.get("tile_url")
+    if not isinstance(url, str) or not re.match(r"^https?://", url):
+        err(f"[매니페스트] tile_url 은 절대 URL 이어야 합니다: {url!r}")
+    else:
+        if "/predictions/" in url:
+            err("[매니페스트] tile_url 이 /predictions/ 를 가리킵니다. 경계 타일은 예측과 "
+                "무관한 정적·공용 아티팩트입니다 (ADR-001).")
+        if ".mvt" in url:
+            err("[매니페스트] tile_url 이 .mvt 를 가리킵니다. "
+                "타일 엔드포인트는 폐기되었고 경계는 정적 .pmtiles 입니다 (ADR-001).")
+
+    for k in ("minzoom", "maxzoom"):
+        v = data.get(k)
+        if not isinstance(v, int) or isinstance(v, bool):
+            err(f"[매니페스트] {k} 가 정수가 아닙니다: {v!r}")
+    lo, hi = data.get("minzoom"), data.get("maxzoom")
+    if isinstance(lo, int) and isinstance(hi, int) and not isinstance(lo, bool) and lo > hi:
+        err(f"[매니페스트] minzoom({lo}) 이 maxzoom({hi}) 보다 큽니다.")
+
+    print(f"  매니페스트 검증: level={data.get('level')}, "
+          f"vintage={data.get('boundary_vintage')}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", help="비교 기준 브랜치 (예: origin/master)")
     ap.add_argument("--agent", help="에이전트 식별자 A|B|C|D")
     ap.add_argument("--check-response", type=pathlib.Path, help="예측 응답 JSON 파일 검증")
+    ap.add_argument("--check-scores", type=pathlib.Path,
+                    help="/predictions/{run_id}/scores 응답 JSON 검증")
+    ap.add_argument("--check-manifest", type=pathlib.Path,
+                    help="/basemap/regions/manifest 응답 JSON 검증")
     args = ap.parse_args()
 
     print("SellFinder 계약 검증\n" + "─" * 46)
@@ -295,6 +454,12 @@ def main() -> int:
 
     if args.check_response:
         check_prediction_response(args.check_response)
+
+    if args.check_scores:
+        check_scores_response(args.check_scores)
+
+    if args.check_manifest:
+        check_manifest_response(args.check_manifest)
 
     if args.base and args.agent:
         check_boundaries(args.base, args.agent)
