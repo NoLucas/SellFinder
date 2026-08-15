@@ -3,7 +3,8 @@
 **개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
 `verification/FINDINGS.md` **1회차**
 읽는 순서: 이 파일 → **`verification/FINDINGS.md` (네 담당 6건)** → **`shared/contracts/ADR-003-auth.md`**,
-**`ADR-002-artifact-publishing.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
+**`ADR-002-artifact-publishing.md`**, `ADR-005-tile-join-key.md` → `orchestrator/DECISIONS.md`
+→ 네 `RECONCILIATION.md`
 
 > **ADR-002 와 ADR-003 은 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
 > `00`~`06` 만 나열하고 ADR 을 포함하지 않는다. 표만 보고 넘어가면 인증 설계 전체를 놓친다.
@@ -73,15 +74,16 @@
 > 확인했고 5행 전부 null 이었다. 깨진 것은 **신뢰도 상한**이다. 금액만 막고 신뢰도를 안 막으면
 > "자사 데이터가 없는데 높은 신뢰도"라고 말하는 것이고, D-03 이 막으려던 것과 같은 종류의 거짓이다.
 
-### VF-003 (S2, 지도 조인) — **jin 결정 대기. 지금 손대지 마라.**
+### VF-003 (S2, 지도 조인) — **결정 났다 → ADR-005 / D-20**
 
 A 의 실제 타일 + 네 매니페스트 + D 의 조인 코드를 붙이면 **5개 중 0개가 매칭된다.**
 에러도 경고도 없이 지도 전체가 회색으로 칠해진다. 원인은 네 코드가 아니다 —
 A 는 `region_id` 를 properties 에서 빼고 숫자 feature id 로 싣는데, 계약과 D 는
 `feature_id_property` 로 그 속성을 찾는다. **A 도 D 도 각자 자기 문서를 지켰다.**
-jin 이 계약을 정리하면 네가 할 일은 하나다: `FEATURE_ID_PROPERTY` 하드코딩
-(`basemap_registry.py:29`)을 지우고 **A 매니페스트 값을 그대로 전달**한다 — 아래 2번과 같은 성격이다.
-결정 전에 추측으로 고치지 마라.
+계약이 정리됐고(`04_api_contract.yaml` **v0.2.2**, `ADR-005-tile-join-key.md`) A 가 타일을 고친다.
+**네가 할 일은 하나다**: `FEATURE_ID_PROPERTY` 하드코딩(`basemap_registry.py:29`)을 지우고
+**A 매니페스트 값을 그대로 전달**한다 — 아래 2번(`available_vintages`·줌)과 똑같은 성격이고,
+같은 작업에서 한꺼번에 처리하면 된다. 값을 지어내는 자리를 하나도 남기지 마라.
 
 ---
 

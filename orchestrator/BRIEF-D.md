@@ -3,8 +3,8 @@
 **개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
 `verification/FINDINGS.md` **1회차**
 읽는 순서: 이 파일 → **`verification/FINDINGS.md` VF-003·VF-009** →
-**`shared/contracts/ADR-002-artifact-publishing.md`**,
-**`ADR-003-auth.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md` §7
+**`shared/contracts/ADR-002-artifact-publishing.md`**, **`ADR-003-auth.md`**,
+`ADR-005-tile-join-key.md`(네 코드는 안 바뀐다) → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md` §7
 
 > **ADR-002 와 ADR-003 은 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
 > `00`~`06` 만 나열하고 ADR 을 포함하지 않는다. 표만 보고 넘어가면 로그인 방식과 픽스처 경로를 놓친다.
@@ -76,7 +76,7 @@ C 가 고친다. 픽스처 타일도 `sigungu` 라 **샘플과 타일 레벨이 
 fill expression** 까지 가는 노드 테스트. `verification/fixtures/vf_56_join.mjs` 가 참고 구현이다
 (MapLibre 의 `getId()` 와 `String(featureId)` 강제 변환까지 원본에서 옮겨 놨다). 아래 1번과 같이 해라.
 
-### VF-003 (S2) — 조인이 실제로 0/5 다. **네 잘못이 아니다. jin 결정 대기.**
+### VF-003 (S2) — 조인이 실제로 0/5 다. **네 잘못이 아니고, 네 코드는 안 바뀐다.**
 
 A 의 실제 `.pmtiles` + C 의 실제 매니페스트 + 네 조인 코드를 붙인 결과:
 
@@ -88,10 +88,13 @@ features that received a score : 0/5
 → 전 지역이 NO_DATA 회색. 에러도 콘솔 경고도 없다.
 ```
 
-**너는 계약대로 했다.** `promoteId` 에 `feature_id_property` 를 쓰는 것이 v0.2.1 규약이다.
-A 는 브리프 지시대로 `region_id` 를 속성이 아니라 숫자 feature id 로 실었다. 계약이 두 방식을
-동시에 말하고 있는 것이 원인이고, jin 이 둘 중 하나로 정한다.
-**결정 전에 `promoteId` 를 임의로 빼거나 조인 키를 바꾸지 마라.** 결정이 나면 매니페스트 값만 바뀐다.
+**너는 계약대로 했다.** `promoteId` 에 `feature_id_property` 를 쓰는 것이 v0.2.1 규약이었고,
+**v0.2.2 에서도 그대로다.** A 는 브리프 지시대로 `region_id` 를 속성이 아니라 숫자 feature id 로
+실었는데, 그 지시문(ADR-001)이 같은 문서 안에서 네 규약과 정반대였던 것이 원인이다.
+
+**결정: `region_id` 는 properties 에 문자열로 실린다** (`ADR-005-tile-join-key.md`, `DECISIONS.md` D-20).
+**A 가 타일을 고치고, 너는 코드를 바꾸지 않는다.** `promoteId` 를 빼거나 조인 키를 손대지 마라.
+A 의 수정된 타일이 들어오면 지금 코드 그대로 매칭된다 — 그것을 테스트로 고정하는 게 아래 1번이다.
 
 > 참고: 지금은 레벨도 안 맞는다 (A=시도 2자리 / C 샘플=시군구 5자리). 그건 A 의 픽스처 타일(D-12)과
 > C 의 샘플 정정(D-15)으로 닫힌다. 네가 할 일은 없다.

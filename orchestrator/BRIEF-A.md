@@ -2,8 +2,9 @@
 
 **개정 3** · 근거: `orchestrator/STATUS.md` (스윕 08-15 23:4x, HEAD `02661ca`) ·
 `verification/FINDINGS.md` **1회차**
-읽는 순서: 이 파일 → **`verification/FINDINGS.md` VF-003** → **`shared/contracts/ADR-002-artifact-publishing.md`**,
-**`ADR-004-taxonomy-mapping.md`** → `orchestrator/DECISIONS.md` → 네 `RECONCILIATION.md`
+읽는 순서: 이 파일 → **`shared/contracts/ADR-005-tile-join-key.md`** → `verification/FINDINGS.md` VF-003 →
+**`ADR-002-artifact-publishing.md`**, **`ADR-004-taxonomy-mapping.md`** → `orchestrator/DECISIONS.md`
+→ 네 `RECONCILIATION.md`
 
 > **ADR-002 와 ADR-004 는 반드시 직접 읽어라.** `shared/contracts/README.md` 의 읽기 순서 표는
 > `00`~`06` 만 나열하고 ADR 을 포함하지 않는다. 표만 보고 넘어가면 네 작업 지시를 통째로 놓친다.
@@ -50,7 +51,7 @@
 
 ## 검증 1회차 findings — 네 담당
 
-### VF-003 (S2) — 네 타일과 D 의 조인 키가 안 맞는다. **jin 결정 대기.**
+### VF-003 (S2) — 네 타일과 D 의 조인 키가 안 맞는다. **결정 났다 → ADR-005 / D-20**
 
 검증자가 네 **실제** `.pmtiles` 를 디코드해 C 의 매니페스트·D 의 조인 코드에 붙였다:
 
@@ -69,13 +70,22 @@ features that received a score : 0/5   → 전 지역 회색, 에러도 경고�
 한 가지는 지금 확실하다: **네 매니페스트가 `feature_id_property: "region_id"` 라고 적는 것은
 네 산출물과 모순이다.** 타일에 그 속성이 없다.
 
-jin 이 정할 선택지는 둘이다 —
-(1) properties 에도 `region_id` 를 싣는다, (2) 계약이 "네이티브 feature id" 규약을 명시하고
-`id_map.json` 을 계약에 올린다. **네 `id_map_path` 는 (2) 쪽 설계가 이미 실재한다는 증거다.**
-결정 전에 파이프라인을 되돌리지 마라. 결정되면 한쪽은 몇 줄이다.
+**결정: `region_id` 를 properties 에 문자열로 싣는다** (`ADR-005-tile-join-key.md`, `DECISIONS.md` D-20).
+네이티브 id 방식은 기각됐다 — 선행 0·2⁵³ 초과·해시 충돌이 전부 "예외"가 아니라 "빈 지도"로 나타나고,
+`region_id` 는 통계청이 소유한 외부 식별자라 "지금은 전부 숫자"라는 성질에 조인을 걸 수 없다.
 
-> 아래 2번(`sigungu` 픽스처 타일)은 이 결정과 무관하게 지금 해라. **D 를 막고 있는 건 여전히 그 파일이다.**
-> 픽스처를 만들 때 위 모순만 남기지 마라 — 매니페스트가 광고하는 것과 타일에 실제로 든 것이 같아야 한다.
+네가 할 일은 셋이다. **아래 1번보다 먼저 해라 — 지금 나가는 모든 타일이 조인 불가 상태다.**
+
+- `tiler.py:56-63` 에서 `region_id` 를 properties 에서 **제거하는 동작을 멈춘다.** 원문 문자열 유지.
+  네이티브 숫자 id 는 계속 넣어도 된다 (툴 호환·디버깅에 유용). 다만 **조인 키가 아니다.**
+- 매니페스트에서 **`id_map_path` 를 뺀다.** `id_map.json` 을 내부 빌드 산출물로 남기는 건 자유지만
+  계약 산출물이 아니다 — 소비자가 의존하기 시작하면 조인 키가 다시 두 갈래가 된다.
+- **빌드 자체 검증을 추가해라**: 매니페스트가 광고하는 `feature_id_property` 가 실제 산출 타일의
+  피처 properties 에 있는지 확인하고, 없으면 빌드를 실패시킨다.
+  **이 검사 하나가 VF-003 을 네 스위트 안에서 잡는다.** 지금은 6개 테스트 전부 통과하면서 깨져 있었다.
+
+> 아래 2번(`sigungu` 픽스처 타일)도 그대로 해라. **D 를 막고 있는 건 여전히 그 파일이다.**
+> 픽스처에도 같은 규칙이 적용된다 — 매니페스트가 광고하는 것과 타일 실물이 같아야 한다.
 
 **VF-004 는 네 것이 아니다.** C 가 빈티지·줌을 지어낸 건이고 이미 D-13/D-14 로 정리됐다.
 다만 검증에서 나온 사실 하나는 알아둬라: C 는 `sido/2026-07-01`(네가 실제로 만든 것)을 404 로 막고,

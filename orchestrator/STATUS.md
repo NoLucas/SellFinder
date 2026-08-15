@@ -1,6 +1,6 @@
 # SellFinder — 상태 스윕 (STATUS)
 
-생성: `tools/status_sweep.py` · 2026-08-15 23:54 +0900 · 브랜치 `master` · HEAD `02661ca` · **워킹트리 변경 있음**
+생성: `tools/status_sweep.py` · 2026-08-16 00:16 +0900 · 브랜치 `master` · HEAD `91dc71d` · **워킹트리 변경 있음**
 
 > 이 문서는 저장소에서 기계적으로 읽은 **사실**만 담는다. 에이전트의 자기 보고는 포함하지 않는다. 둘이 다르면 불일치 자체가 보고 대상이다.
 
@@ -8,8 +8,8 @@
 
 ## 1. 계약 상태
 
-- **API 계약 버전**: `0.2.1` (`shared/contracts/04_api_contract.yaml`)
-- **계약 최종 변경**: `33fe4ac` 08-15 19:37 — contracts: ADR-002/003/004 - artifact publishing, auth, taxonomy mapping
+- **API 계약 버전**: `0.2.2` (`shared/contracts/04_api_contract.yaml`)
+- **계약 최종 변경**: `91dc71d` 08-16 00:15 — contracts: ADR-005 - tile join key is the region_id property (v0.2.2)
 - **`validate_contracts.py`**: 통과
 - **검증기 플래그**: `--check-response`, `--check-scores`, `--check-manifest` 모두 지원
 
@@ -17,6 +17,7 @@
 
 | 커밋 | 시각 | 작성자 | 메시지 |
 |---|---|---|---|
+| `91dc71d` | 08-16 00:15 | NoLucas | contracts: ADR-005 - tile join key is the region_id property (v0.2.2) |
 | `33fe4ac` | 08-15 19:37 | NoLucas | contracts: ADR-002/003/004 - artifact publishing, auth, taxonomy mapping |
 | `af25b37` | 08-15 17:01 | NoLucas | contracts: v0.2.1 - split map tile ownership (ADR-001) |
 | `0c3ed57` | 08-15 03:04 | NoLucas | Implement SellFinder prediction backend per shared contract |
@@ -38,14 +39,14 @@
 
 ## 3. 계약 반영 여부
 
-기준: 계약 최종 커밋 `33fe4ac` (08-15 19:37).
+기준: 계약 최종 커밋 `91dc71d` (08-16 00:15).
 
 | 에이전트 | 마지막 커밋 | 계약 이후? | 판정 |
 |---|---|---|---|
-| **A** | `4a7833c` 08-15 17:58 | 아니오 | **경고 — 최신 계약 미반영 가능** (1.7h 이름) |
-| **B** | `ab92558` 08-15 18:00 | 아니오 | **경고 — 최신 계약 미반영 가능** (1.6h 이름) |
-| **C** | `849354d` 08-15 18:01 | 아니오 | **경고 — 최신 계약 미반영 가능** (1.6h 이름) |
-| **D** | `0d3c5d4` 08-15 17:50 | 아니오 | **경고 — 최신 계약 미반영 가능** (1.8h 이름) |
+| **A** | `4a7833c` 08-15 17:58 | 아니오 | **경고 — 최신 계약 미반영 가능** (6.3h 이름) |
+| **B** | `ab92558` 08-15 18:00 | 아니오 | **경고 — 최신 계약 미반영 가능** (6.3h 이름) |
+| **C** | `849354d` 08-15 18:01 | 아니오 | **경고 — 최신 계약 미반영 가능** (6.2h 이름) |
+| **D** | `0d3c5d4` 08-15 17:50 | 아니오 | **경고 — 최신 계약 미반영 가능** (6.4h 이름) |
 
 > 경고 대상: A, B, C, D — 마지막 커밋이 최신 계약보다 이르다. 계약을 읽고 커밋했는지는 이 스윕으로 알 수 없다. 브리프에서 확인을 요구할 것.
 
