@@ -1,0 +1,47 @@
+[
+  {
+    "layer": "regions",
+    "id": 11,
+    "properties": {
+      "name": "서울특별시",
+      "level": "sido",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26,
+    "properties": {
+      "name": "부산광역시",
+      "level": "sido",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28,
+    "properties": {
+      "name": "인천광역시",
+      "level": "sido",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41,
+    "properties": {
+      "name": "경기도",
+      "level": "sido",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50,
+    "properties": {
+      "name": "제주특별자치도",
+      "level": "sido",
+      "is_synthetic_placeholder": true
+    }
+  }
+]
