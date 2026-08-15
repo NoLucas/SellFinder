@@ -115,6 +115,8 @@ Query: level=adm_dong  &  vintage=2026-01-01   (vintage 생략 시 최신)
 
 - 인증은 필요하지만 테넌트 무관. 캐시 가능 (`Cache-Control: public, max-age=3600`).
 - `feature_id_property` 는 D 가 `setFeatureState` 의 키로 쓴다. 반드시 `region_id` 로 통일.
+  **A 의 타일은 이 이름의 속성을 실제로 가져야 한다** (ADR-005). 매니페스트가 광고하는 이름과
+  타일 실물이 다르면 아무 에러 없이 조인이 전부 실패한다.
 
 ### `GET /v1/predictions/{run_id}/scores`
 
@@ -154,7 +156,10 @@ Query: level=adm_dong  &  vintage=2026-01-01   (vintage 생략 시 최신)
 
 **A (data-platform)**
 - 경계 타일을 빈티지별 `.pmtiles` 로 생성하고 `manifest.json` 을 함께 산출한다.
-- 각 피처의 속성에 `region_id` 를 **feature id 로** 넣는다 (속성이 아니라 id). `setFeatureState` 가 이걸 쓴다.
+- ~~각 피처의 속성에 `region_id` 를 **feature id 로** 넣는다 (속성이 아니라 id). `setFeatureState` 가 이걸 쓴다.~~
+  **→ ADR-005 로 대체됨 (2026-08-16).** 이 문장은 틀렸다. `region_id` 는 **properties 에 문자열로** 싣는다.
+  D 는 MapLibre `promoteId` 로 그 속성을 feature id 로 승격시킨다. 위 §"신규 엔드포인트" 의
+  `feature_id_property` 설명과 이 문장이 서로 반대였고, 그 결과가 검증 1회차 `VF-003`(지도 전체 회색)이다.
 - 타일 서빙 API 를 만들지 않는다. 아티팩트 생성까지가 A 의 책임이다.
 - 빈티지를 덮어쓰지 않는다.
 

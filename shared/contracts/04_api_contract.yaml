@@ -1,9 +1,12 @@
 openapi: 3.1.0
 info:
   title: SellFinder API
-  version: 0.2.1
+  version: 0.2.2
   x-owner: jin (사람) — 에이전트 직접 수정 금지
   x-changelog:
+    - "0.2.2 (2026-08-16): 타일 조인 키 확정. region_id 는 타일 피처의 properties 에 문자열로
+       실린다(네이티브 MVT feature id 가 아니다). feature_id_property 가 유일한 조인 키다.
+       ADR-001 의 A 지시문('속성이 아니라 id 로')을 대체한다. 근거: ADR-005-tile-join-key.md"
     - "0.2.1 (2026-08-14): 지도 타일 엔드포인트 분리. /predictions/{run_id}/tiles/*.mvt 폐기 →
        /basemap/regions/manifest (정적 경계) + /predictions/{run_id}/scores (동적 점수).
        근거: ADR-001-map-tiles.md"
@@ -332,6 +335,14 @@ paths:
         에이전트 A 가 생성한 정적 .pmtiles 아티팩트의 위치를 반환한다.
         백엔드는 타일을 생성하거나 프록시하지 않고 URL(필요 시 서명 URL)만 발급한다.
         테넌트 무관하므로 캐시 가능: Cache-Control: public, max-age=3600
+
+        **feature_id_property (v0.2.2, ADR-005)**: 조인 키는 타일 피처의 **properties 에 든
+        문자열 region_id** 다. 클라이언트는 MapLibre promoteId 로 이 속성을 feature id 로
+        승격시켜 setFeatureState 를 건다. 네이티브 MVT feature id 는 조인 키가 아니며,
+        어떤 소비자도 여기에 의존하지 않는다.
+        A 의 타일은 여기 광고된 이름의 속성을 **실제로 가지고 있어야 한다** — 이름만 맞고
+        속성이 없으면 조인이 전부 실패하는데 에러도 경고도 나지 않는다 (검증 1회차 VF-003).
+        백엔드는 이 값을 지어내지 않고 A 의 매니페스트 값을 그대로 전달한다.
       parameters:
         - { name: level, in: query, required: true, schema: { type: string, enum: [sido, sigungu, adm_dong] } }
         - name: vintage
