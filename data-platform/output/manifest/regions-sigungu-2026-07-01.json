@@ -1,0 +1,25 @@
+{
+  "level": "sigungu",
+  "boundary_vintage": "2026-07-01",
+  "tile_url": "http://localhost:8000/artifacts/tiles/regions-sigungu-2026-07-01.pmtiles",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 4,
+  "maxzoom": 12,
+  "attribution": "CC BY 4.0 (원출처 통계청 SGIS, 공공누리 제1유형) - vuski/admdongkor 시군구 단위 dissolve",
+  "valid_to": null,
+  "feature_count": 256,
+  "bounds": [
+    124.60968141530441,
+    33.111867852754436,
+    131.8712942504872,
+    38.61695208067501
+  ],
+  "source_id": "src_admdongkor_sgis",
+  "sha256": "989a4a93e8ebdcb87e8e7f986ac5357c037c79d1156cfdcc106272bc5f549ad9",
+  "built_at": "2026-08-16T11:56:13.444668+00:00",
+  "available_vintages": [
+    "2026-01-01",
+    "2026-07-01"
+  ]
+}

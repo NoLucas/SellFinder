@@ -232,3 +232,135 @@ PASS (정상 통과): feature_count=5, feature_id_property='region_id'
   없고, 자격증명 신청은 에이전트가 대신 할 수 없는 외부(사람) 절차이기 때문이다. 대체로 계획과
   자격증명 게이트가 실패로 확인되는 첫 단계를 만들었다(DISPATCH-2 A-3 이 "규모가 크면 계획과
   첫 단계까지만 해도 된다"고 명시적으로 허용).
+
+---
+
+## 10. DISPATCH-4 (SGIS 실물 빈티지 완성 · suppressed 실데이터 경로 확인 · VF-013류 자체 점검) · 2026-08-16
+
+지시 근거: 총괄자 4차 지시. 두 과제 모두 끝냈고, 두 번째 과제에서 **A 잘못이 아닌 실제 막힘**을
+하나 찾아 재현했다.
+
+### 10.1 SGIS 실물 빈티지 — 세 레벨(adm_dong·sigungu·sido) 전부 완성. 단, 경로에 대한 정직한 정정이 있다
+
+**SGIS Open API 직접 연동은 여전히 막혀 있다**(자격증명, §9.3 그대로). 대신
+`https://github.com/vuski/admdongkor` 를 찾아 썼다 — 원 출처가 통계청 SGIS이고
+**CC BY 4.0(공공누리 제1유형 기반, 상업적 이용 포함 자유 이용 허용)** 로 재배포되는
+저장소다(`06_governance.md` §3 "commercial_use_allowed=false 소스는 프로덕션 투입
+금지"에 저촉되지 않음 — 이건 `true`). 라이선스·최신 커밋(`ver20260701`, 2026-07-01
+기준 개편분 반영, 광주·전남 통합 등)을 직접 저장소에서 확인했고 추측하지 않았다.
+
+**정직성 노트 — jin 이 판단해야 할 지점**: 이건 SGIS Open API 를 직접 호출한 게 아니라
+**제3자가 SGIS 데이터를 라이선스대로 재배포한 미러**다. `src/boundary_tiles/sgis_source.py`
+(직접 연동 스캐폴딩)는 자격증명이 없어 여전히 멈춰 있고 손대지 않았다. 새 모듈
+`src/boundary_tiles/admdongkor_source.py` 가 이 미러 경로를 구현한다. 공식 SGIS Open API
+경로만 인정한다면 이번 결과는 기각 대상이고, 그러면 자격증명 발급이 여전히 유일한 다음 단계다.
+**"SGIS 를 직접 연동했다"고 부풀리지 않았다** — `data_source` 등록에도 "제3자 CC BY 4.0
+재배포본"이라고 그대로 적었다(`known_limitations` 1번째 항목).
+
+**실행 결과** (`raw.githubusercontent.com` 에서 34.6MB geojson 다운로드 → 우리 스키마로 변환
+→ 기존 `tiler.build_tiles`/`build.build_vintage` 파이프라인에 그대로 투입, 코드 변경 없음):
+
+| 레벨 | region_id 소스 | vintage | feature_count | 빌드 소요 | `--check-manifest` | 타일 디코드 확인 |
+|---|---|---|---|---|---|---|
+| adm_dong | `adm_cd2`(10자리) | `2026-07-01` | 3,558 | 5분 45초 | 오류 0 | 3558/3558 `region_id` 존재 |
+| sigungu | `sgg`(5자리, dissolve) | `2026-07-01` | 256 | <1분 | 오류 0 | 256/256 |
+| sido | `sido`(2자리, dissolve) | `2026-08-16`* | 16 | <1분 | 오류 0 | 16/16 |
+
+\* **sido 빈티지 날짜에 대한 정정 필요 사항**: 원본 소스의 실제 기준일은 `2026-07-01`
+(다른 두 레벨과 동일)이지만, 그 날짜는 **1차 사이클 때 만든 5피처짜리 합성 sido**가 이미
+점유하고 있다(`VintageExistsError` 로 직접 확인 — 재현: `boundary_vintage=2026-07-01`
+로 sido 빌드 시도 → 거부). D-11 이 과거 빈티지 덮어쓰기를 금지하므로, sido 만 부득이하게
+**인입일(`2026-08-16`)을 vintage 로 기록**했다 — 원본 기준일과 다르다는 사실을
+`attribution` 필드에 그대로 남겼다. **더 나은 정리 방법이 있다면(예: 옛 합성 sido 빈티지를
+명시적으로 폐기 표시) 그건 jin 의 결정이지 A 가 임의로 지울 사안이 아니다.**
+
+- 세 레벨 모두 `is_synthetic_placeholder: false`, `source_id: "src_admdongkor_sgis"`.
+- `data_source` 등록: `output/manifest/data_source-src_admdongkor_sgis.json`
+  (`commercial_use_allowed: true`, `license: "CC BY 4.0 (원출처: 통계청 SGIS, 공공누리 제1유형)"`).
+- 신규 코드(`admdongkor_source.py`) 테스트 3개 추가(`test_admdongkor_source.py`) —
+  변환 정확성, 비합성 플래그, **중복 region_id 는 조용히 버리지 않고 예외**.
+- **`output/tiles/regions-adm_dong-2026-07-01.pmtiles` 는 21MB다.** git 에 커밋하지
+  않는다(gitignore 그대로 적용됨, `git status` 로 미추적 확인). 원본 다운로드/변환본
+  (34.6MB, 31.7MB)도 저장소 밖 스크래치 디렉터리에만 있고 커밋 대상이 아니다 —
+  재현이 필요하면 `admdongkor_source.py` 의 `download()`/`convert_to_pipeline_geojson()`
+  를 그대로 다시 돌리면 된다(같은 URL, 같은 결과).
+
+### 10.2 coverage_flag='suppressed' 가 실데이터 경로에도 표시되는가 — **아직 아니다. A 의 결함이 아니라 소비 측이 안 뚫려 있다**
+
+재현(읽기 전용, `intelligence/` 수정 없음):
+
+```
+store = RegionFeatureFileStore(rows=[])
+store.get_demand(['41135'], 'TX-FOOD-BEV-COFFEE-RTD', 'all', '2026-01')
+-> NotImplementedError: RegionFeatureFileStore has no demand_signal source -
+   data-platform hasn't published one yet. See this class's docstring and intelligence/README.md.
+```
+
+`intelligence/scoring/feature_store.py` 의 `RegionFeatureFileStore.get_demand()` 는
+**어떤 파일이 있든 없든 무조건 `NotImplementedError` 를 던지도록 하드코딩돼 있다.** 이
+코드와 `intelligence/README.md` §2-2 의 주석("A가 region_feature는 물론 demand_signal도
+아직 발행하지 않았다")은 **내 §9(DISPATCH-2) 커밋 이전 시점 기준**이라 지금은 낡았다 —
+나는 이미 `output/manifest/demand_signal-sigungu-2026-01.json` 을 발행했다(§9.2). 하지만
+B 쪽 리더가 그 사실을 모른 채 무조건 예외를 던지므로, **내 산출물이 맞아도 지금 이
+경로로는 어디에도 도달하지 못한다.**
+
+추가로: B 가 이미 문서화한 `region_feature` 기대 경로(`intelligence/README.md` 60행)는
+`data-platform/output/region_features` 인데, **이건 `demand_signal` 이 아니라 별개
+엔티티(`region_feature`)의 경로다.** `demand_signal` 에 대해서는 B 쪽에 기대 경로 자체가
+아직 없다 — 내가 고른 `output/manifest/demand_signal-{level}-{period}.json` 이 유일한
+후보고, B 가 채택할지는 B/총괄자의 결정이다. 이 자리에서 내가 `intelligence/` 코드를
+고치는 건 범위 밖이다(경계 위반).
+
+**결론**: coverage_flag 값 자체(§9.2, §10.3)는 정확하지만, **B↔C 로 가는 실데이터
+경로에 아직 demand_signal 소비 코드가 없어 검증 자체가 불가능하다.** 이건 VF-003 과
+같은 "이음매가 안 뚫린" 유형이고, C 의 VF-010/VF-013 차단이 이 경로에서 실제로 시험
+받으려면 먼저 B(또는 C)가 `output/manifest/demand_signal-*.json` 을 읽는 리더를
+만들어야 한다. **jin/총괄자에게 보고 — A 가 더 진행할 수 없는 지점이다.**
+
+### 10.3 VF-013류(값은 막았는데 순서가 원시값을 반영) 자체 점검 — 세 가지 테스트로 확인, 지금 구조에서는 발견되지 않음
+
+`test_taxonomy_mapping.py` 에 3개 테스트 추가:
+
+1. **`test_two_suppressed_cells_in_same_sido_are_indistinguishable_in_output`** — 같은
+   sido 안에서 원시값이 서로 다른(0개 대 4개 등) 억제 셀 두 개를 찾아, 출력 `store_count`
+   가 **완전히 동일한 값 하나로 수렴**하는지 확인. 통과 — 대체 로직이 sido 평균 하나로만
+   귀결되고 개별 원시값은 반영되지 않는다.
+2. **`test_national_mean_and_sido_substitute_never_derived_from_suppressed_raw_values`** —
+   `actual` 행들의 `spend_index` 를 역산해 파이프라인이 실제로 쓴 `national_mean` 을
+   복원하고, "억제 제외 실측치만의 평균"과 독립적으로 재계산해 대조(VF-001 교훈 — 합이
+   아니라 외부 증인). 통과(상대오차 0.5% 이내, `spend_index` 소수 1자리 반올림으로 인한
+   잡음 감안).
+3. **`test_sorting_output_by_store_count_does_not_recover_raw_suppressed_ranking`** —
+   억제 셀들을 `store_count` 로 정렬한 결과가, `region_id` 만으로 정렬한(=아무 정보도
+   없는) 결과와 **완전히 동일**한지 확인 — `store_count` 자체가 억제 셀 사이의 순서를
+   구분할 정보를 전혀 담고 있지 않다는 뜻. 통과.
+
+**결론 — 지금 구조에는 VF-013 류 부채널이 없다.** 이유는 C 의 사고와 달리 애초에
+**A 의 산출물에 정렬/순위 단계 자체가 없기 때문이다**(평평한 배열, 입력 지역 순서
+그대로). 억제 셀의 `store_count` 는 "같은 sido 의 실측 평균"으로만 정해지므로, 그 지역
+자신의 원시값이 얼마였든 결과에 반영되지 않는다.
+
+**단, 발견한 별개의 주의사항 하나(누수는 아니지만 투명하게 남긴다)**: 지금 `store_count`
+는 `_mock_raw_store_count(region_id, node_id)` 라는 **공개된 결정론적 함수**의 산출물이다.
+따라서 이 저장소 코드에 접근할 수 있는 누구든 억제된 "원시값"을 스스로 재계산할 수 있다 —
+이건 산출물 스키마의 결함이 아니라 **모의(mock) 데이터를 쓰는 것 자체의 성질**이다. 실
+sbiz API 데이터로 바뀌면(A-1/A-3 다음 단계) 원시값이 외부 시스템에만 있게 되어 이 문제는
+자연히 사라진다. 지금 단계에서 조치는 필요 없다고 판단했다 — 픽스처/합성 데이터라는 표시
+(`is_synthetic_placeholder`)가 이미 있고, 실 데이터 전환이 근본 해법이지 이 모의 생성기를
+난독화하는 건 헛수고다.
+
+### 10.4 종합
+
+- **끝낸 항목**: SGIS 실물 빈티지 3개 레벨(adm_dong/sigungu/sido) 완성, coverage_flag
+  실데이터 경로 확인(결과: 아직 도달 못 함, 원인 특정), VF-013류 자체 점검(3개 테스트,
+  누수 없음 확인 + 모의생성기 재계산가능성 caveat 기록)
+- **통과 확인**: `pytest tests -q` → **22 passed**(기존 16 + admdongkor_source 3 +
+  leak-audit 3). 세 매니페스트 전부 `--check-manifest` 오류 0. 세 pmtiles 전부 타일
+  디코드로 region_id 100% 확인(3558/256/16). `RegionFeatureFileStore.get_demand()` 가
+  발행 여부와 무관하게 무조건 `NotImplementedError` 를 던짐을 직접 재현.
+- **못 한 것과 이유**: ① SGIS Open API **직접** 연동은 여전히 안 됨 — 자격증명 필요,
+  사람이 해야 하는 외부 절차(§9.3과 동일). ② coverage_flag 가 실제로 예측 결과에
+  반영되는 것까지는 확인 못 함 — B 의 `get_demand()` 가 무조건 실패하는 스텁이라
+  A 의 산출물 유무와 무관하게 막혀 있고, 이건 `intelligence/` 범위라 A 가 고칠 수
+  없다. **다음 필요 행동은 B(또는 총괄자 조정)가 `output/manifest/demand_signal-{level}-
+  {period}.json` 을 읽는 리더를 만드는 것.**

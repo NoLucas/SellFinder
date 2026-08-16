@@ -1,0 +1,26 @@
+{
+  "level": "sido",
+  "boundary_vintage": "2026-08-16",
+  "tile_url": "http://localhost:8000/artifacts/tiles/regions-sido-2026-08-16.pmtiles",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 0,
+  "maxzoom": 10,
+  "attribution": "CC BY 4.0 (원출처 통계청 SGIS, 공공누리 제1유형) - vuski/admdongkor 시도 단위 dissolve (원본 기준일 2026-07-01, sido 2026-07-01 슬롯은 기존 합성 placeholder가 선점해 실제 인입일을 vintage로 기록)",
+  "valid_to": null,
+  "feature_count": 16,
+  "bounds": [
+    124.60968141530441,
+    33.111867852754436,
+    131.8712942504872,
+    38.61695208067501
+  ],
+  "source_id": "src_admdongkor_sgis",
+  "sha256": "8be0ff5b174015c729c5d25e5accd30ee9c49347b5a5ab48a7535902c541de7c",
+  "built_at": "2026-08-16T11:57:30.908141+00:00",
+  "available_vintages": [
+    "2026-01-01",
+    "2026-07-01",
+    "2026-08-16"
+  ]
+}

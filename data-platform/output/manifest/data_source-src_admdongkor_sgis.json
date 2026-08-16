@@ -1,0 +1,18 @@
+{
+  "source_id": "src_admdongkor_sgis",
+  "name": "행정동 경계 (SGIS 파생, admdongkor 미러)",
+  "provider": "vuski/admdongkor (GitHub) — 원 출처 통계청 SGIS",
+  "url": "https://github.com/vuski/admdongkor",
+  "license": "CC BY 4.0 (원출처: 통계청 SGIS, 공공누리 제1유형)",
+  "commercial_use_allowed": true,
+  "refresh_cadence": "quarterly",
+  "granularity": "adm_dong / quarterly",
+  "known_limitations": [
+    "SGIS Open API 직접 연동이 아니라 제3자 CC BY 4.0 재배포본이다 — 출처 표시 의무 유지",
+    "행정구역 개편 반영 시차가 있을 수 있다(저장소 커밋 주기에 종속)",
+    "집계구·격자 등 세분화 경계는 포함하지 않는다(행정동 레벨만)"
+  ],
+  "boundary_vintage": "2026-07-01",
+  "last_ingested_at": "2026-08-16T11:58:26.875013+00:00",
+  "is_synthetic_placeholder": false
+}
