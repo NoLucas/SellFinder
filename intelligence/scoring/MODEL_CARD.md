@@ -94,6 +94,68 @@ wMAPE가 목표를 넘는 이유는 알려진 것이다: `expected_demand_units`
 | mid_city (중소도시) | 84 | 0.688 | 0.695 | 0.810 |
 | rural (군지역) | 20 | 0.451 | 0.844 | **0.200** |
 
+재현 명령 (VF-014 — 위 표는 §3의 `run_backtest` 표와 달리 지역 단위로 직접 계산해야 해서
+별도 스크립트다. `dataset["_profiles"]`의 `region_type`으로 그룹화하고, `q10`/`q90`은 §3와
+같은 방식으로 학습 구간에서 보정한다):
+
+```
+cd intelligence
+python -c "
+from backtest import harness
+from scoring import model
+from scoring.feature_store import SyntheticFeatureStore
+from synthetic import generate
+
+dataset = generate.generate_all(seed=42, start_period='2025-01', end_period='2026-06')
+store = SyntheticFeatureStore.from_dataset(dataset)
+profiles = dataset['_profiles']
+region_type_by_id = {rid: p['region_type'] for rid, p in profiles.items()}
+
+node='TX-FOOD-BEV-COFFEE-RTD'; channel='cvs'
+train_periods, val_periods = harness.time_split(dataset['manifest']['periods'], '2026-01')
+q10,q90 = harness.calibrate_pi_multipliers(store, store.all_adm_dong_ids(), node, channel, train_periods,
+    product_attributes={'target_age':['20s','30s'],'sugar_free':True},
+    seasonality_profile=[0.92,0.90,0.98,1.02,1.08,1.14,1.18,1.16,1.04,0.96,0.92,0.90])
+
+from collections import defaultdict
+by_type_pred = defaultdict(list)
+by_type_act = defaultdict(list)
+by_type_cov = defaultdict(list)
+
+for period in val_periods:
+    as_of = period + '-01'
+    results = model.predict_batch(region_ids=store.all_adm_dong_ids(), taxonomy_node_id=node, channel=channel,
+        period=period, as_of=as_of, data_tier='T0', store=store,
+        product_attributes={'target_age':['20s','30s'],'sugar_free':True}, price_tier='mid',
+        seasonality_profile=[0.92,0.90,0.98,1.02,1.08,1.14,1.18,1.16,1.04,0.96,0.92,0.90], horizon_months=1)
+    for r in results:
+        act = harness._actual_transaction_count(store, r.region_id, node, channel, period)
+        if act is None: continue
+        rt = region_type_by_id.get(r.region_id, 'unknown')
+        by_type_pred[rt].append(r.expected_demand_units)
+        by_type_act[rt].append(act)
+        lo, hi = r.expected_demand_units*q10, r.expected_demand_units*q90
+        by_type_cov[rt].append(1 if lo<=act<=hi else 0)
+
+for rt in by_type_pred:
+    n=len(by_type_pred[rt])
+    rho = harness.spearman_rho(by_type_pred[rt], by_type_act[rt]) if n>=2 else float('nan')
+    wm = harness.wmape(by_type_pred[rt], by_type_act[rt])
+    cov = sum(by_type_cov[rt])/n
+    print(f'{rt:12s} n={n:4d} rho={rho:.3f} wmape={wm:.3f} coverage={cov:.3f}')
+"
+```
+
+실행 결과 (2026-08-16 재확인, `git log -1`이 `01_domain_model.json`·`scoring/`·`synthetic/`을
+바꾸지 않는 한 값이 그대로여야 한다 — `seed=42`로 고정돼 있으므로):
+
+```
+metro        n=  96 rho=0.782 wmape=0.343 coverage=0.865
+major_city   n=  60 rho=0.678 wmape=0.567 coverage=0.883
+mid_city     n=  84 rho=0.688 wmape=0.695 coverage=0.810
+rural        n=  20 rho=0.451 wmape=0.844 coverage=0.200
+```
+
 **rural은 명백히 가장 약하다.** 표본이 작고(n=20) suppression 비율이 높아 스코어링에 쓸 수
 있는 셀 자체가 적다 — PI coverage 0.20은 예측구간이 사실상 실제값을 못 담는다는 뜻이다.
 

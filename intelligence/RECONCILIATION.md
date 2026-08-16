@@ -401,3 +401,99 @@
   일치한다 — `SyntheticFeatureStore`의 point-in-time 필터 로직을 공용 함수로 뽑아낸 리팩터링이
   기존 백테스트 결과를 바꾸지 않았음을 확인했다.
 - 못 한 것과 이유: 없음. 카드 자체는 이전 회차에 완료됐고 이번엔 무결성만 재확인했다.
+
+## 10. 총괄자 지시 4차 회신 (VF-014 + `05_scoring_spec.md` §6 evidence 규칙 강제)
+
+### VF-014 (S4) — 모델 카드 지역유형별 분해 표에 재현 명령 없음
+
+- 끝낸 항목: VF-014
+- 통과 확인:
+
+  ```
+  $ cd intelligence && python -c "..."   # MODEL_CARD.md에 넣은 재현 스크립트 그대로 실행
+  metro        n=  96 rho=0.782 wmape=0.343 coverage=0.865
+  major_city   n=  60 rho=0.678 wmape=0.567 coverage=0.883
+  mid_city     n=  84 rho=0.688 wmape=0.695 coverage=0.810
+  rural        n=  20 rho=0.451 wmape=0.844 coverage=0.200
+  ```
+
+  `MODEL_CARD.md`의 지역유형별 표 값과 정확히 일치 — 재실행해도 같은 표가 나온다.
+  `scoring/MODEL_CARD.md`에 이 명령 전문을 코드블록으로 추가했다(§3 지역 유형별 분해 절,
+  실행 결과도 함께 박아뒀다).
+- 못 한 것과 이유: 없음.
+
+### `05_scoring_spec.md` §6 evidence 4개 조항 — 테스트로 강제
+
+지금까지 이 4개 조항을 강제하는 테스트가 하나도 없었다(검증 1~4회차 전부 구멍). 진짜
+`model.predict_batch()` 예측(합성 데이터 기반이지만 요인 계산 로직은 실제 파이프라인)으로
+검증했다 — 요인 함수를 직접 부르는 것이 아니라 C 가 실제로 받는 evidence 문자열 그대로다.
+
+- 끝낸 항목: 4개 조항 전부
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 81개 전체 통과 (이전 74 + 신규 7)
+  Ran 81 tests in 0.938s
+  OK
+  ```
+
+  **완료 판정("네 조항이 각각 실행되는 테스트로 강제") 검증 — 변이 주입으로 각 테스트가
+  실제로 잡는지 확인 (VF-001 때와 같은 방식, 파일은 수정하지 않고 런타임에만 패치):**
+
+  ```
+  # M1: category_penetration의 evidence를 값/기준 숫자 없는 수사로 교체
+  → test_evidence_cites_the_factors_own_value_when_value_is_not_none  FAIL (규칙1)
+  → test_evidence_cites_the_benchmark_when_benchmark_is_present        FAIL (규칙2)
+
+  # M2: income_decile=None인데 price_acceptance가 소득 7분위를 지어냄
+  → test_null_feature_never_leaks_a_fabricated_number_into_evidence    FAIL (규칙3)
+    AssertionError: '소득 7분위로 추정됨 (비교지역 평균 6.4분위)' !=
+                     '소득분위 데이터 없음 - 중립(1.0)으로 처리'
+
+  # M3: addressable_demand evidence에 인과 표현 추가
+  → test_evidence_never_uses_causal_language                           FAIL (규칙4)
+    81건 중 81건이 "인구가 많아서 잘 팔릴 것으로 예상됩니다" 포함으로 잡힘
+
+  # 원본(변이 없음) 재실행 — 전부 정상 통과
+  $ python -m unittest tests.test_evidence_rules -v
+  Ran 7 tests ... OK
+  ```
+
+  새 파일 `intelligence/tests/test_evidence_rules.py` (7개 테스트, `EvidenceRulesTestCase`):
+  1. **규칙1(실제 피처값 인용)**: `value is not None`인 모든 factor에 대해 evidence 문자열에서
+     숫자를 정규식으로 뽑아 `value`(또는 %변환)와 근접한 값이 있는지 확인
+     (`test_evidence_cites_the_factors_own_value_when_value_is_not_none`)
+  2. **규칙2(비교 기준 동반)**: `benchmark`가 있는 factor에 대해 evidence에 그 숫자가
+     있는지(`test_evidence_cites_the_benchmark_when_benchmark_is_present`) + "평균/기준/대비"
+     같은 비교 표현이 있는지(`test_evidence_uses_a_comparison_word_when_benchmark_is_present`)
+     이중 확인. `product_affinity`는 `value`/`benchmark` 필드가 결합비율/상수(1.0)라 서브
+     비율(연령비중%, 소득분위)을 직접 인용하는 별도 테스트로 분리
+     (`test_product_affinity_evidence_cites_its_sub_ratio_components`).
+  3. **규칙3(§6.2, CHARTER S2 — 지어내지 않기)**: 두 갈래.
+     - `test_evidence_is_a_known_placeholder_when_value_is_none`: `value is None`인 모든
+       factor의 evidence가 `factors.py`를 직접 읽어 만든 "데이터 없음" 문구 10종 화이트리스트의
+       원소인지 확인 — 목록 밖 문장이 나오면 뭔가를 지어낸 것.
+     - **완료 판정의 핵심** `test_null_feature_never_leaks_a_fabricated_number_into_evidence`:
+       지시받은 대로 **null 피처를 일부러 만들었다** — `income_decile`을 모든 지역에서 강제로
+       `None`으로 덮어쓰는 래퍼 스토어(`_IncomeBlindStore`)로 `predict_batch`를 돌려,
+       `price_acceptance.evidence`가 정확히 "소득분위 데이터 없음 - 중립(1.0)으로 처리"인지
+       (지어낸 분위 숫자가 없는지), `product_affinity.evidence`에 "소득"이라는 단어 자체가
+       없는지 확인.
+  4. **규칙4(§6.3, 인과 금지)**: 실제 배치 전체 evidence에 "때문에/덕분에/탓에/영향으로/
+     원인으로/-아서 잘/-여서 잘" 등 인과 표현이 하나도 없는지 확인
+     (`test_evidence_never_uses_causal_language`).
+
+  **부수적으로 발견해 고친 것 (evidence 생성 자체가 크래시하는 버그, §6 감사 중 발견)**:
+  `benchmark_value`가 배치 전체에서 데이터 부족으로 `None`이 되는 경우(예: 요청 지역이
+  전부 특정 피처 결측), `addressable_demand`와 `channel_availability`(온라인/오프라인
+  두 분기 다)의 evidence 포맷팅이 `f"{None:.2f}"` 형태로 **`TypeError`를 던지며 죽었다** —
+  운영에서 실제로 터질 수 있는 경로(작은 배치·rural처럼 suppression 비율 높은 지역 조합)다.
+  `competition` 요인이 이미 쓰던 방어 패턴(`if benchmark_value: ... else: "비교 기준 없음"`)을
+  나머지 세 함수에도 동일하게 적용해 크래시를 없애고, 동시에 규칙3("값 없이 지어내지 않기")도
+  만족시켰다 — None을 포맷하는 대신 "비교 기준 없음(데이터 부족)"이라고 명시한다.
+  `seasonality`의 evidence도 값만 있고 비교 기준(연중 평균 1.0)이 빠져 있어 "(연중 평균 1.0
+  기준)"을 추가했다(규칙2 보강).
+
+  변경 파일: `intelligence/scoring/factors.py`(크래시 수정 3건 + seasonality 기준 보강 1건),
+  `intelligence/tests/test_evidence_rules.py`(신설, 7개 테스트).
+- 못 한 것과 이유: 없음. 지시받은 두 항목(VF-014, evidence 4개 조항) 모두 완료.

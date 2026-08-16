@@ -121,7 +121,14 @@ def addressable_demand(
         relevant_pop = 0.7 * relevant_pop + 0.3 * daytime_pop * (share if share is not None else 1.0)
     mult = _safe_ratio(relevant_pop, benchmark_value)
     age_note = f"({'+'.join(target_ages)} 비중 {share:.1%})" if target_ages and share is not None else ""
-    evidence = f"타깃 인구 규모 {relevant_pop:,.0f}명 {age_note} - 비교대상 지역 평균 {benchmark_value:,.0f}명 대비 {mult:.2f}배".strip()
+    if benchmark_value:
+        evidence = f"타깃 인구 규모 {relevant_pop:,.0f}명 {age_note} - 비교대상 지역 평균 {benchmark_value:,.0f}명 대비 {mult:.2f}배".strip()
+    else:
+        # benchmark_value is None when every region in this batch lacks the
+        # underlying population data (05_scoring_spec.md §6.2: never format
+        # a missing value into evidence text - say so instead of crashing
+        # or fabricating a comparison).
+        evidence = f"타깃 인구 규모 {relevant_pop:,.0f}명 {age_note} - 비교 기준 없음(비교지역 인구 데이터 부족)".strip()
     return FactorResult("addressable_demand", mult, relevant_pop, benchmark_value, evidence)
 
 
@@ -251,7 +258,12 @@ def channel_availability(
                 "이커머스 주문 밀도 데이터 없음 - 중립(1.0)으로 처리",
             )
         mult = _safe_ratio(ecommerce_order_density, benchmark_value)
-        evidence = f"이커머스 주문 밀도 {ecommerce_order_density:.1f} (비교지역 평균 {benchmark_value:.1f})"
+        if benchmark_value:
+            evidence = f"이커머스 주문 밀도 {ecommerce_order_density:.1f} (비교지역 평균 {benchmark_value:.1f})"
+        else:
+            # benchmark_value is None when no region in this batch has
+            # ecommerce_order_density - never format None into evidence.
+            evidence = f"이커머스 주문 밀도 {ecommerce_order_density:.1f} - 비교 기준 없음(다른 지역 데이터 부족)"
         return FactorResult("channel_availability", mult, ecommerce_order_density, benchmark_value, evidence)
 
     if store_count is None or pop_total is None or not pop_total:
@@ -261,7 +273,12 @@ def channel_availability(
         )
     density = store_count / (pop_total / 10_000)  # stores per 10,000 pop
     mult = _safe_ratio(density, benchmark_value)
-    evidence = f"인구 1만명당 채널 점포 {density:.2f}개 (비교지역 평균 {benchmark_value:.2f}개)"
+    if benchmark_value:
+        evidence = f"인구 1만명당 채널 점포 {density:.2f}개 (비교지역 평균 {benchmark_value:.2f}개)"
+    else:
+        # benchmark_value is None when no region in this batch has offline
+        # channel store_count data - never format None into evidence.
+        evidence = f"인구 1만명당 채널 점포 {density:.2f}개 - 비교 기준 없음(다른 지역 데이터 부족)"
     return FactorResult("channel_availability", mult, density, benchmark_value, evidence)
 
 
@@ -274,7 +291,9 @@ def seasonality(seasonality_profile: list[float] | None, months: list[int]) -> F
     values = [seasonality_profile[m - 1] for m in months]
     mult = sum(values) / len(values)
     month_range = f"{months[0]}~{months[-1]}월" if len(months) > 1 else f"{months[0]}월"
-    evidence = f"예측 구간({month_range}) 계절 지수 평균 {mult:.2f}"
+    # 05_scoring_spec.md §6.2: cite the comparison basis, not just the value -
+    # the index's neutral point (1.0 = 연중 평균) is what makes 0.92 legible.
+    evidence = f"예측 구간({month_range}) 계절 지수 평균 {mult:.2f} (연중 평균 1.0 기준)"
     return FactorResult("seasonality", mult, mult, 1.0, evidence)
 
 
