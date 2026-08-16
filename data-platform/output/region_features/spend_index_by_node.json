@@ -1,0 +1,3252 @@
+[
+  {
+    "region_id": "41135",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 149.5,
+      "TX-FNB-CAFE": 146.0
+    }
+  },
+  {
+    "region_id": "11650",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 139.9
+    }
+  },
+  {
+    "region_id": "11680",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 149.5,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "28245",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 133.9,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "41461",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "11001",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 77.8,
+      "TX-FNB-CAFE": 127.8
+    }
+  },
+  {
+    "region_id": "26001",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 43.6,
+      "TX-FNB-CAFE": 115.6
+    }
+  },
+  {
+    "region_id": "28001",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 62.3,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41001",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 51.7
+    }
+  },
+  {
+    "region_id": "50001",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11002",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26002",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 62.3,
+      "TX-FNB-CAFE": 45.6
+    }
+  },
+  {
+    "region_id": "28002",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 149.5,
+      "TX-FNB-CAFE": 36.5
+    }
+  },
+  {
+    "region_id": "41002",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 115.6
+    }
+  },
+  {
+    "region_id": "50002",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 60.8
+    }
+  },
+  {
+    "region_id": "11003",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 118.3,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26003",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28003",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 43.6,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "41003",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 71.6,
+      "TX-FNB-CAFE": 36.5
+    }
+  },
+  {
+    "region_id": "50003",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "11004",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 49.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26004",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 112.1,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28004",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 155.7,
+      "TX-FNB-CAFE": 112.6
+    }
+  },
+  {
+    "region_id": "41004",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 65.4,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "50004",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 71.6,
+      "TX-FNB-CAFE": 149.1
+    }
+  },
+  {
+    "region_id": "11005",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 49.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26005",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 118.6
+    }
+  },
+  {
+    "region_id": "28005",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 65.4,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41005",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50005",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 152.6,
+      "TX-FNB-CAFE": 173.4
+    }
+  },
+  {
+    "region_id": "11006",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 59.2,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "26006",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 82.1
+    }
+  },
+  {
+    "region_id": "28006",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 15.6,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41006",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 31.1,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "50006",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 143.0
+    }
+  },
+  {
+    "region_id": "11007",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 28.0,
+      "TX-FNB-CAFE": 24.3
+    }
+  },
+  {
+    "region_id": "26007",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 24.3
+    }
+  },
+  {
+    "region_id": "28007",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "41007",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 74.7,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50007",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "11008",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 127.8
+    }
+  },
+  {
+    "region_id": "26008",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 161.9,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28008",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 118.3,
+      "TX-FNB-CAFE": 51.7
+    }
+  },
+  {
+    "region_id": "41008",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50008",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 140.1,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "11009",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "26009",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 59.2,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "28009",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 15.6,
+      "TX-FNB-CAFE": 85.2
+    }
+  },
+  {
+    "region_id": "41009",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 82.1
+    }
+  },
+  {
+    "region_id": "50009",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 15.6,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "11010",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 34.3,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26010",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "28010",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 155.2
+    }
+  },
+  {
+    "region_id": "41010",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 90.3,
+      "TX-FNB-CAFE": 103.4
+    }
+  },
+  {
+    "region_id": "50010",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 77.8,
+      "TX-FNB-CAFE": 88.2
+    }
+  },
+  {
+    "region_id": "11011",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 97.4
+    }
+  },
+  {
+    "region_id": "26011",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "28011",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 177.5,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "41011",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 155.2
+    }
+  },
+  {
+    "region_id": "50011",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 130.8
+    }
+  },
+  {
+    "region_id": "11012",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "26012",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 140.1,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28012",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 183.7,
+      "TX-FNB-CAFE": 63.9
+    }
+  },
+  {
+    "region_id": "41012",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "50012",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 15.6,
+      "TX-FNB-CAFE": 97.4
+    }
+  },
+  {
+    "region_id": "11013",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 136.9
+    }
+  },
+  {
+    "region_id": "26013",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 149.5,
+      "TX-FNB-CAFE": 33.5
+    }
+  },
+  {
+    "region_id": "28013",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 93.4,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "41013",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 57.8
+    }
+  },
+  {
+    "region_id": "50013",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11014",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 77.8,
+      "TX-FNB-CAFE": 66.9
+    }
+  },
+  {
+    "region_id": "26014",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 183.7,
+      "TX-FNB-CAFE": 152.1
+    }
+  },
+  {
+    "region_id": "28014",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 46.7,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "41014",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 45.6
+    }
+  },
+  {
+    "region_id": "50014",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "11015",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 18.7,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26015",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 174.4,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28015",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41015",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "50015",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 118.6
+    }
+  },
+  {
+    "region_id": "11016",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "26016",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "28016",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 161.2
+    }
+  },
+  {
+    "region_id": "41016",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 24.3
+    }
+  },
+  {
+    "region_id": "50016",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 74.7,
+      "TX-FNB-CAFE": 21.3
+    }
+  },
+  {
+    "region_id": "11017",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 49.8,
+      "TX-FNB-CAFE": 121.7
+    }
+  },
+  {
+    "region_id": "26017",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 121.4,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "28017",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41017",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 96.5,
+      "TX-FNB-CAFE": 88.2
+    }
+  },
+  {
+    "region_id": "50017",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 109.5
+    }
+  },
+  {
+    "region_id": "11018",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 121.7
+    }
+  },
+  {
+    "region_id": "26018",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 30.4
+    }
+  },
+  {
+    "region_id": "28018",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 164.3
+    }
+  },
+  {
+    "region_id": "41018",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 170.4
+    }
+  },
+  {
+    "region_id": "50018",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "11019",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 97.4
+    }
+  },
+  {
+    "region_id": "26019",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 18.7,
+      "TX-FNB-CAFE": 97.4
+    }
+  },
+  {
+    "region_id": "28019",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 71.6,
+      "TX-FNB-CAFE": 109.5
+    }
+  },
+  {
+    "region_id": "41019",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 137.0,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50019",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 85.2
+    }
+  },
+  {
+    "region_id": "11020",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 137.0,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26020",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "28020",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 174.4,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41020",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 152.6,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50020",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 158.8,
+      "TX-FNB-CAFE": 39.5
+    }
+  },
+  {
+    "region_id": "11021",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 118.3,
+      "TX-FNB-CAFE": 109.5
+    }
+  },
+  {
+    "region_id": "26021",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28021",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 21.8,
+      "TX-FNB-CAFE": 45.6
+    }
+  },
+  {
+    "region_id": "41021",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 21.8,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "50021",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 43.6,
+      "TX-FNB-CAFE": 27.4
+    }
+  },
+  {
+    "region_id": "11022",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 136.9
+    }
+  },
+  {
+    "region_id": "26022",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "28022",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 34.3,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "41022",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 168.2,
+      "TX-FNB-CAFE": 130.8
+    }
+  },
+  {
+    "region_id": "50022",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 59.2,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11023",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 68.5,
+      "TX-FNB-CAFE": 152.1
+    }
+  },
+  {
+    "region_id": "26023",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 15.6,
+      "TX-FNB-CAFE": 155.2
+    }
+  },
+  {
+    "region_id": "28023",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 133.9,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41023",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50023",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 173.4
+    }
+  },
+  {
+    "region_id": "11024",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 24.9,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "26024",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 143.0
+    }
+  },
+  {
+    "region_id": "28024",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "41024",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 57.8
+    }
+  },
+  {
+    "region_id": "50024",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 168.2,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "11025",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 90.3,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26025",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 133.9
+    }
+  },
+  {
+    "region_id": "28025",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 81.0,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "41025",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 93.4,
+      "TX-FNB-CAFE": 103.4
+    }
+  },
+  {
+    "region_id": "50025",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 121.4,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "11026",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "26026",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 33.5
+    }
+  },
+  {
+    "region_id": "28026",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "41026",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 139.9
+    }
+  },
+  {
+    "region_id": "50026",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 62.3,
+      "TX-FNB-CAFE": 130.8
+    }
+  },
+  {
+    "region_id": "11027",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 161.2
+    }
+  },
+  {
+    "region_id": "26027",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 45.6
+    }
+  },
+  {
+    "region_id": "28027",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 130.8
+    }
+  },
+  {
+    "region_id": "41027",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 18.7,
+      "TX-FNB-CAFE": 130.8
+    }
+  },
+  {
+    "region_id": "50027",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "11028",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 118.6
+    }
+  },
+  {
+    "region_id": "26028",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "28028",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 60.8
+    }
+  },
+  {
+    "region_id": "41028",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 155.7,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "50028",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 79.1
+    }
+  },
+  {
+    "region_id": "11029",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 40.5,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "26029",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 34.3,
+      "TX-FNB-CAFE": 152.1
+    }
+  },
+  {
+    "region_id": "28029",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41029",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 133.9,
+      "TX-FNB-CAFE": 88.2
+    }
+  },
+  {
+    "region_id": "50029",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 71.6,
+      "TX-FNB-CAFE": 115.6
+    }
+  },
+  {
+    "region_id": "11030",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 158.8,
+      "TX-FNB-CAFE": 63.9
+    }
+  },
+  {
+    "region_id": "26030",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 66.9
+    }
+  },
+  {
+    "region_id": "28030",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 37.4,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "41030",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 133.9
+    }
+  },
+  {
+    "region_id": "50030",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 155.7,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11031",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 168.2,
+      "TX-FNB-CAFE": 33.5
+    }
+  },
+  {
+    "region_id": "26031",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 81.0,
+      "TX-FNB-CAFE": 170.4
+    }
+  },
+  {
+    "region_id": "28031",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 97.4
+    }
+  },
+  {
+    "region_id": "41031",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 34.3,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "50031",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 121.4,
+      "TX-FNB-CAFE": 161.2
+    }
+  },
+  {
+    "region_id": "11032",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 21.8,
+      "TX-FNB-CAFE": 82.1
+    }
+  },
+  {
+    "region_id": "26032",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 40.5,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "28032",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 73.0
+    }
+  },
+  {
+    "region_id": "41032",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 49.8,
+      "TX-FNB-CAFE": 39.5
+    }
+  },
+  {
+    "region_id": "50032",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 74.7,
+      "TX-FNB-CAFE": 164.3
+    }
+  },
+  {
+    "region_id": "11033",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 18.3
+    }
+  },
+  {
+    "region_id": "26033",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 62.3,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "28033",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 155.7,
+      "TX-FNB-CAFE": 48.7
+    }
+  },
+  {
+    "region_id": "41033",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 177.5,
+      "TX-FNB-CAFE": 66.9
+    }
+  },
+  {
+    "region_id": "50033",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 180.6,
+      "TX-FNB-CAFE": 82.1
+    }
+  },
+  {
+    "region_id": "11034",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26034",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 76.1
+    }
+  },
+  {
+    "region_id": "28034",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 85.2
+    }
+  },
+  {
+    "region_id": "41034",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 77.8,
+      "TX-FNB-CAFE": 146.0
+    }
+  },
+  {
+    "region_id": "50034",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 152.6,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11035",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 127.8
+    }
+  },
+  {
+    "region_id": "26035",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 127.7,
+      "TX-FNB-CAFE": 182.5
+    }
+  },
+  {
+    "region_id": "28035",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 88.2
+    }
+  },
+  {
+    "region_id": "41035",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 149.5,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50035",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 137.0,
+      "TX-FNB-CAFE": 42.6
+    }
+  },
+  {
+    "region_id": "11036",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 46.7,
+      "TX-FNB-CAFE": 112.6
+    }
+  },
+  {
+    "region_id": "26036",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 118.6
+    }
+  },
+  {
+    "region_id": "28036",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 183.7,
+      "TX-FNB-CAFE": 42.6
+    }
+  },
+  {
+    "region_id": "41036",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 39.5
+    }
+  },
+  {
+    "region_id": "50036",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 45.6
+    }
+  },
+  {
+    "region_id": "11037",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 93.4,
+      "TX-FNB-CAFE": 146.0
+    }
+  },
+  {
+    "region_id": "26037",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 46.7,
+      "TX-FNB-CAFE": 73.0
+    }
+  },
+  {
+    "region_id": "28037",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 121.7
+    }
+  },
+  {
+    "region_id": "41037",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50037",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "11038",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 177.5,
+      "TX-FNB-CAFE": 133.9
+    }
+  },
+  {
+    "region_id": "26038",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28038",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 68.5,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "41038",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 84.1,
+      "TX-FNB-CAFE": 79.1
+    }
+  },
+  {
+    "region_id": "50038",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 37.4,
+      "TX-FNB-CAFE": 158.2
+    }
+  },
+  {
+    "region_id": "11039",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "26039",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 34.3,
+      "TX-FNB-CAFE": 36.5
+    }
+  },
+  {
+    "region_id": "28039",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 115.2,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41039",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 146.0
+    }
+  },
+  {
+    "region_id": "50039",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11040",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 136.9
+    }
+  },
+  {
+    "region_id": "26040",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 71.6,
+      "TX-FNB-CAFE": 91.3
+    }
+  },
+  {
+    "region_id": "28040",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41040",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 133.9
+    }
+  },
+  {
+    "region_id": "50040",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 140.1,
+      "TX-FNB-CAFE": 60.8
+    }
+  },
+  {
+    "region_id": "11041",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 21.8,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "26041",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 180.6,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "28041",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 21.8,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41041",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 161.2
+    }
+  },
+  {
+    "region_id": "50041",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 168.2,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "11042",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26042",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 99.6,
+      "TX-FNB-CAFE": 60.8
+    }
+  },
+  {
+    "region_id": "28042",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 51.7
+    }
+  },
+  {
+    "region_id": "41042",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 183.7,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50042",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 68.5,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "11043",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 161.9,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26043",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 62.3,
+      "TX-FNB-CAFE": 27.4
+    }
+  },
+  {
+    "region_id": "28043",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 18.7,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "41043",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 56.1,
+      "TX-FNB-CAFE": 176.5
+    }
+  },
+  {
+    "region_id": "50043",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 109.0,
+      "TX-FNB-CAFE": 54.8
+    }
+  },
+  {
+    "region_id": "11044",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 90.3,
+      "TX-FNB-CAFE": 27.4
+    }
+  },
+  {
+    "region_id": "26044",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 143.2,
+      "TX-FNB-CAFE": 57.8
+    }
+  },
+  {
+    "region_id": "28044",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 124.6,
+      "TX-FNB-CAFE": 155.2
+    }
+  },
+  {
+    "region_id": "41044",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 137.0,
+      "TX-FNB-CAFE": 57.8
+    }
+  },
+  {
+    "region_id": "50044",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 139.9
+    }
+  },
+  {
+    "region_id": "11045",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 27.4
+    }
+  },
+  {
+    "region_id": "26045",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 28.0,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "28045",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 118.3,
+      "TX-FNB-CAFE": 161.2
+    }
+  },
+  {
+    "region_id": "41045",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 137.0,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50045",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 186.8,
+      "TX-FNB-CAFE": 63.9
+    }
+  },
+  {
+    "region_id": "11046",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "26046",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 40.5,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "28046",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 24.3
+    }
+  },
+  {
+    "region_id": "41046",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 140.1,
+      "TX-FNB-CAFE": 179.5
+    }
+  },
+  {
+    "region_id": "50046",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 121.7
+    }
+  },
+  {
+    "region_id": "11047",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 183.7,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "26047",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 158.8,
+      "TX-FNB-CAFE": 124.7
+    }
+  },
+  {
+    "region_id": "28047",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 31.1,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41047",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 171.3,
+      "TX-FNB-CAFE": 106.5
+    }
+  },
+  {
+    "region_id": "50047",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 65.4,
+      "TX-FNB-CAFE": 79.1
+    }
+  },
+  {
+    "region_id": "11048",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 84.1,
+      "TX-FNB-CAFE": 94.3
+    }
+  },
+  {
+    "region_id": "26048",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 28.0,
+      "TX-FNB-CAFE": 127.8
+    }
+  },
+  {
+    "region_id": "28048",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 102.8,
+      "TX-FNB-CAFE": 60.8
+    }
+  },
+  {
+    "region_id": "41048",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 31.1,
+      "TX-FNB-CAFE": 155.2
+    }
+  },
+  {
+    "region_id": "50048",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 167.3
+    }
+  },
+  {
+    "region_id": "11049",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 87.2,
+      "TX-FNB-CAFE": 88.2
+    }
+  },
+  {
+    "region_id": "26049",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 46.7,
+      "TX-FNB-CAFE": 15.2
+    }
+  },
+  {
+    "region_id": "28049",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 81.0,
+      "TX-FNB-CAFE": 100.4
+    }
+  },
+  {
+    "region_id": "41049",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 105.9,
+      "TX-FNB-CAFE": 173.4
+    }
+  },
+  {
+    "region_id": "50049",
+    "feature_key": "spend_index_by_node",
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "source_id": "src_sbiz_market",
+    "ingested_at": "2026-08-16T17:15:57.798817+00:00",
+    "value_num": null,
+    "value_json": {
+      "TX-FOOD-BEV-COFFEE-RTD": 68.5,
+      "TX-FNB-CAFE": 121.7
+    }
+  }
+]

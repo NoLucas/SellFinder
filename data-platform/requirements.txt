@@ -1,5 +1,15 @@
-pmtiles>=3.2
-mapbox-vector-tile>=2.1
-mercantile>=1.2
-shapely>=2.1
-pytest>=8.0
+# Pinned 2026-08-17 (was >=). Verified via a clean venv (no local site-packages)
+# with `pip install -r requirements.txt` + full pytest suite + verification/
+# fixtures/vf_56_dump_features.py, matching what CI's ubuntu-latest/py3.12 job
+# does. All Linux cp312 wheels confirmed available for this exact combination
+# (including protobuf/pyclipper, mapbox-vector-tile's transitive deps) - no
+# compiler needed. Rationale + full verification log: data-platform/
+# RECONCILIATION.md. Kept ASCII-only here on purpose: a non-ASCII comment in
+# this exact file broke `pip install -r` under this machine's cp949 locale
+# during that same verification pass - not worth risking on any pip/locale
+# combination, even though CI's own locale is UTF-8.
+pmtiles==3.7.0
+mapbox-vector-tile==2.2.0
+mercantile==1.2.1
+shapely==2.1.2
+pytest==9.1.1

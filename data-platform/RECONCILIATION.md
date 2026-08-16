@@ -364,3 +364,159 @@ sbiz API 데이터로 바뀌면(A-1/A-3 다음 단계) 원시값이 외부 시�
   A 의 산출물 유무와 무관하게 막혀 있고, 이건 `intelligence/` 범위라 A 가 고칠 수
   없다. **다음 필요 행동은 B(또는 총괄자 조정)가 `output/manifest/demand_signal-{level}-
   {period}.json` 을 읽는 리더를 만드는 것.**
+
+---
+
+## 11. DISPATCH-5 (CI requirements.txt 점검 · region_feature 실데이터 계획 + 착수) · 2026-08-17
+
+### 11.1 CI(`2791644`) — requirements.txt 점검 결과: 지금은 빠진 패키지를 못 찾았다. 대신 다른 실제 결함 하나를 찾아 고쳤다
+
+`pmtiles`/`mapbox-vector-tile` 둘 다 requirements.txt 에 이미 있었다(누락 아님). 확인
+방법 — **추측하지 않고 CI 와 최대한 같은 조건을 직접 재현**했다:
+
+1. `pip download ... --platform manylinux2014_x86_64 --python-version 312 --only-binary=:all:`
+   로 CI(ubuntu-latest, py3.12)용 wheel 이 전부 존재하는지 확인 — `pyclipper`(C 확장,
+   가장 위험한 후보)까지 포함해 **전부 prebuilt wheel 있음**. 컴파일러 필요 없음.
+2. **완전히 새 venv**(로컬 site-packages 전혀 없음)에 `pip install -r data-platform/requirements.txt`
+   만으로 설치 → `pytest tests -q` **34 passed** → `verification/fixtures/vf_56_dump_features.py --source fixture`
+   (`seam` 잡이 실제로 돌리는 스크립트, pmtiles+mapbox_vector_tile 로 실제 커밋된 픽스처 타일을
+   디코드) 정상 실행. **세 번 반복해 동일 결과 확인.**
+
+**결론: 지금 시점 기준으로는 CI 전용 실패를 재현하지 못했다.** "빠진 패키지가 있다"는
+가설은 기각한다 — 추측이 아니라 직접 설치해서 실행한 결과다.
+
+**대신 이 점검 과정에서 실제 문제 하나를 만들어서 바로 잡았다**: `requirements.txt` 를
+`==` 로 정확히 고정하면서(느슨한 `>=` 는 미래에 상류 패키지가 새 버전을 내면 그 시점의
+CI 에서만 조용히 달라질 수 있는 진짜 위험이라 — 지금 당장의 실패는 아니지만 근본 원인은
+같은 종류) 한글 설명 주석을 같이 넣었는데, **그 요청 자체가 이 로컬 Windows 머신의 cp949
+로케일에서 `pip install -r requirements.txt` 를 깨뜨렸다**(`UnicodeDecodeError`, `pip`
+가 파일을 로케일 인코딩으로 읽으려다 실패). CI(ubuntu-latest) 는 로케일이 UTF-8 이라
+이 특정 실패가 거기서도 났을 거라 확신할 순 없지만, **requirements.txt 에 비-ASCII
+문자를 넣는 것 자체가 pip/로케일 조합에 따라 위험하다는 걸 직접 겪었다** — 그래서
+파일은 순수 ASCII 로 되돌리고 설명은 여기(RECONCILIATION.md)로 옮겼다.
+
+**변경 내용**: `pmtiles==3.7.0`, `mapbox-vector-tile==2.2.0`, `mercantile==1.2.1`,
+`shapely==2.1.2`, `pytest==9.1.1` — 전부 클린 venv 로 검증된 조합 그대로 고정.
+버전을 올릴 일이 생기면 이 절만큼의 검증(clean venv + pytest + seam 픽스처 스크립트)을
+다시 거쳐야 한다.
+
+### 11.2 region_feature 실데이터 전환 계획 — `03_region_features.json` feature_registry 전체 매핑
+
+공개(비 tenant_scoped) 30개 키를 카테고리별로 정리한다. `tenant_scoped` 4개는 A 범위
+밖이다(`tenant_sales` 업로드에서 파생, backend 소유).
+
+| 카테고리 | feature_key | 추천 출처 | 갱신주기 | 접근 상태 |
+|---|---|---|---|---|
+| population | `pop_total`, `pop_age_dist`, `household_count`, `single_household_ratio`, `daytime_pop`, `daytime_night_ratio`, `birth_count_12m` | 행정안전부 주민등록인구통계(`jumin.mois.go.kr`) 또는 공공데이터포털 Open API | monthly | **막힘 — §11.5 참고, SGIS 와 같은 부류(외부 계정 승인)** |
+| population | `pet_registered_count` | 동물보호관리시스템(공공데이터포털) | annual~irregular | 미조사(우선순위 낮음) |
+| income_spend | `income_decile` | KOSIS 가계동향 소득분위(지역 단위 없음 — 시도 단위만 존재할 가능성, 확인 필요) | annual | 미조사, **지역 단위 존재 여부부터 확인 필요** |
+| income_spend | `card_spend_per_capita` | 카드사/여신금융협회 (라이선스) | monthly | **`license_check:true`, `06` §3.2 상 라이선스 확인 전 프로덕션 투입 금지** — sbiz 의 `card_mcc` 와 같은 처지(ADR-004) |
+| income_spend | `spend_index_by_node` | **demand_signal 에서 파생** | demand_signal 과 동일(quarterly, sbiz 기준) | **완료 — §11.4** |
+| income_spend | `apartment_price_index` | 국토교통부 실거래가(`rt.molit.go.kr`) | monthly | 미조사 |
+| traffic_access | `foot_traffic_weekday/weekend/peak_hour` | 통신사 유동인구(유료) 또는 대중교통 승하차+집객시설 수 프록시(`03` source_caveats 가 이미 권고) | daily~monthly | **원천 유료 — 무료 프록시로 설계 전환 필요, 미착수** |
+| traffic_access | `transit_boarding_daily`, `subway_station_count` | 공공데이터포털(교통카드 통계), 국가교통DB | monthly | 미조사 |
+| traffic_access | `parking_capacity`, `road_accessibility_score` | 지자체 데이터, 도로명주소 API | irregular | 미조사, 우선순위 낮음 |
+| commercial | `store_count_by_node` | **demand_signal(sbiz)에서 파생** | quarterly | **완료 — §11.4** |
+| commercial | `store_open_rate_12m`, `store_close_rate_12m` | sbiz 개폐업 이력(demand_signal 원천과 동일 소스, 시계열 필요) | quarterly | sbiz 파이프라인 확장으로 가능 — 다음 우선순위 |
+| commercial | `avg_rent_krw_per_m2` | 상가임대료(한국부동산원, 공공데이터포털) | quarterly | 미조사 |
+| commercial | `trade_area_grade` | sbiz 상권등급(있다면) | quarterly | sbiz 원본 스펙 재확인 필요(지금 mock 생성기엔 없음) |
+| commercial | `anchor_facility_count` | 지자체 인허가 데이터(대학/병원/관공서) | irregular | 미조사 |
+| development | `new_apartment_units_12m` | 국토교통부 입주물량 | monthly | 미조사 |
+| development | `redevelopment_flag` | 지자체 정비구역 지정 현황 | irregular | 미조사. **D-19 강제 하향 조건(`redevelopment_flag=true`)과 직결되므로 §5 우선순위 재검토 대상** |
+| development | `pop_growth_rate_36m` | `pop_total` 시계열에서 파생(population 확보 후 자동) | monthly | population 의존 |
+| online | `ecommerce_order_density`, `quick_commerce_coverage`, `online_penetration_by_node` | 이커머스 플랫폼 공개 통계 또는 물류사 데이터(대부분 비공개) | 미정 | 원천 자체가 불투명 — 조사 필요 |
+
+**우선순위 제안(A 가 제안하되 확정은 jin/총괄자)**: ① `store_count_by_node`/`spend_index_by_node`
+(완료) → ② `store_open_rate_12m`/`store_close_rate_12m`(같은 sbiz 파이프라인 확장, 낮은 추가비용)
+→ ③ `pop_total`/`household_count`(외부 계정 필요하지만 D-19 강제 하향("pop_total<30,000 이면서
+adm_dong")과 §5 원래 착수 순서가 이걸 가장 필요로 함) → ④ 나머지.
+
+### 11.3 as_of 규율 — "최신값 헬퍼"를 만들지 않는 설계
+
+신규 모듈 `src/region_features/writer.py` (+ 9개 테스트). `03_region_features.json`
+point_in_time_rule 과 `01_domain_model.json` region_feature 제약을 코드로 강제한다:
+
+1. **feature_key 는 registry 등록분만 허용** — `tenant_scoped` 4개는 애초에 로드하지
+   않는다(`load_feature_registry()` 가 제외). 없는 키를 조용히 받지 않는다
+   (`test_unregistered_feature_key_rejected`).
+2. **선언 타입(number/json/string/boolean)과 실제 채운 컬럼(value_num/value_json) 불일치
+   거부** — `string`/`boolean` 타입은 도메인 모델에 전용 컬럼이 없어 `value_json`
+   에 `{"value": ...}` 로 싣도록 강제한다(설계 선택, 근거를 코드 주석에 남김 —
+   jin 이 다른 인코딩을 원하면 바꿀 수 있는 지점으로 명시).
+3. **동일 (region_id, feature_key) 유효구간 겹침 금지**(`01_domain_model.json` 제약
+   그대로) — 겹치면 `as_of` 조회가 둘 이상의 행과 만나 "어느 게 최신이냐"는 질문이
+   생기고, **그 질문 자체가 최신값 헬퍼를 부르는 압력이 된다.** 애초에 겹치는 데이터가
+   못 들어가게 막아서 그 압력의 근원을 없앴다(`test_overlapping_valid_periods_rejected`).
+4. **결측은 명시적 null 행**(`value_num=None, value_json=None`), 생략이 아니다 —
+   `feature_quality_rules`("0 으로 채우지 않는다")를 그대로 구현
+   (`test_missing_value_is_explicit_null_not_zero`). demand_signal 의 "매핑 없으면
+   행 자체가 없다"(§9.1)와는 다른 규칙이다 — 거긴 구조적으로 값을 낼 수 없는
+   경우이고, 여기는 "값을 낼 수 있는 피처인데 관측이 없는" 경우라 구분했다.
+5. **이 모듈에 조회(read) 함수를 만들지 않았다.** 쓰기 전용이다. `get_features(...,
+   as_of)` 는 이미 B 가 `intelligence/scoring/feature_store.py::RegionFeatureFileStore`
+   에 구현해 뒀고(D-13 과 같은 성격 — 이미 있는 걸 A 가 다시 만들지 않는다), A 는
+   그 리더가 기대하는 파일 형태(`data-platform/output/region_features/*.json`,
+   `intelligence/README.md` 60행)에 맞춰 쓰기만 한다. **"최신값" 이라는 개념
+   자체가 A 코드 어디에도 등장하지 않는다** — 총괄자가 강조한 "그런 함수는
+   시한폭탄이다"를 지키는 가장 확실한 방법은 아예 안 만드는 것이었다.
+
+### 11.4 착수 — `store_count_by_node` · `spend_index_by_node` 실제 발행 (파생, 신규 수집 아님)
+
+`03_region_features.json` 이 이미 이 둘을 "demand_signal 에서 파생"이라고 명시하므로,
+새 데이터원 탐색 없이 **지금 갖고 있는 §9 의 demand_signal 산출물을 region_id 로 묶어
+JSON 으로 재구성**하면 된다. 신규 모듈 `src/region_features/derive_from_demand_signal.py`
+(+ 3개 테스트, `write_region_features` 실호출까지 거쳐 스키마 호환 확인).
+
+실행 결과 (`output/manifest/demand_signal-sigungu-2026-01.json`, 250개 지역 × 매핑된
+2개 노드 입력):
+
+```
+output/region_features/store_count_by_node.json   — 250행, 86KB
+output/region_features/spend_index_by_node.json    — 250행, 87KB
+```
+
+- **`data-platform/output/region_features/` 는 B 가 `intelligence/README.md` 60행에서
+  이미 문서화한 정확한 경로다** — §10.2 에서 지적한 "demand_signal 은 기대 경로가 없다"
+  문제와 달리, 이건 B 가 이미 `RegionFeatureFileStore.from_directory()` 로 읽게 만들어
+  둔 자리다. `find data-platform/output -type f` 로 이 디렉터리가 비어 있다고 확인한
+  B 의 코멘트(§10.2 인용)가 **이제 낡았다** — 지금은 파일이 있다. (다만 `get_demand()`
+  는 여전히 별개 문제로 막혀 있다, §10.2.)
+- **억제(suppressed) 값도 그대로 포함했다** — demand_signal 단계에서 이미 안전 처리됐으므로
+  이중으로 거를 필요가 없다(테스트로 확인, `test_suppressed_demand_signal_rows_still_included_since_already_safe`).
+  매핑 자체가 없는 34개 노드는 입력에 없어서 여기도 없다 — 조용한 0 채움이 아니다.
+- `pytest tests -q` → **34 passed**(기존 22 + writer 9 + derive 3).
+
+### 11.5 population 실데이터 탐색 — 짧게 시도, 못 뚫었다. 정직하게 보고한다
+
+boundary(admdongkor) 때와 같은 방식으로 "누구나 바로 받을 수 있는 미러가 있는가"를
+찾아봤다. 결과:
+
+- `jumin.mois.go.kr`(행정안전부 주민등록인구통계) — 통계표 페이지에 CSV/XLSX 다운로드
+  버튼이 있지만 **자바스크립트로 처리되는 동적 다운로드**라 정적 URL이 없다. 클릭
+  상호작용이나 네트워크 요청 추적이 필요한데, 이건 `06_governance.md` §3 "크롤링 금지"
+  경계에 걸릴 수 있어 시도하지 않았다.
+- `data.go.kr` Open API 경로 — SGIS 와 완전히 같은 처지다: 회원가입 + 활용신청(승인
+  필요), **외부(사람) 절차**.
+- GitHub 미러(`southkorea/southkorea-population`) — 존재하지만 **2010년 데이터**다.
+  admdongkor 미러(2026-07-01 기준, 실시간에 가깝게 유지됨)와 달리 이건 16년 지난
+  스냅샷이라 "실 데이터"로 쓰면 오히려 잘못된 확신을 준다 — 안 쓰는 게 맞다고 판단했다.
+
+**결론: population 은 admdongkor 같은 지름길을 못 찾았다.** boundary 와 달리 매번
+"열려있는 최신 미러가 있다"고 가정할 수 없다는 걸 이번에 확인한 셈이다. 다음 필요
+행동은 jin/총괄자가 ①`data.go.kr` 계정 개설·Open API 승인을 받거나, ②더 나은 미러를
+알고 있다면 알려주는 것이다. **추측 데이터로 채우지 않았다.**
+
+### 11.6 종합
+
+- **끝낸 항목**: CI requirements.txt 점검(빠진 패키지 없음 확인 + 버전 고정 + 로케일
+  버그 발견·수정), region_feature 실데이터 계획(30개 공개 키 전수 매핑), as_of 규율을
+  강제하는 writer 모듈(9 테스트), `store_count_by_node`/`spend_index_by_node` 실제
+  발행(3 테스트), population 실데이터 탐색(막힘, 이유 특정)
+- **통과 확인**: `pytest tests -q` → **34 passed**. 클린 venv 3회 반복 설치 + 테스트 +
+  seam 픽스처 스크립트 전부 통과. `output/region_features/*.json` 2개 파일, `필수 필드
+  8개(`region_id`,`feature_key`,`value_num`,`value_json`,`valid_from`,`valid_to`,
+  `source_id`,`ingested_at`) 전부 존재 확인.
+- **못 한 것과 이유**: population/traffic_access/대부분의 development·online 피처는
+  아직 실데이터가 없다 — 각각 ①외부 계정 승인 필요(사람 절차, SGIS/sbiz 와 동일 부류),
+  ②원천이 유료라 무료 프록시 설계가 별도로 필요, ③원천 자체가 불투명(online) 중
+  하나에 걸린다. §11.2 표에 전부 사유와 함께 남겼다 — 추측으로 채우지 않았다.
