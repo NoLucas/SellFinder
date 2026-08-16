@@ -91,6 +91,55 @@ class MetricTestCase(unittest.TestCase):
         actual = [float(i) for i in range(20)]
         self.assertGreater(harness.top_decile_lift(predicted, actual), 1.0)
 
+    def test_wmape_is_zero_for_a_perfect_forecast(self) -> None:
+        predicted = [10.0, 20.0, 30.0]
+        actual = [10.0, 20.0, 30.0]
+        self.assertAlmostEqual(harness.wmape(predicted, actual), 0.0, places=9)
+
+    def test_wmape_worked_example(self) -> None:
+        # sum|actual-predicted| = 5+0+30 = 35; sum(actual) = 100+50+150 = 300
+        predicted = [105.0, 50.0, 120.0]
+        actual = [100.0, 50.0, 150.0]
+        self.assertAlmostEqual(harness.wmape(predicted, actual), 35.0 / 300.0, places=9)
+
+    def test_wmape_is_not_dominated_by_a_single_near_zero_actual_region(self) -> None:
+        # this is the entire point of banning plain MAPE (05_scoring_spec.md
+        # §5.2): a region with actual=1 and predicted=100 would send plain
+        # MAPE toward +9900%. wMAPE stays bounded because it's weighted by
+        # total actual, not averaged per-region.
+        predicted = [100.0] + [500.0] * 9
+        actual = [1.0] + [500.0] * 9
+        self.assertLess(harness.wmape(predicted, actual), 0.3)
+
+    def test_wmape_rejects_all_zero_actual(self) -> None:
+        with self.assertRaises(ValueError):
+            harness.wmape([1.0, 2.0], [0.0, 0.0])
+
+    def test_pi_coverage_worked_example(self) -> None:
+        lower = [0.0, 10.0, 10.0, 10.0]
+        upper = [10.0, 20.0, 20.0, 20.0]
+        actual = [5.0, 15.0, 25.0, 12.0]  # 3rd point (25) falls outside [10,20]; others inside
+        self.assertAlmostEqual(harness.pi_coverage(lower, upper, actual), 0.75, places=9)
+
+    def test_pi_coverage_is_one_when_every_actual_is_inside(self) -> None:
+        lower = [0.0] * 5
+        upper = [100.0] * 5
+        actual = [10.0, 20.0, 30.0, 40.0, 50.0]
+        self.assertAlmostEqual(harness.pi_coverage(lower, upper, actual), 1.0, places=9)
+
+    def test_pi_coverage_is_zero_when_every_actual_is_outside(self) -> None:
+        lower = [0.0] * 3
+        upper = [1.0] * 3
+        actual = [10.0, 20.0, 30.0]
+        self.assertAlmostEqual(harness.pi_coverage(lower, upper, actual), 0.0, places=9)
+
+    def test_quantile_matches_known_linear_interpolation_values(self) -> None:
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        self.assertAlmostEqual(harness._quantile(values, 0.0), 1.0, places=9)
+        self.assertAlmostEqual(harness._quantile(values, 1.0), 5.0, places=9)
+        self.assertAlmostEqual(harness._quantile(values, 0.5), 3.0, places=9)
+        self.assertAlmostEqual(harness._quantile(values, 0.25), 2.0, places=9)
+
 
 class LeakageGuardTestCase(unittest.TestCase):
     @classmethod
@@ -145,6 +194,54 @@ class LeakageGuardTestCase(unittest.TestCase):
             harness.assert_no_leakage_before_cutoff(leaky_store, self.region_ids, self.train_periods)
 
 
+class CalibrationTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.dataset = generate.generate_all(seed=42, start_period="2025-01", end_period="2026-06")
+        cls.store = SyntheticFeatureStore.from_dataset(cls.dataset)
+        cls.region_ids = cls.store.all_adm_dong_ids()
+        cls.train_periods, _ = harness.time_split(cls.dataset["manifest"]["periods"], _TRAIN_CUTOFF)
+
+    def test_calibrate_pi_multipliers_produces_an_ordered_band(self) -> None:
+        q10, q90 = harness.calibrate_pi_multipliers(
+            self.store,
+            self.region_ids,
+            _RTD_NODE,
+            "cvs",
+            self.train_periods,
+            product_attributes=_RTD_ATTRS,
+            seasonality_profile=_RTD_SEASONALITY,
+        )
+        self.assertLess(q10, q90)
+        self.assertGreater(q10, 0.0)
+
+    def test_calibrate_pi_multipliers_is_reproducible(self) -> None:
+        kwargs = dict(
+            store=self.store,
+            region_ids=self.region_ids,
+            taxonomy_node_id=_RTD_NODE,
+            channel="cvs",
+            train_periods=self.train_periods,
+            product_attributes=_RTD_ATTRS,
+            seasonality_profile=_RTD_SEASONALITY,
+        )
+        a = harness.calibrate_pi_multipliers(**kwargs)
+        b = harness.calibrate_pi_multipliers(**kwargs)
+        self.assertEqual(a, b)
+
+    def test_calibrate_pi_multipliers_rejects_too_little_data(self) -> None:
+        with self.assertRaises(ValueError):
+            harness.calibrate_pi_multipliers(
+                self.store,
+                self.region_ids[:1],
+                _RTD_NODE,
+                "cvs",
+                self.train_periods[:1],
+                product_attributes=_RTD_ATTRS,
+                seasonality_profile=_RTD_SEASONALITY,
+            )
+
+
 class RunBacktestTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -174,8 +271,18 @@ class RunBacktestTestCase(unittest.TestCase):
         self.assertGreater(len(all_splits), 0, "no validation period produced a scorable split")
         mean_rho = sum(s.spearman_rho for s in all_splits) / len(all_splits)
         mean_lift = sum(s.top_decile_lift for s in all_splits) / len(all_splits)
+        mean_wmape = sum(s.wmape for s in all_splits) / len(all_splits)
+        mean_coverage = sum(s.pi_coverage for s in all_splits) / len(all_splits)
         self.assertGreater(mean_rho, 0.3, f"mean out-of-sample Spearman rho too low: {mean_rho:.3f}")
         self.assertGreater(mean_lift, 1.2, f"mean out-of-sample top-decile lift too low: {mean_lift:.3f}")
+        # 05_scoring_spec.md §5.2 v1 targets (T2): wMAPE <= 0.25, PI coverage 0.75-0.85.
+        # This is a backtest-only empirical PI (see harness.py module docstring),
+        # not the Step 5 calibration model, so the bar here is "produces a
+        # sane, non-degenerate number" rather than the T2 production target.
+        self.assertGreaterEqual(mean_wmape, 0.0)
+        self.assertGreaterEqual(mean_coverage, 0.0)
+        self.assertLessEqual(mean_coverage, 1.0)
+        self.assertGreater(mean_coverage, 0.3, f"PI coverage implausibly low - band may be miscalibrated: {mean_coverage:.3f}")
 
     def test_run_backtest_holdout_regions_are_disjoint_from_the_full_set_report(self) -> None:
         result = harness.run_backtest(

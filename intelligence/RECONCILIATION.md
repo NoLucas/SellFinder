@@ -250,3 +250,58 @@
 - 못 한 것과 이유: 모델 카드(`known_limitations`/`do_not_use_for`, BRIEF-B §2 항목 3)는
   DISPATCH B-4 완료 조건에 없어 이번 회차에는 작성하지 않았다. wMAPE/PI coverage는 위에서
   설명한 대로 Step 5(잔차분포) 선행 필요로 구현 불가.
+
+## 8. 총괄자 지시 2차 회신 (VF-012 + 모델 카드)
+
+- 끝낸 항목: VF-012(백테스트 하네스에 wMAPE·PI coverage 추가), 모델 카드
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 60개 전체 통과 (B-1~B-4 + 이번 변경 누적)
+  Ran 60 tests in 0.827s
+  OK
+
+  # 완료 판정 1: 백테스트 실행 시 rho/wMAPE/coverage 세 지표가 모두 출력되는가
+  $ python -c "..."   # RECONCILIATION 본문 하단 표와 동일한 실행
+  2026-01 n=44 rho=0.941 lift=2.698 wmape=0.482 coverage=0.818
+  2026-02 n=42 rho=0.919 lift=2.522 wmape=0.459 coverage=0.786
+  2026-03 n=43 rho=0.892 lift=2.669 wmape=0.494 coverage=0.837
+  2026-04 n=44 rho=0.947 lift=2.835 wmape=0.392 coverage=0.773
+  2026-05 n=43 rho=0.893 lift=2.789 wmape=0.385 coverage=0.814
+  2026-06 n=44 rho=0.941 lift=2.910 wmape=0.335 coverage=0.773
+  holdout 2026-04 n=10 rho=0.976 lift=1.705 wmape=0.564 coverage=0.900
+  mean: rho=0.922 lift=2.737 wmape=0.425 coverage=0.800
+
+  # 완료 판정 2: 누수 함정 피처를 하네스가 여전히 잡는가
+  correct store: guard passed (no leakage)
+  broken store: guard CAUGHT it -> as_of=2025-01-01 (training period '2025-01', before
+    2026-01-01) saw a non-null leak_trap_future_rtd_signal for 25 region(s): {...}
+  ```
+
+  **VF-012 변경 내용**: `intelligence/backtest/harness.py`에 `wmape()`(sum|actual-predicted| /
+  sum(actual) — 실판매량 가중, MAPE 단독 금지 이유대로 실적 0에 가까운 지역 하나가 지표를
+  발산시키지 못하게 함), `pi_coverage()`(구간 안에 든 비율), `_quantile()`(선형보간 경험적
+  분위수), `calibrate_pi_multipliers()`(학습 구간의 실제/예측 비율 10·90분위수를 곱셈
+  계수로 반환 — Step 5 진짜 잔차분포 모델이 아니라 백테스트 전용 경험적 추정이라고
+  모듈 독스트링과 모델 카드에 명시)를 추가했다. `SplitResult`에 `wmape`/`pi_coverage` 필드를
+  추가하고 `evaluate_period`가 검증 기간의 각 지역에 `pi_q10_multiplier`/`pi_q90_multiplier`를
+  곱해 구간을 만들도록 확장. `run_backtest`는 PI 보정을 **학습 구간에서만** 계산하고(검증
+  구간을 보정에 쓰면 coverage 자체가 leak), holdout 평가는 `train_regions`만으로 보정해
+  holdout 지역이 자기 보정에 쓰이지 않게 했다. 지표 결과는 §5.2 T2 목표 대비 ρ 0.92(≥0.60
+  통과)·lift 2.74(≥2.0 통과)·coverage 0.80(0.75~0.85 목표 구간 내)·wMAPE 0.43(≤0.25 미달,
+  이유는 모델 카드 §3에 설명 — `expected_demand_units`가 원화 캘리브레이션 값이 아니라
+  상대 단위이기 때문).
+
+  누수 가드(`assert_no_leakage_before_cutoff`)는 이번 변경으로 로직이 바뀌지 않았고, PI
+  보정용 `_collect_residual_ratios`도 호출자가 넘긴 `train_periods`만 순회해 검증 기간을
+  건드리지 않는다 — 재실행해도 여전히 깨진 접근자를 잡는다(위 출력 참고).
+
+  **모델 카드**: `intelligence/scoring/MODEL_CARD.md` 신설. §1(합성 데이터로만 학습·검증,
+  seed 42, 2025-01~2026-06), §2(전제 5가지 — ADR-004 `spend_krw` 항상 null, T0 금액 항상
+  null, `tenant_calibration` 전 tier 중립 고정, 8요인 고정, 벤치마크가 요청 지역 집합
+  내부에서 계산됨), §3(위 백테스트 표 + 지역유형별 분해를 실제로 돌려서 얻은 표 — metro
+  ρ=0.78/coverage=0.87, major_city ρ=0.68/coverage=0.88, mid_city ρ=0.69/coverage=0.81,
+  **rural ρ=0.45/coverage=0.20**), §4 known_limitations 9개, §5 do_not_use_for 5개.
+  지역유형별 분해는 `dataset["_profiles"]`의 `region_type`으로 실제 계산한 값이며, 카드에
+  적힌 모든 수치는 재현 명령이 달려 있다 — 만들어낸 숫자는 없다.
+- 못 한 것과 이유: 없음. 지시받은 두 항목(VF-012, 모델 카드) 모두 완료.
