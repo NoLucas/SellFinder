@@ -6,6 +6,211 @@
 
 ---
 
+## 회차: 7회차 · 2026-08-17 · CI 자체 감사 + RLS 검증 계획 준비 (판정 기준 HEAD `2791644`)
+
+정식 회차 지시 없이 총괄자가 준비 작업 두 건을 요청했다. A/B/C/D 는 3차 사이클 지시를
+받았으나 이 회차 작업 중에도 계속 커밋이 들어왔다(예: C 의 `6df2b19` VF-016 수정) — 이번
+회차가 그 커밋들을 판정하는 회차는 아니다. CI 감사는 총괄자가 지목한 커밋 `2791644` 를
+기준으로 고정했다.
+
+## 요약
+
+| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨(누적) | 확인 불가 |
+|---|---|---|---|---|---|---|---|
+| 0 | 1 | 0 | 0 | **1** | 0 | 16 | 2(RLS 는 여전히 확인 불가 — 설계안 대기, 계획만 준비) |
+
+CI 게이트 3개 중 2개(seam, mutation)는 실코드 회귀로 직접 검증해 **진짜로 작동함**을
+확인했다. **1개(privacy-and-honesty 의 T0 검사 절반)는 검증 도중 진짜로 가짜인 것을
+발견했고, 검증자 소유 픽스처 수정으로 그 자리에서 닫았다** (VF-017, S2 — 발견 즉시 해소).
+
+---
+
+## 1. CI 게이트 감사 — "통과만 보지 말고 고장을 내서 빨간불이 나는지 봐라"
+
+GitHub Actions 를 직접 트리거하지 않았다(원격 저장소에 실제로 존재하는 CI 라 푸시는
+공유 상태에 영향을 준다 — 총괄자 지시는 "보고만 해라"였지 트리거해도 된다는 뜻이 아니었다).
+대신 `git worktree` 로 격리한 사본에서 **ci.yml 에 적힌 명령을 문자 그대로**, 각 잡이 쓰는
+것과 동일한 방식으로 클린 venv 를 만들어 재현했다 — 공유 워킹트리는 전혀 건드리지 않았다.
+
+### seam 잡 — 진짜로 작동한다
+
+클린 venv(`pip install -r data-platform/requirements.txt`)로 `vf_56_dump_features.py
+--source fixture` → `vf_56_join.mjs --strict` 를 그대로 실행:
+
+```
+정상 상태: exit 0, "5 feature(s) received a score - no violation"
+backend/samples/scores.json 의 region_id 를 의도적으로 오염(BROKEN_ 접두):
+  exit 1, "STRICT: 0 features received a score - join is broken (VF-003 shape)"
+```
+
+**판정: 진짜.** 실제 파일을 깨면 실제로 빨간불이 난다.
+
+### mutation 잡 — 진짜로 작동한다
+
+`intelligence/tests/test_factor_model.py` 를 VF-001 수정 **이전** 버전(커밋 `a8f1e34`,
+항등식만 검사하던 버전)으로 격리 사본에서 교체하고 CI 스텝을 그대로 실행:
+
+```
+M1: "GATE WOULD FAIL (exit 1) - correctly detected weak safety net"
+M2: "GATE WOULD FAIL (exit 1) - correctly detected weak safety net"
+```
+
+**판정: 진짜.** 안전망이 실제로 약해지면 게이트가 실제로 빨간불을 낸다.
+
+### privacy-and-honesty 잡 — 절반은 가짜였다 (VF-017)
+
+`tenant_id` 주입 검사는 격리 사본에서 `security.py` 의 `_reject_tenant_id_injection`
+호출을 실제로 지우고 재현 — **exit 1, 위반 7건 정확히 나열.** 진짜다.
+
+**T0 검사가 문제였다.** `routers/predictions.py` 의 `_confidence_for_tier` 클램프와
+`_expected_revenue_for` 의 T0 null 처리를 실제로 지우고 `vf_t0_api.py --strict` 를
+그대로 실행했더니:
+
+```
+$ (T0 신뢰도 클램프 + T0 금액 null 처리 둘 다 코드에서 제거한 상태)
+exit 0
+  above ceiling (=='high')        : 0   (contract: must be 0)
+  rows with non-null expected_revenue_krw : 0
+STRICT: no violations
+```
+
+**두 겹 다 지웠는데도 게이트가 초록불을 냈다.** 원인을 추적하니 픽스처의 결함이 아니라
+**픽스처가 건드리는 실제 파이프라인 자체가 지금 이 값들을 절대로 만들어내지 않는다**:
+
+- `prediction_store.compute_regions()` 는 `confidence_level="low"` 를 **하드코딩**한다
+  (신뢰도 산식 자체가 아직 미구현 — Step 4/5). "low" 는 "medium" 상한을 절대 초과하지
+  않으므로, 클램프 코드를 완전히 지워도 아무 것도 안 걸린다.
+- `intelligence_client` 가 반환하는 `expected_revenue_krw` 도 **모든 tier 에서** 항상
+  `None` 이다(Step 5 미구현, README §5). T0 전용 null 처리를 지워도 애초에 null 로 채울
+  값 자체가 없으니 아무 것도 안 걸린다.
+
+즉 `vf_t0_api.py` 가 만드는 `run_t0probe` 는 **실제 `/predictions` 파이프라인(진짜
+compute_regions 경로)을 그대로 태우는데**, 그 파이프라인이 지금 이 순간 "high" 신뢰도나
+"non-null" 금액을 낼 수 있는 상태 자체가 아니라서, 클램프·redact 코드가 있든 없든 검사가
+**항상 통과한다.** CHARTER 가 말하는 "빈 테스트"의 정확한 사례다 — 이름은 검사처럼 보이지만
+실제로는 상시 참을 단언한다.
+
+**4~6회차의 내 이전 "독립 검증"들이 왜 이걸 못 잡았는가**: 그때는 `create_run(...,
+regions=[...])` 로 `confidence_level='high'` 인 지역을 **직접 만들어** 주입해서 클램프
+자체를 시험했다 — 맞는 방법이었지만, **CI 가 실제로 돌리는 `vf_t0_api.py` 는 그렇게 하지
+않는다.** CI 게이트와 내 수기 검증이 서로 다른 것을 테스트하고 있었다.
+
+**같은 회차 안에서 해소했다** (검증자 소유 `verification/fixtures/` 안의 수정이라 결함
+수정이 아니라 픽스처 보강으로 처리, VF 번호는 매겼다 — 이게 CI 게이트를 무력화하는 실재
+결함이었기 때문이다):
+
+`vf_t0_api.py` 에 **명시적 시드 시나리오**를 추가했다 — `compute_regions()` 를 거치지
+않고 `create_run(..., regions=[RegionScore(confidence_level="high", expected_revenue_p50=
+200_000_000, ...)])` 로 직접 만든 지역 하나를 T0 run 에 넣어, 클램프/redact 코드
+자체를 파이프라인 준비 상태와 무관하게 시험한다. 격리 사본에서 같은 회귀(클램프+redact
+둘 다 제거)를 다시 주입해 재확인:
+
+```
+exit 1
+STRICT: 3 violation(s):
+  - T0 /regions (explicit-seed) returned non-null expected_revenue_krw ...
+  - T0 /regions (explicit-seed) returned confidence.level=='high' ...
+  - T0 /scores (explicit-seed) returned confidence_level=='high' ...
+```
+
+기존 "실 파이프라인" 시나리오는 **지우지 않고 그대로 남겼다** — "지금 실제로 무슨 값이
+나오는가"를 정직하게 보여주는 것도 가치가 있고, Step 4/5 가 들어오면 그 시나리오도 저절로
+의미를 갖게 된다. 둘 다 `--strict` 판정에 들어간다.
+
+### S2 — VF-017 · `privacy-and-honesty` CI 게이트의 T0 검사가 실제 파이프라인에 대해 상시-통과였다 (검증자, 발견 즉시 해소)
+
+- 위치: `verification/fixtures/vf_t0_api.py`(원인은 픽스처가 아니라 파이프라인의 미구현
+  상태였지만, 게이트를 진짜로 만드는 책임은 픽스처 소유자인 검증자에게 있다)
+- 재현: 위 "privacy-and-honesty 잡" 절 참조. `_confidence_for_tier` 클램프와
+  `_expected_revenue_for` 의 T0 null 처리를 실제로 제거한 상태에서 원래 픽스처는
+  `--strict` 로도 0 위반을 보고했다(거짓 초록불).
+- 해소: 명시적 시드 시나리오 추가. 같은 회귀 재주입 시 3건 위반 정확히 검출 확인.
+- 영향 범위: `privacy-and-honesty` 잡의 tenant_id 주입 검사는 영향 없음(별도 확인). 다른
+  두 잡(seam, mutation)도 영향 없음.
+- 근거: `05_scoring_spec.md` §2·§8-2, `DECISIONS.md` D-03, CHARTER "빈 테스트" 유형
+- 담당: 검증자 (해소 완료)
+- 나이: 7회차 신규 → 같은 회차에 해소
+
+---
+
+## 2. RLS 검증 계획 — C 의 설계안 도착 전 준비 (판정 아님)
+
+`backend/`·`orchestrator/` 전체를 검색했으나 PostgreSQL/RLS 설계 문서는 아직 없다
+(계약 문서의 요구사항 텍스트만 있음). 도착하면 아래 기준으로 판정한다.
+
+### 핵심 질문: 애플리케이션 `WHERE` 절 격리인가, DB 정책 강제인가
+
+총괄자가 짚은 그대로가 판정 기준이다 — **`WHERE tenant_id = ?` 를 의도적으로 빼고도 다른
+테넌트 데이터가 안 나와야 진짜 RLS 다.** 이걸 확인하려면 애플리케이션 코드(ORM, ai 생성
+쿼리)를 거치지 않고 **DB 에 직접** 접속해서 확인해야 한다 — 앱 코드가 맞게 짰는지를 보는
+게 아니라, 앱 코드가 **틀리게 짜도** DB 가 막아주는지를 봐야 하기 때문이다.
+
+### 체크리스트 (설계안이 오면 이 순서로 검증)
+
+1. **`FORCE ROW LEVEL SECURITY` 가 걸려 있는가, `ENABLE` 만인가.**
+   가장 흔한 함정 — `ENABLE ROW LEVEL SECURITY` 만 걸면 **테이블 소유자(owner) 역할은
+   정책을 무조건 우회한다.** 앱이 테이블을 만든 역할로 접속하면(개발 환경에서 흔함)
+   RLS 가 있는 것처럼 보이지만 실제로는 전혀 안 걸린다. `FORCE` 가 없으면 그 자체로 findings.
+2. **앱의 런타임 DB 접속 역할이 superuser 도 table owner 도 아닌가.**
+   둘 다 RLS 를 무조건 우회한다(정책과 무관하게). `\du`, `information_schema` 로 확인.
+3. **정책의 `USING` 절이 세션 변수(`current_setting('app.tenant_id')` 등)를 참조하는가,
+   아니면 상수/조건 없음(사실상 전체 허용)인가.**
+4. **테넌트 컨텍스트를 `SET LOCAL` 로 세팅하는가, `SET`(세션 전체) 인가.**
+   커넥션 풀링(pgbouncer 등)을 쓰면 `SET` 은 다음 요청까지 남아 **다른 테넌트로 재사용된
+   커넥션에 이전 테넌트 컨텍스트가 새는** 고전적 사고 유형이다. `SET LOCAL` 은 트랜잭션
+   종료 시 자동 리셋된다 — 이게 필수 조건이다.
+5. **재현 스크립트로 직접 확인** — 앱 코드/ORM 을 전혀 거치지 않고, raw driver(예:
+   `psycopg`)로 앱과 동일한 런타임 역할로 접속해:
+   - 테넌트 A 컨텍스트를 세팅하고 `SELECT * FROM <table>` (WHERE 없이) 실행 →
+     테넌트 A 행만 나와야 함.
+   - 컨텍스트를 아예 세팅하지 않고 같은 쿼리 실행 → **0행이거나 에러**여야 함(기본값이
+     "전체 허용"이면 그 자체가 결함 — deny-by-default 여야 한다).
+   - 이 스크립트가 `verification/fixtures/` 산출물이 된다 — `vf_52_tenant.py` 가 앱
+     레이어에서 하는 것과 같은 역할을, DB 레이어에서 한다.
+6. **커넥션 풀 재사용 시나리오** — 같은 커넥션으로 테넌트 A → 테넌트 B 순서로 두 요청을
+   흘려보내 B 요청에서 A 데이터가 안 보이는지 확인(4번의 실사용 시나리오 버전).
+
+### 이번 회차에 미리 정해둔 판정 기준
+
+- 1·2번 중 하나라도 실패 → **S1 후보**(RLS 가 있는 것처럼 보이지만 실제로 우회 가능).
+- 4번에서 `SET`(LOCAL 아님) 사용 + 커넥션 풀링 사용 → **S1 후보**(풀링 환경에서 실제 유출
+  경로).
+- 5번의 "컨텍스트 미설정 시 0행/에러"가 아니라 전체 테넌트 데이터가 나오면 → **S1**
+  (deny-by-default 위반, `06_governance.md` §1.2 자체 위반).
+- 전부 통과하면 그때 "확인 불가" 를 "O" 로 전환한다 — 그 전까지는 설계 문서만으로
+  판정하지 않는다(문서가 맞다고 적혀 있어도 실제 DB 로 재현 전엔 추정 등급).
+
+### 추가 — C 의 설계안(`a6c4630`)이 이 회차 작업 도중 실제로 도착했다
+
+체크리스트를 쓰는 중에 C 가 `backend/RECONCILIATION.md` 에 설계안을 올렸다(코드 변경
+없음, "구현 안 함" 명시). **문서 검토만 했다 — 위 §2 의 5·6번(raw driver 재현, 실제 DB)은
+구현이 없어 아직 실행할 수 없다. 아래는 "문서가 스스로 말하는 것"과 위 체크리스트를
+대조한 결과이지, DB 로 재현한 판정이 아니다. RLS 는 여전히 확인 불가로 남긴다.**
+
+| 체크리스트 항목 | 설계안이 다루는가 |
+|---|---|
+| 1. FORCE vs ENABLE | **다룸.** 4개 테이블 전부 `FORCE ROW LEVEL SECURITY` 명시, ENABLE 만으로는 소유자가 우회한다는 이유까지 정확히 적음 |
+| 2. 앱 런타임 롤이 owner/superuser 아님 | **다룸.** `sellfinder_app` 이라는 별도 저권한 롤(`BYPASSRLS` 없음) 을 마이그레이션 롤과 분리 |
+| 3. `USING` 이 세션 변수 참조 | **다룸.** `current_setting('app.current_tenant_id', true)` — 계약(`06_governance.md` §1.2)이 예시로 든 GUC 이름을 그대로 써서 VF-004 류의 "이름이 계약과 어긋남" 재발을 피함. `missing_ok=true` 로 세팅 누락 시 결과가 "새는 것"이 아니라 "전부 거부"가 되는 것까지 설계 이유를 정확히 적음(내 체크리스트가 요구한 것보다 한 걸음 더 나감) |
+| 4. `SET LOCAL` vs `SET` | **다룸.** 트랜잭션 안에서 `set_config(..., true)` 로 강제, 단일 진입점(`get_db_session`) 으로 모아 라우터마다 반복 안 하게 함 — `get_tenant_id`/`_build_views()` 와 같은 패턴 재사용 |
+| 5. raw driver 재현 스크립트 | **구현 전이라 없음.** 대신 "인메모리 목업으로 RLS 테스트하는 건 무의미하다, CI 에 진짜 Postgres 서비스 컨테이너가 있어야 한다"고 명시 — 내 계획과 같은 결론 |
+| 6. 커넥션 풀 재사용 시나리오 | **다룸.** §3 이 "SET 을 커넥션 풀에서 쓰다 다음 요청에 값이 새는" 사고를 RLS 자체보다 흔한 실제 유출 경로로 명시하고 그게 이 설계의 핵심 근거임 |
+
+체크리스트에 없던 것 중 눈에 띄는 것: `WITH CHECK` 절(조회뿐 아니라 삽입·수정 시에도
+tenant_id 불일치를 거부 — 애플리케이션 버그가 있어도 2차 방어), `region_score` 에
+`tenant_id` 를 비정규화(조인을 빠뜨리는 정책 실수 자체를 구조적으로 없앰), `set_config`
+파라미터 바인딩으로 tenant_id 문자열 이어붙이기(SQL 인젝션 표면) 회피, 향후 뷰 생성 시
+`security_invoker` 필요성까지 미리 남겨둠.
+
+**잠정 판정: 문서 수준에서는 이 회차 체크리스트가 요구하는 6개 항목을 전부 다루고 있고,
+일부는 더 신중하다.** 그러나 이건 "문서가 맞다"는 확인이지 "DB 가 실제로 막는다"는
+확인이 아니다 — §2 의 원칙을 스스로 어기지 않기 위해 등급을 올리지 않는다. jin 승인 후
+구현이 들어오면 5·6번(raw driver 스크립트, 풀 재사용 시나리오)을 실제 Postgres 에 대고
+돌려서 최종 판정한다.
+
+---
+
+
 ## 회차: 6회차 · 2026-08-17 · 판정 기준 HEAD `8e047fe` (판정 시작 시점에 고정)
 
 지시받은 두 건을 판정하고, `verification/fixtures/` 세 개에 `--strict` 를 추가했다.

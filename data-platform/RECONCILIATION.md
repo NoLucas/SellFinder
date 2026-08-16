@@ -520,3 +520,25 @@ boundary(admdongkor) 때와 같은 방식으로 "누구나 바로 받을 수 있
   아직 실데이터가 없다 — 각각 ①외부 계정 승인 필요(사람 절차, SGIS/sbiz 와 동일 부류),
   ②원천이 유료라 무료 프록시 설계가 별도로 필요, ③원천 자체가 불투명(online) 중
   하나에 걸린다. §11.2 표에 전부 사유와 함께 남겼다 — 추측으로 채우지 않았다.
+
+### 11.7 부록 — 커밋 사고와 정정 (모든 에이전트에게 해당되는 운영 위험)
+
+`git add data-platform && git commit` 직후 커밋(`8b0bd8d`)에 `intelligence/`(README.md,
+RECONCILIATION.md, factors.py, model.py, 신규 tenant_layer.py/test_tenant_isolation.py) 와
+`verification/`(FINDINGS.md, TRACEABILITY.md, vf_t0_api.py) 파일까지 같이 들어간 것을
+발견했다. **이 저장소는 `git worktree list` 확인 결과 단일 워크트리이고, 여러 에이전트
+세션이 같은 인덱스(스테이징 영역)를 공유한다.** 내가 `git add data-platform` 을 실행하기
+직전 다른 세션(B, 검증자로 추정)이 이미 자기 폴더를 `git add` 해둔 상태였던 것으로 보인다
+— `git add <경로>` 는 기존 스테이징을 대체하지 않고 추가하므로, 그 상태에서 커밋하면
+전부 한 커밋에 묶인다. **`git add data-platform` 만 쓰라는 지시를 그대로 따랐는데도
+발생했다** — 그 지시만으로는 이 위험을 못 막는다는 뜻이다.
+
+origin 에 아직 안 나간 상태(`git log origin/master..HEAD` 로 확인)라 안전하게 되돌렸다:
+`git reset --soft HEAD~1` (작업트리 파일은 전혀 안 건드림) → `git reset` 으로 언스테이지
+→ `git add data-platform` 재실행 → `git diff --cached --name-only` 로 data-platform
+파일만 있는지 확인 후 재커밋(`732b262`). 다른 폴더 파일들은 원래 상태(각자 세션이
+스테이징하기 전, 작업트리엔 그대로) 그대로 복원됐다 — 아무 내용도 잃지 않았다.
+
+**다음 에이전트/총괄자에게 남기는 교훈**: `git add {내 폴더}` 뒤에도 **커밋 직전에
+`git diff --cached --name-only` 로 스테이징된 파일 목록이 정말 내 폴더뿐인지 확인**해야
+한다. 폴더명으로 `git add` 하는 것만으로는 동시 커밋 경합을 막지 못한다.

@@ -70,7 +70,7 @@ TS2322 두 건 외에 **구조적 불일치는 없다**. 이건 TS 의 JSON 임�
 |---|---|---|---|---|---|
 | 1.1a | 다른 테넌트의 run 이 새지 않음 | §1.1 | `backend/tests/test_predictions_regions.py:31` | 통과 | O |
 | 1.1b | **`tenant_id` 를 쿼리/바디/헤더로 받으면 `400 TENANT_ID_NOT_ALLOWED`** | §1.1 | **없음** | 검증자가 직접 주입 → 전부 **200, 조용히 무시** | **위반 — VF-002** → **(2회차: 통과)** 쿼리·헤더 7경로 전부 400 TENANT_ID_NOT_ALLOWED |
-| 1.2 | RLS 를 DB 레벨에 건다 | §1.2 | **없음** | DB 자체가 없음(`prediction_store.py` 인메모리) | **확인 불가** |
+| 1.2 | RLS 를 DB 레벨에 건다 | §1.2 | **없음** | DB 자체가 없음(`prediction_store.py` 인메모리) | **확인 불가** — 7회차에서 검증 계획 수립(`FINDINGS.md` "회차: 7회차" §2). C 의 설계안 도착 시 그 계획대로 판정 |
 | 1.3 | `tenant_scoped` 피처가 공용 피처스토어에 안 들어감 | §1.3 | `intelligence/tests/test_synthetic_generator.py:36` | 통과 | O (단 3개 키를 계약에서 읽지 않고 테스트에 하드코딩 — 계약에 키가 추가되면 못 잡는다. VF-007) → **(2회차: 통과)** `contracts.load_tenant_scoped_feature_keys()` 로 계약에서 직접 읽도록 변경됨 |
 | 1.4 | 공용 기저 모델에 `tenant_sales` 미혼입 | §1.4 | **없음** (학습 코드 미구현) | — | **구멍** |
 | 1.5 | 캐시 키에 `tenant_id` 포함 | §1.5 | **없음** | 서버측 캐시 계층 없음. 단 C 가 인증 응답에 `Cache-Control: public` 을 붙임 | **구멍 — VF-006** → **(2회차: 통과)** 서명 응답은 `Cache-Control: private`로 분기됨 |
