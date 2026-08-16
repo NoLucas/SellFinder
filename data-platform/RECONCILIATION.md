@@ -63,3 +63,24 @@ STEP 2 (역할별 지시)는 아직 착수하지 않았다. 이 문서는 리컨
 ---
 
 **요약**: 구 `/data-pipeline`의 도메인 지식(상권/인구/소비를 지역 단위로 본다는 것 자체)과 수집기 추상화 구조는 재사용 가능하지만, 데이터 모델(통짜 레코드 → 시점정합 피처), 결측 처리(0 치환 → null), 카테고리 체계(자유 텍스트 → 택소노미 코드)는 전면 리팩터링 대상이다. tenant_sales 인제스트, k-익명성 마스킹, region_code_mapping은 완전히 새로 만들어야 한다. 기존 코드는 삭제하지 않았다.
+
+> 이 문서 상단은 STEP 1(리컨실) 시점 기록으로 낡았다 — STEP 2 경계 타일 파이프라인(boundary_tiles)은 그 뒤 커밋에서 실제로 만들어졌다. 아래는 `orchestrator/DISPATCH.md` 1차 지시(A-1~A-5) 실행 결과다.
+
+---
+
+## 7. DISPATCH 1차 (A-1~A-5) 실행 결과 · 2026-08-16
+
+지시 근거: `orchestrator/DISPATCH.md` §1, `shared/contracts/ADR-005-tile-join-key.md`, `DECISIONS.md` D-11/D-12/D-13/D-20.
+지시된 순서(A-1→A-2→A-3→A-4→A-5, A-3 이 A-4 보다 먼저) 그대로 실행했다.
+
+- **끝낸 항목**: A-1, A-2, A-3, A-4, A-5
+- **통과 확인**:
+  - A-1 — `git ls-files data-platform/output/manifest` → `regions-sido-2026-01-01.json`, `regions-sido-2026-07-01.json` (비어 있지 않음). `git ls-files 'data-platform/**/*.pmtiles'` → `data-platform/fixtures/regions-sigungu-fixture.pmtiles` 단 1건(A-4 픽스처 예외뿐, `output/tiles/` 아래 실 아티팩트는 0건).
+  - A-2 — `data-platform/.venv/Scripts/python.exe verification/fixtures/vf_56_tile_probe.py` 대신 (해당 스크립트가 참조하는 `output/tiles/*.pmtiles` 자체를 새 파이프라인으로 재빌드 후) 직접 디코드 확인: 재빌드된 `regions-sido-2026-01-01.pmtiles`, `regions-sigungu-fixture.pmtiles` 모두 피처 `properties`에 `region_id` 원문 문자열 존재. `pytest tests -q` 의 `test_build_vintage_end_to_end` 가 `"region_id" in feat["properties"]` 를 단언하며 통과. 매니페스트 엔트리에 `id_map_path` 없음.
+  - A-3 — 신규 테스트 `test_build_fails_when_feature_id_property_missing_from_tile` 통과: `region_id` 속성을 제거한 피처로 빌드 시 `TileJoinKeyVerificationError` 발생 확인. 수동 재현으로도 동일 결과 확인(별도 스크립트, region_id 제거 → 빌드 실패). `pytest tests -q` → **7 passed**.
+  - A-4 — `data-platform/fixtures/regions-sigungu-fixture.pmtiles`(250 피처, 386KB, 5MB 이하) + `manifest-fixture.json`(`boundary_vintage: "fixture"`) 생성. `backend/samples/scores.json` 이 쓰는 5개 region_id(`41135`,`11650`,`11680`,`28245`,`41461`) 전부 실제 타일 디코드로 확인됨(`region_id` 속성 매칭). `python tools/validate_contracts.py --check-manifest data-platform/fixtures/manifest-fixture.json` → **오류 0건**.
+  - A-5 — 레벨 산출 순서를 `LEVEL_BUILD_ORDER = ("sigungu", "adm_dong", "sido")` 로 `build.py` 에 명시. 이번 사이클에서 처음 새로 낸 레벨이 `sigungu`(A-4 픽스처)로, 순서 그대로 이행. `sido` 는 기존에 이미 나가 있던 두 빈티지를 새 파이프라인(A-2/A-3 반영)으로 재빌드만 함 — 새로 만들지 않음. `adm_dong` 은 아직 소스 경계 데이터가 없어 이번 사이클 대상 아님(§5 순서상 다음 작업).
+- **못 한 것과 이유**:
+  - `adm_dong` 레벨의 실제/픽스처 빌드 — 소스 GeoJSON 경계 데이터가 아직 없다(§5 "region 모델" 선행 작업 미착수). A-5 는 순서만 지시했지 이 사이클에 adm_dong 산출을 요구하지 않았다.
+  - `python tools/validate_contracts.py --base origin/master --agent A` — 실행하면 오류 21건이 뜨지만, 전부 `backend/`, `intelligence/`, `shared/contracts/`, `tools/` 파일이고 `data-platform/` 은 0건이다(`git diff --cached --name-only` 로 직접 확인 — 이번 스테이징엔 data-platform 파일만 있음). `origin/master` 가 여러 에이전트의 기존 로컬 커밋들보다 한참 뒤처져 있어 이 비교 자체가 지금 시점엔 모두를 걸리게 만드는 것으로 보인다. 이 검사 도구(`tools/`)는 소유 범위 밖이라 고치지 않았다.
+  - `--check-manifest` 를 `output/manifest/regions-sido-*.json` 개별 파일에도 돌려보고 싶었으나(픽스처만 검사 대상으로 브리프에 명시돼 있었음), 실행 결과도 함께 남긴다: 두 파일 모두 오류 0건.

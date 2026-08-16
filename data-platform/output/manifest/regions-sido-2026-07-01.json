@@ -1,0 +1,25 @@
+{
+  "level": "sido",
+  "boundary_vintage": "2026-07-01",
+  "tile_url": "http://localhost:8000/artifacts/tiles/regions-sido-2026-07-01.pmtiles",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 0,
+  "maxzoom": 10,
+  "attribution": "통계청 SGIS 연동 예정 (현재는 합성 표본 경계, is_synthetic_placeholder)",
+  "valid_to": null,
+  "feature_count": 3,
+  "bounds": [
+    126.76,
+    34.98,
+    129.3,
+    37.7
+  ],
+  "source_id": "src_sample_boundary",
+  "sha256": "df27d9424dca6c80d07c36e42fb86f77baa413c619218bd5526ca249f278d1be",
+  "built_at": "2026-08-16T01:30:57.298458+00:00",
+  "available_vintages": [
+    "2026-01-01",
+    "2026-07-01"
+  ]
+}

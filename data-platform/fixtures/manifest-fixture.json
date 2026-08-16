@@ -1,0 +1,23 @@
+{
+  "level": "sigungu",
+  "boundary_vintage": "fixture",
+  "tile_url": "http://localhost:8000/artifacts/regions-sigungu-fixture.pmtiles",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 4,
+  "maxzoom": 12,
+  "attribution": "통계청 SGIS 연동 예정 (현재는 합성 표본 경계, is_synthetic_placeholder)",
+  "available_vintages": [
+    "fixture"
+  ],
+  "feature_count": 250,
+  "bounds": [
+    124.71499999999999,
+    33.362692307692306,
+    130.885,
+    38.4373076923077
+  ],
+  "source_id": "src_synthetic_fixture",
+  "sha256": "f83f7aff45f01da3a62761f0fbc0203ac2d59b137fb3d3ba75ca2a2a552d43cc",
+  "built_at": "2026-08-16T01:32:31.740643+00:00"
+}

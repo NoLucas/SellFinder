@@ -54,13 +54,15 @@ def load_boundary_features(feature_collection: dict, id_map: dict[str, int]) -> 
     """GeoJSON FeatureCollection(EPSG:4326)을 BoundaryFeature 리스트로 변환한다.
 
     각 feature.properties 는 최소 region_id 를 가져야 한다. 변환 결과의
-    properties 에서는 region_id 를 제거한다 — region_id 는 feature id 로만
-    실린다(속성 아님).
+    properties 에도 region_id 를 **문자열 원문 그대로** 유지한다 — ADR-005/D-20:
+    `feature_id_property`("region_id")가 유일한 조인 키이고, D 는 이 속성을
+    `promoteId` 로 읽는다. 네이티브 MVT feature id(정수, id_map 경유)는 계속
+    함께 싣지만 툴 호환/디버깅용일 뿐 어떤 소비자도 여기에 의존하지 않는다.
     """
     out: list[BoundaryFeature] = []
     for feat in feature_collection["features"]:
         props = dict(feat["properties"])
-        region_id = props.pop("region_id")
+        region_id = props["region_id"]
         geom = shape(feat["geometry"])
         if not geom.is_valid:
             geom = make_valid(geom)
@@ -124,6 +126,53 @@ def build_tiles(
             tiles[(zoom, t.x, t.y)] = gzip.compress(mvt_bytes)
 
     return tiles
+
+
+class TileJoinKeyVerificationError(ValueError):
+    """A-3 / ADR-005: 광고한 feature_id_property 가 실제 산출 타일에 없다.
+
+    VF-003 이 이 상태(테스트는 전부 통과, 화면만 조용히 회색)로 발생했다.
+    이 검사가 빌드 파이프라인 안에 있어야 같은 실패가 A 의 스위트 안에서 잡힌다.
+    """
+
+
+def verify_feature_id_property(
+    pmtiles_path,
+    feature_id_property: str,
+    tile_keys,
+) -> None:
+    """방금 쓴 .pmtiles 를 다시 읽어, 실제 피처 속성에 조인 키가 있는지 확인한다.
+
+    `tile_keys` 는 이번 빌드가 실제로 쓴 (z,x,y) 목록이다 (전세계 그리드를
+    다시 스캔하지 않는다 — 고줌에서는 그 자체로 수백만 타일이라 비현실적이다).
+    빌드가 만든 타일 전부를 열어, 하나라도 `feature_id_property` 가 없는
+    피처가 있으면 즉시 빌드를 실패시킨다.
+    """
+    import gzip
+
+    import mapbox_vector_tile
+    from pmtiles.reader import MmapSource, Reader
+
+    checked_any = False
+    with open(pmtiles_path, "rb") as f:
+        reader = Reader(MmapSource(f))
+        for z, x, y in tile_keys:
+            raw = reader.get(z, x, y)
+            if not raw:
+                continue
+            data = gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw
+            decoded = mapbox_vector_tile.decode(data)
+            for _layer_name, layer in decoded.items():
+                for feat in layer["features"]:
+                    checked_any = True
+                    if feature_id_property not in (feat.get("properties") or {}):
+                        raise TileJoinKeyVerificationError(
+                            f"feature_id_property={feature_id_property!r} 가 산출 타일 "
+                            f"z{z}/{x}/{y} 의 피처 properties 에 없습니다: "
+                            f"{list((feat.get('properties') or {}).keys())}"
+                        )
+    if not checked_any:
+        raise TileJoinKeyVerificationError("검증 대상 피처를 하나도 찾지 못했습니다 (빈 타일셋).")
 
 
 def collect_bounds(features: list[BoundaryFeature]) -> tuple[float, float, float, float]:
