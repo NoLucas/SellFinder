@@ -196,3 +196,57 @@
   명시했고, 후자는 confidence 계산 자체가 아직 intelligence 쪽에 없다(PredictionResult에
   confidence 필드 없음 — 현재 `confidence_level`은 backend 저장소가 갖고 있다, VF-005 참고).
   DISPATCH B-3의 완료 조건("생성기가 spend_krw 를 채우지 않음")은 충족했다.
+
+- 끝낸 항목: B-4
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 49개 전체 통과 (B-1~B-4 누적)
+  Ran 49 tests in 0.542s
+  OK
+
+  # DISPATCH §2 B-4 완료 조건: "심어둔 누수 함정 피처를 하네스가 실제로 잡음"
+  $ python -c "..."   # correct store vs 몽키패치로 as_of 무시하는 broken store 비교
+  correct store: guard passed (no leakage)
+  broken store: guard CAUGHT it -> as_of=2025-01-01 (training period '2025-01', before
+    2026-01-01) saw a non-null leak_trap_future_rtd_signal for 25 region(s): {...}
+  ```
+
+  변경 내용: `intelligence/backtest/harness.py` 신설. `05_scoring_spec.md` §5.1대로 시간 분할
+  (`time_split`, 무작위 금지) + 지역 홀드아웃(`region_holdout_split`, seed 고정으로 재현 가능)을
+  구현하고, `as_of`를 검증 대상 기간의 시작일로 고정(`evaluate_period`)해 피처 조회에 넘긴다.
+  §5.2 지표 중 순위 기반인 Spearman ρ와 top-decile lift는 stdlib만으로 구현(이 저장소에
+  scipy 의존성 없음, 동점은 평균 순위로 처리). wMAPE와 PI coverage는 구현하지 않았다 —
+  `model.py`가 아직 `expected_revenue_krw`(p10/p50/p90)를 내지 않으므로(Step 2 docstring이
+  명시한 Step 5 범위) 존재하지 않는 숫자를 채워 넣는 대신 주석으로 범위를 밝혔다.
+
+  누수 가드(`assert_no_leakage_before_cutoff`)는 `run_backtest` 호출마다 실제로 실행되며,
+  훈련 구간의 모든 `as_of`에 대해 `ground_truth.LEAKAGE_TRAP_FEATURE_KEY`가 정말 `None`으로
+  돌아오는지 실제 스토어에 질의해 확인한다 — 주석상의 주장이 아니라 실행되는 코드다. 이걸
+  "실제로 잡는다"고 증명하기 위해 `as_of`를 무시하는 고의로 깨진 접근자(`_leaky_latest_value`)를
+  만들어 `store.get_features`를 몽키패치로 교체한 인스턴스에 같은 가드를 돌렸고, 위 출력처럼
+  `LeakageDetectedError`가 실제로 발생함을 확인했다(`tests/test_backtest.py`의
+  `test_guard_actually_fires_against_a_store_with_the_bug`).
+
+  RTD 커피 planted relationship(`ground_truth.py`)에 대해 실제로 `run_backtest`를 검증 구간
+  (2026-01~06, `as_of`를 각 기간 시작일로 재조회)에 돌린 실측치:
+
+  ```
+  train_periods: 2025-01 ~ 2025-12 (12개)
+  validation_periods: 2026-01 ~ 2026-06 (6개)
+   all   2026-01 n=44 rho=0.941 lift=2.698
+   all   2026-02 n=42 rho=0.919 lift=2.522
+   all   2026-03 n=43 rho=0.892 lift=2.669
+   all   2026-04 n=44 rho=0.947 lift=2.835
+   all   2026-05 n=43 rho=0.893 lift=2.789
+   all   2026-06 n=44 rho=0.941 lift=2.910
+   hold  2026-04 n=10 rho=0.976 lift=1.705
+  ```
+
+  §5.2의 T2 v1 목표(ρ≥0.60, top-decile lift≥2.0)를 표본외(out-of-sample) 구간에서 충족한다.
+  단, 이 데이터는 B가 직접 심은 관계이므로 "모델이 스스로 배운 것"이 아니라 "생성기가 심은
+  관계를 파이프라인이 왜곡 없이 표본외로 되찾아 오는가"의 배선 검증이다 — 실데이터 성능의
+  근거로 인용하면 안 된다(모델 카드 작성 시 `known_limitations`에 명시 필요, 아직 미작성).
+- 못 한 것과 이유: 모델 카드(`known_limitations`/`do_not_use_for`, BRIEF-B §2 항목 3)는
+  DISPATCH B-4 완료 조건에 없어 이번 회차에는 작성하지 않았다. wMAPE/PI coverage는 위에서
+  설명한 대로 Step 5(잔차분포) 선행 필요로 구현 불가.
