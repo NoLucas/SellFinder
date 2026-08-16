@@ -682,3 +682,239 @@ $ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
 
 없음. 지시된 세 가지 완료 판정 전부 위 출력으로 확인했고, `/scores`까지 같은 뷰로 통일해
 지시 범위(정렬·필터)보다 한 곳 더 넓게 적용했다.
+
+
+---
+
+## 2026-08-17 — PostgreSQL + Row Level Security 설계안 (구현 안 함, 승인 대기)
+
+지시: `prediction_store.py`가 파이썬 딕셔너리라 재시작하면 예측이 전부 사라지고,
+`06_governance.md` §1.2가 요구하는 DB 레벨 RLS를 걸 수 없어 검증자가 1회차부터 그 조항을
+"확인 불가"로 남겨두고 있다. 아래는 설계안이다. **코드는 한 줄도 안 바꿨다** - jin 승인 후
+착수한다.
+
+### 0. 원칙 (지시받은 그대로)
+
+> 애플리케이션 `WHERE tenant_id = ?` 만 믿지 않는다. 한 곳만 빠뜨려도 유출된다.
+
+이 설계 전체가 이 한 문장을 어떻게 구조적으로 강제할지에 대한 답이다. 요약: **`SELECT`/
+`UPDATE`/`DELETE`가 tenant_id 필터를 "깜빡할 수 없게" DB가 대신 막는다.** 애플리케이션
+코드가 tenant_id를 필터에 넣는 걸 잊어도, RLS 정책이 그 쿼리 자체를 다른 테넌트 행 앞에서
+투명하게 걸러낸다 - 코드 리뷰나 습관에 의존하지 않는다.
+
+### 1. 스키마
+
+`06_governance.md` §1.3의 "공용 vs 테넌트 전용" 분리를 그대로 따른다. `prediction*`은
+테넌트 전용이라 RLS 대상이고, `region`/`region_feature`/`demand_signal`/`taxonomy_node`는
+공용이라 RLS를 걸지 않는다(지금 이 폴더가 소유한 테이블은 `prediction*` 셋뿐이다 - `product`/
+`tenant_sales`/`own_store`는 아직 backend에 없다).
+
+```sql
+CREATE TABLE prediction_run (
+    run_id            text PRIMARY KEY,
+    tenant_id         text NOT NULL,
+    data_tier         text NOT NULL CHECK (data_tier IN ('T0','T1','T2')),
+    region_level      text NOT NULL CHECK (region_level IN ('sido','sigungu','adm_dong','custom_catchment')),
+    objective         text NOT NULL,
+    boundary_vintage  text,
+    status            text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','succeeded','failed')),
+    failure_reason    text,
+    -- 06_governance.md §4 재현성 3요소: params(요청 원문 전체 스냅샷, 씨드 포함)
+    -- + model_version + feature_as_of를 run 생성 시점에 고정 기록한다.
+    params            jsonb NOT NULL,
+    model_version     text,
+    feature_as_of     text,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE region_score (
+    id                    bigserial PRIMARY KEY,
+    run_id                text NOT NULL REFERENCES prediction_run(run_id) ON DELETE CASCADE,
+    -- tenant_id를 여기에도 중복 저장한다(정규화 위반처럼 보이지만 의도적이다) -
+    -- RLS 정책은 이 테이블 자체의 컬럼만 본다. prediction_run과 조인해서 tenant_id를
+    -- 알아내는 정책을 쓰면, 조인을 빠뜨린 쿼리 하나가 바로 "한 곳만 빠뜨려도 유출"의
+    -- 실례가 된다.
+    tenant_id             text NOT NULL,
+    region_id             text NOT NULL,
+    region_name           text NOT NULL,
+    rank                  integer NOT NULL,
+    opportunity_score     double precision NOT NULL,
+    score_percentile      double precision NOT NULL,
+    expected_revenue_p10  bigint,
+    expected_revenue_p50  bigint,
+    expected_revenue_p90  bigint,
+    confidence_level      text NOT NULL CHECK (confidence_level IN ('low','medium','high')),
+    data_coverage         double precision NOT NULL,
+    coverage_flag         text CHECK (coverage_flag IN ('actual','estimated','suppressed')),
+    UNIQUE (run_id, region_id)
+);
+
+CREATE TABLE idempotency_key (
+    tenant_id   text NOT NULL,
+    key         text NOT NULL,
+    run_id      text NOT NULL REFERENCES prediction_run(run_id) ON DELETE CASCADE,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, key)
+);
+
+-- 06_governance.md §4 필수 기록: 누가/언제/무엇을. C-4(request_id 미들웨어)가
+-- 지금 로그 파일에만 남기고 있는 것을 3년 보관 가능한 형태로 옮기는 자리 - 이번
+-- 설계의 핵심은 아니지만 같은 RLS 패턴을 그대로 쓸 수 있어 스키마만 같이 적어둔다.
+CREATE TABLE audit_log (
+    id           bigserial PRIMARY KEY,
+    tenant_id    text NOT NULL,
+    actor_user_id text,
+    request_id   text NOT NULL,
+    action       text NOT NULL,       -- 'prediction.create' | 'prediction.view' | 'prediction.export' deung
+    run_id       text,
+    params       jsonb,
+    occurred_at  timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### 2. RLS 정책 - 계약이 준 예시를 그대로 4개 테이블에 적용
+
+계약 예시(`06_governance.md` §1.2)의 GUC 이름 `app.current_tenant_id`를 그대로 쓴다 -
+내가 지어낸 이름을 쓰면 나중에 계약 예시와 실제 코드가 또 어긋난다(VF-004와 같은 실수).
+
+```sql
+ALTER TABLE prediction_run   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE region_score     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_key  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log        ENABLE ROW LEVEL SECURITY;
+
+-- FORCE가 핵심이다: 기본값(ENABLE만)은 테이블 소유자(마이그레이션을 실행한 롤)에게는
+-- RLS가 적용되지 않는다. 애플리케이션이 테이블 소유자 계정으로 접속하면 정책이
+-- 전부 무의미해진다 - 흔한 RLS 실수다. FORCE로 소유자도 예외 없이 막는다.
+ALTER TABLE prediction_run   FORCE ROW LEVEL SECURITY;
+ALTER TABLE region_score     FORCE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_key  FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_log        FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON prediction_run
+    USING       (tenant_id = current_setting('app.current_tenant_id', true))
+    WITH CHECK  (tenant_id = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation ON region_score
+    USING       (tenant_id = current_setting('app.current_tenant_id', true))
+    WITH CHECK  (tenant_id = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation ON idempotency_key
+    USING       (tenant_id = current_setting('app.current_tenant_id', true))
+    WITH CHECK  (tenant_id = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation ON audit_log
+    USING       (tenant_id = current_setting('app.current_tenant_id', true))
+    WITH CHECK  (tenant_id = current_setting('app.current_tenant_id', true));
+```
+
+`current_setting(..., true)`의 두 번째 인자(`missing_ok`)가 핵심이다 - 세션 변수를 세팅하는
+걸 깜빡하면 `NULL`을 반환하고, `tenant_id = NULL`은 SQL에서 **항상 거짓**이라 그 세션은
+아무 행도 못 본다. 즉 "세팅을 깜빡한 버그"의 실패 모드가 "전체 테넌트 데이터 유출"이 아니라
+"전체 조회 실패(빈 결과)"다 - 기본값이 열림이 아니라 닫힘이어야 안전하다는 원칙을 GUC
+자체의 동작으로 강제한다.
+
+전용 DB 롤도 필요하다: 애플리케이션은 **테이블 소유자도 슈퍼유저도 아닌** 별도 롤
+(`sellfinder_app`, `BYPASSRLS` 속성 없음, `CREATEDB`/`SUPERUSER` 없음)로 접속한다.
+마이그레이션은 소유자 롤로, 애플리케이션은 이 제한된 롤로 - 마이그레이션 계정을 그대로
+런타임에 쓰는 게 흔한 RLS 무력화 경로다.
+
+### 3. `tenant_id`를 세션 변수로 넣는 지점 - 한 곳으로 모은다
+
+가장 위험한 지점이 여기다: **커넥션 풀에서 `SET`(세션 전체)과 `SET LOCAL`(현재 트랜잭션
+한정)을 헷갈리면**, 어떤 요청이 세팅한 tenant_id가 커넥션이 풀로 반납된 뒤 **다음 요청**
+(다른 테넌트일 수 있다)에 그대로 남아있는 사고가 난다. 이게 RLS 자체보다 더 흔한 실제
+유출 경로다. 반드시 매 요청마다 **새 트랜잭션 안에서 `SET LOCAL`**을 쓴다.
+
+이걸 라우터마다 반복하지 않는다 - VF-002/VF-005/VF-010/VF-013이 전부 "개별 경로마다
+막다가 하나 빠뜨림"이었던 것과 같은 이유로, **DB 접근 자체를 단일 진입점 하나로 모은다.**
+`get_tenant_id`(신원 확인 유일 지점, ADR-003 §3)와 대칭을 이루는 `get_db_session`을
+새 의존성으로 만든다:
+
+```python
+# app/db.py (설계 - 아직 없음)
+async def get_db_session(
+    tenant_id: str = Depends(get_tenant_id),
+) -> AsyncIterator[psycopg.AsyncConnection]:
+    async with pool.connection() as conn:
+        async with conn.transaction():
+            # set_config()는 SQL 함수라 파라미터 바인딩이 된다 - SET LOCAL은 리터럴만
+            # 받아 tenant_id를 문자열로 이어붙여야 하는데, tenant_id는 결국 토큰에서 온
+            # 값이라 SQL 인젝션 표면을 만든다. set_config가 그 표면을 없앤다.
+            await conn.execute(
+                "SELECT set_config('app.current_tenant_id', %s, true)", (tenant_id,)
+            )
+            yield conn
+```
+
+라우터는 `tenant_id: str = Depends(get_tenant_id)` 대신 (또는 함께)
+`conn = Depends(get_db_session)`을 받는다. **DB를 만지는 코드는 전부 이 의존성을 거쳐야
+하고, 이게 유일한 통로다** - VF-013을 고치며 만든 `_build_views()`(응답에 나가는 값을
+만드는 유일한 지점)와 완전히 같은 설계 원칙을 커넥션 계층에 적용한 것이다.
+
+### 4. 마이그레이션 방식 - 결정 필요, 추천만 적는다
+
+이 프로젝트는 지금 ORM이 없다(`requirements.txt`: fastapi/pydantic/uvicorn/httpx/pytest뿐).
+두 선택지:
+
+| | 가벼운 SQL 마이그레이션 러너 (추천) | Alembic + SQLAlchemy |
+|---|---|---|
+| 새 의존성 | `psycopg[binary,pool]` 하나 | SQLAlchemy + Alembic + psycopg |
+| 마이그레이션 형태 | `backend/migrations/0001_*.sql` 순번 파일 + `schema_migrations` 추적 테이블 + 30줄짜리 러너 스크립트 | Python 마이그레이션 스크립트, 자동 diff 생성 |
+| 이 프로젝트와의 결 | intelligence/data-platform도 프레임워크 없이 표준 라이브러리 위주 - 결이 맞음 | ORM이 모델 정의/쿼리/마이그레이션을 전부 대신하지만 RLS처럼 ORM이 잘 모르는 걸(정책, FORCE, 세션 변수) 우회해서 raw SQL을 섞어야 하는 지점이 어차피 생김 |
+| 위험 | 러너를 직접 관리(작지만 버그 가능) | 의존성/학습곡선 증가, "ORM이 알아서 tenant 필터링 해줄 것"이라는 잘못된 기대를 유발하기 쉬움(그게 바로 "WHERE 절만 믿지 마라"가 막으려는 함정) |
+
+**추천 이유**: RLS는 ORM 레이어가 아니라 DB 레이어의 방어다. ORM을 들이면 "쿼리는 ORM이
+안전하게 만들어준다"는 착각이 생기기 쉽고, 그 착각이 정확히 이 지시의 요점("애플리케이션
+WHERE 절만 믿지 않는다")과 충돌한다. 가벼운 러너 + raw SQL이 RLS의 실제 방어선(정책/세션
+변수/FORCE)을 코드에서도 숨기지 않는다. **최종 선택은 jin 결정.**
+
+### 5. 기존 인메모리 코드를 어떻게 바꿀지
+
+`prediction_store.py`의 **공개 함수 시그니처는 최대한 그대로 유지**한다 -
+`job_runner.py`/`routers/predictions.py`/`intelligence_client.py`를 다시 쓰지 않기 위해서다.
+바뀌는 건 내부 구현과, 일부 함수가 더 이상 `tenant_id`를 인자로 받을 필요가 없어진다는 점이다
+(RLS가 대신 걸러주므로):
+
+| 함수 | 지금 (dict) | 이후 (Postgres+RLS) |
+|---|---|---|
+| `create_run`/`create_queued_run` | `_RUNS[run_id] = run` | `INSERT INTO prediction_run (...) VALUES (..., tenant_id)` - `WITH CHECK`가 세션의 tenant_id와 다른 값이 실리면 그 자체를 거부한다(버그가 있어도 2차 방어) |
+| `get_run(run_id, tenant_id)` | `run = _RUNS.get(run_id); if run.tenant_id != tenant_id: return None` | `get_run(run_id)`로 **인자에서 tenant_id 자체가 사라진다** - `SELECT * FROM prediction_run WHERE run_id = $1`만 실행하면 되고, 다른 테넌트 행은 RLS가 알아서 안 보이게 한다(0행 = 지금과 같은 "404, 안 새어나감" 결과). tenant_id를 매번 비교하는 코드가 없어지는 것 자체가 "빠뜨릴 코드가 없다"는 뜻이다. |
+| `complete_run`/`fail_run` | `run.status = ...` | `UPDATE prediction_run SET status = ... WHERE run_id = $1` |
+| `compute_regions` 결과 저장 | 없음(즉시 반환) | job 완료 시 `INSERT INTO region_score (...)` 배치 삽입 |
+| `find_run_id_for_idempotency_key`/`remember_idempotency_key` | dict | `idempotency_key` 테이블 SELECT/INSERT, TTL은 `created_at`에 대한 조회 조건으로 유지 |
+
+**동기 -> 비동기 전환이 딸려온다**: 지금 라우터 핸들러들은 전부 `def`(동기)다. `psycopg`
+비동기 드라이버를 쓰려면 `async def`로 바꿔야 한다 - DB 도입과 같은 커밋에서 처리할
+부수 변경이지 별도 논의거리는 아니라고 본다.
+
+**테스트**: dict 기반 목업으로는 RLS를 테스트하는 게 무의미하다(정책은 실제 DB 엔진이
+집행하는 것이라 목업이 있으나 마나다). `backend` CI job에 `services: postgres:` 컨테이너를
+추가해 **진짜 Postgres, 진짜 RLS 정책**에 대고 테스트를 돌려야 한다 - 이게 이 설계에서
+가장 중요한 결정이다: RLS를 흉내 낸 인메모리 필터로 테스트를 통과시키면 지금 검증자가
+"확인 불가"로 남긴 바로 그 조항을 또 확인 불가로 남기는 것과 같다.
+
+### 6. 컷오버 전략
+
+지금 저장된 예측은 전부 데모/테스트용 휘발성 데이터라 **실제 이관할 데이터가 없다** -
+무중단 이중 쓰기 같은 복잡한 전략이 필요 없는, 부담 없는 완전 교체가 가능하다. 그래도
+안전판으로 `SELLFINDER_STORE_BACKEND=memory|postgres` 설정 플래그로 전환 가능하게 만들어
+(기본값 `memory`), Postgres 경로가 CI에서 충분히 검증된 뒤 기본값을 뒤집는 것을 제안한다.
+
+### 7. 앞으로도 새는 구멍이 없는지 스스로 점검한 목록 (RLS를 무력화하는 흔한 실수들)
+
+- 테이블 소유자/슈퍼유저 롤로 접속 -> `FORCE ROW LEVEL SECURITY` + 별도 저권한 앱 롤로 방어(2절)
+- `SET`을 커넥션 풀에서 쓰다 다음 요청에 값이 새어나감 -> 반드시 `SET LOCAL`/트랜잭션 스코프(3절)
+- `current_setting`에 `missing_ok` 안 주면 세팅 누락 시 에러가 아니라 알 수 없는 동작 ->
+  `true`로 명시해 "누락 = 전부 거부"를 보장(2절)
+- 나중에 뷰(view)를 이 테이블들 위에 만들면 PostgreSQL 15 미만에서는 정의자(view 소유자)
+  권한으로 실행돼 RLS를 우회할 수 있음 -> 뷰가 필요해지면 `security_invoker`를 반드시 켠다
+  (지금은 뷰가 없어 해당 없음, 규칙만 남겨둔다)
+- 백업/복구/DBA 직접 접속은 RLS 밖의 이야기 - 코드가 아니라 운영 절차 문제, 이 설계 범위
+  밖으로 명시해둔다
+
+### 완료 판정 없음 - 이건 설계안이다
+
+지시대로 구현하지 않았다. 위 방향으로 착수해도 되는지, 4절의 마이그레이션 방식(가벼운
+러너 vs Alembic) 중 무엇을 쓸지 확인 부탁한다.
