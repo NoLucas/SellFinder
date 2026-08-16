@@ -115,14 +115,31 @@ feature-state를 filter에서는 지원하지 않아서). 지역 상세는 클�
 
 ## 8. DISPATCH.md §4 D-2~D-4 (2026-08-16)
 
-**D-2 — 테스트 러너.** 새 devDependency 없이 Node 24 내장 `node --test` 사용.
-Node 24가 `.ts`를 네이티브로 type-strip 하는 걸 확인하고 나서 골랐다 — `scoreScale.ts`를 리임플리
-먼트하지 않고 실제 프로덕션 모듈을 그대로 import 해서 검증한다. `console/tests/join.test.mjs`,
-4개 테스트: (1) 실제 샘플 → `setFeatureState` 키 생성, (2) ADR-005가 요구하는 모양(속성에
-`region_id`)의 합성 타일로 조인 성공을 못박는 회귀 가드, (3) A의 현재(수정 전) 실 타일 픽스처로
-0/5를 못박는 테스트 — **A/C가 ADR-005를 반영하면 이 테스트가 실패로 돌아선다. 그게 버그가 아니라
-D-5(실제 아티팩트 통합) 착수 신호다. "고치지" 말고 D-5로 넘어갈 것.** (4) `scoreScale.ts`의
-fill expression이 실제 `score_range`를 쓰는지. `npm test`로 실행, 실행 결과는 총괄자 보고에 첨부.
+**D-2 — 테스트 러너.** Node 24 내장 `node --test` 사용 (`.ts` 네이티브 type-strip 확인 후 채택 —
+`scoreScale.ts`를 리임플리먼트하지 않고 실제 프로덕션 모듈을 그대로 import). 첫 버전은 합성
+타일 픽스처와 `verification/fixtures/a_tile_features.json`(A의 수정 전 스냅샷)에 기대 두고
+있었는데, 총괄자 2차 지시로 **실제 통합 경로**(`data-platform/fixtures/regions-sigungu-fixture.pmtiles`
++ `manifest-fixture.json`)를 직접 읽도록 다시 짰다. `pmtiles` + `@mapbox/vector-tile` + `pbf`로
+`.pmtiles`를 실제로 디코드한다 — 셋 다 이미 `maplibre-gl`의 전이 의존성으로 설치돼 있던 걸 확인하고
+`@mapbox/vector-tile`/`pbf`만 정확한 설치 버전(1.3.1 / 3.3.0)으로 devDependencies에 명시 고정했다
+(호이스팅에 기대지 않기 위해 — `pmtiles`는 이미 직접 의존성이었다).
+
+`console/tests/join.test.mjs` 3개 테스트: (1) 실제 샘플 → `setFeatureState` 키 생성,
+(2) **A의 실제 커밋된 `.pmtiles`를 디코드해 C의 실제 `scores.json`과 끝까지 조인** — 매칭 건수를
+`scores.scores.length`와 정확히 단언(현재 5/5, 실제 회귀 가드: 조인 키가 되돌려지거나 타일에서
+`region_id`가 빠지면 즉시 실패), (3) `scoreScale.ts`의 fill expression이 실제 `score_range`를
+쓰는지. `resolveManifest()`가 "한 곳에서 주입" 지점이다 — `backend/samples/manifest.json`이
+이 run의 level/vintage와 맞으면 그걸 쓰고, 아니면(지금처럼 `adm_dong`/`2026-01-01`로 어긋나 있으면)
+`data-platform/fixtures/manifest-fixture.json`로 자동 폴백한다. **C가 매니페스트를 고치면 이
+함수가 코드 변경 없이 자동으로 갈아탄다.** `tile_url`도 하드코딩하지 않고 매니페스트 값의
+basename으로 `data-platform/fixtures/`·`output/tiles/`에서 로컬 파일을 찾는다.
+`npm test`로 실행, 실행 결과는 총괄자 보고에 첨부.
+
+**참고 — `verification/fixtures/a_tile_features.json`은 더 안 쓴다.** 이 세션이 처음 D-2를 만들
+때는 그 파일(A의 구 sido 파이프라인 스냅샷)로 "여전히 0/5"를 못박는 테스트를 넣었는데, 이후
+검증팀이 그 파일을 sigungu·`region_id` 포함 버전으로 갱신하면서(A가 실제로 고쳤다는 뜻) 그 assert가
+저절로 깨졌다 — 트립와이어가 정상 작동한 것. 총괄자 2차 지시로 그 테스트 자리를 진짜 `.pmtiles`
+디코드로 교체했으므로 더는 그 파일에 기대지 않는다.
 
 **D-3 — 레벨 선택 UI.** 계약(`04_api_contract.yaml` v0.2.2)엔 `/predictions/{run_id}/scores`에
 `level` 쿼리 파라미터가 없다 — `region_level`은 run 생성 시 고정되고 응답이 그걸 알려줄 뿐이다.

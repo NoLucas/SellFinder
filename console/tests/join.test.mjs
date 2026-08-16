@@ -1,23 +1,35 @@
 /**
- * D-2 (orchestrator/DISPATCH.md §4) — join pipeline test, run by Node's
- * built-in test runner (`node --test`, ships with Node itself; no new
- * devDependency). Node 24 natively type-strips `.ts` on import, so this
- * exercises D's REAL production module (`scoreScale.ts`) rather than a
- * reimplementation of it.
+ * D-2 (orchestrator/DISPATCH.md §4, revised by DISPATCH 2차) — join pipeline
+ * test, run by Node's built-in test runner (`node --test`). No reimplemented
+ * stand-ins: this decodes A's REAL committed `.pmtiles` fixture (via
+ * `pmtiles` + `@mapbox/vector-tile` + `pbf` — all already project
+ * dependencies, `@mapbox/vector-tile`/`pbf` pinned as devDependencies since
+ * this file is the first thing to import them directly) and runs it through
+ * `scoreScale.ts`, the real production color module.
  *
  * Path covered: samples (JSON) -> schema-driven parser -> setFeatureState
- * key generation (promoteId + MapLibre's getId) -> fill expression. Mirrors
- * PredictionMap.tsx lines ~100-154 exactly; `getId` below is MapLibre's
- * FeatureIndex.getId copied verbatim, same as verification/fixtures/
- * vf_56_join.mjs (the reference implementation DISPATCH.md points at) —
- * per ADR-005 / D-20, this join logic itself does not change.
+ * key generation (promoteId + MapLibre's getId, copied verbatim — same
+ * source verification/fixtures/vf_56_join.mjs used) -> fill expression.
+ * Mirrors PredictionMap.tsx's join logic exactly; per ADR-005/D-20 that
+ * logic itself does not change here.
+ *
+ * `resolveManifest()` is the single injection point DISPATCH's 2nd note
+ * asked for: it prefers backend/samples/manifest.json once C repoints it at
+ * this run's own level+vintage, and falls back to
+ * data-platform/fixtures/manifest-fixture.json — today's actual integration
+ * path — until then. `tile_url` is never hardcoded: the local file is
+ * resolved from the manifest's own `tile_url` basename.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PMTiles } from "pmtiles";
+import { VectorTile } from "@mapbox/vector-tile";
+import Pbf from "pbf";
 
 import { scoreFillExpression, NO_DATA_FILL } from "../src/lib/color/scoreScale.ts";
 
@@ -25,7 +37,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, "..", ".."); // repo root — console/ is read/write, everything else read-only
 const readJSON = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), "utf8"));
 
-// --- MapLibre FeatureIndex.getId, verbatim (see vf_56_join.mjs header comment for source lines) ---
+// --- MapLibre FeatureIndex.getId, verbatim ---
 function getId(feature, sourceLayerId, promoteId) {
   let id = feature.id;
   if (promoteId) {
@@ -48,6 +60,99 @@ function buildFeatureState(scoresPayload) {
   return featureState;
 }
 
+/**
+ * Single injection point for "which manifest describes the tile source".
+ * Prefers backend/samples/manifest.json — the shape D's real client code
+ * actually fetches — but only once it agrees with this run's own
+ * level/vintage. Today (DISPATCH 2차) it still advertises adm_dong /
+ * 2026-01-01 against scores.json's sigungu / fixture, so this falls back
+ * to A's fixture manifest, the real current integration path. No code
+ * change is needed here once C fixes it — this function just starts
+ * returning the backend one.
+ */
+function resolveManifest(scoresPayload) {
+  const backendManifest = readJSON("backend/samples/manifest.json");
+  if (
+    backendManifest.level === scoresPayload.region_level &&
+    backendManifest.boundary_vintage === scoresPayload.boundary_vintage
+  ) {
+    return { manifest: backendManifest, manifestPath: "backend/samples/manifest.json" };
+  }
+  const fixtureManifest = readJSON("data-platform/fixtures/manifest-fixture.json");
+  return { manifest: fixtureManifest, manifestPath: "data-platform/fixtures/manifest-fixture.json" };
+}
+
+/**
+ * Local bytes for `manifest.tile_url` — never a hardcoded filename. A
+ * publishes committed fixtures under data-platform/fixtures/ and gitignored
+ * local builds under data-platform/output/tiles/ (ADR-002/D-11); a real CDN
+ * URL isn't fetched here, only its basename is used to find the same file
+ * locally (mirrors what C's dev server does when serving `/artifacts/`).
+ */
+function resolveLocalTilePath(manifest) {
+  const basename = path.basename(manifest.tile_url);
+  const candidates = [
+    path.join(ROOT, "data-platform", "fixtures", basename),
+    path.join(ROOT, "data-platform", "output", "tiles", basename),
+  ];
+  const found = candidates.find((p) => fs.existsSync(p));
+  if (!found) {
+    throw new Error(
+      `manifest.tile_url=${manifest.tile_url} -> basename "${basename}" not found locally in: ${candidates.join(", ")}`,
+    );
+  }
+  return found;
+}
+
+class NodeFileSource {
+  constructor(filePath) {
+    this.filePath = filePath;
+  }
+  getKey() {
+    return this.filePath;
+  }
+  async getBytes(offset, length) {
+    const handle = await fsp.open(this.filePath, "r");
+    try {
+      const buf = Buffer.alloc(length);
+      await handle.read(buf, 0, length, offset);
+      return { data: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) };
+    } finally {
+      await handle.close();
+    }
+  }
+}
+
+/**
+ * Decodes the first non-empty tile for `sourceLayer`, scanning the archive's
+ * own header zoom range low-to-high (same brute-force approach as
+ * verification/fixtures/vf_56_tile_probe.py). Fixture archives are small
+ * (<5MB, single low-zoom tile covering all of Korea) so this stays fast.
+ */
+async function readFirstTileFeatures(tilePath, sourceLayer) {
+  const pm = new PMTiles(new NodeFileSource(tilePath));
+  const header = await pm.getHeader();
+  for (let z = header.minZoom; z <= header.maxZoom; z++) {
+    const n = 2 ** z;
+    for (let x = 0; x < n; x++) {
+      for (let y = 0; y < n; y++) {
+        const res = await pm.getZxy(z, x, y);
+        if (!res) continue;
+        const tile = new VectorTile(new Pbf(new Uint8Array(res.data)));
+        const layer = tile.layers[sourceLayer];
+        if (!layer || layer.length === 0) continue;
+        const features = [];
+        for (let i = 0; i < layer.length; i++) {
+          const f = layer.feature(i);
+          features.push({ id: f.id, properties: f.properties });
+        }
+        return { z, x, y, features };
+      }
+    }
+  }
+  throw new Error(`no non-empty tile found for layer "${sourceLayer}" in ${tilePath} (zoom ${header.minZoom}-${header.maxZoom})`);
+}
+
 test("parser: real backend/samples/scores.json -> setFeatureState map keyed by String(region_id)", () => {
   const scores = readJSON("backend/samples/scores.json");
   const state = buildFeatureState(scores);
@@ -60,55 +165,31 @@ test("parser: real backend/samples/scores.json -> setFeatureState map keyed by S
   }
 });
 
-test("join: promoteId (from real manifest) resolves every feature on a correctly-shaped tile (ADR-005 target)", () => {
+test("join: A's real committed .pmtiles fixture matches C's real scores.json, end to end (ADR-005 / D-5 readiness)", async () => {
   const scores = readJSON("backend/samples/scores.json");
-  const manifest = readJSON("backend/samples/manifest.json");
+  const { manifest, manifestPath } = resolveManifest(scores);
+  const tilePath = resolveLocalTilePath(manifest);
   const featureState = buildFeatureState(scores);
 
-  // ADR-005: region_id must sit in tile `properties`, as a literal string.
-  // This models what A's fixed .pmtiles output is required to look like —
-  // it is deliberately NOT verification/fixtures/a_tile_features.json
-  // (A's pre-fix output, see the next test) so this test stays a stable
-  // regression guard on D's own join code, independent of A/C's rollout.
-  const correctTileFeatures = scores.scores.map(([regionId], i) => ({
-    layer: manifest.source_layer,
-    id: 1000 + i, // native MVT id present but NOT the join key (ADR-005 pt.3)
-    properties: { region_id: regionId, name: `region-${i}` },
-  }));
+  const { z, x, y, features } = await readFirstTileFeatures(tilePath, manifest.source_layer);
+  assert.ok(features.length > 0, `tile z${z}/${x}/${y} in ${tilePath} has no features in layer "${manifest.source_layer}"`);
 
   const promoteId = { [manifest.source_layer]: manifest.feature_id_property };
   let matched = 0;
-  for (const f of correctTileFeatures) {
+  for (const f of features) {
     const promoted = getId(f, manifest.source_layer, promoteId);
     if (featureState.has(String(promoted))) matched++;
   }
 
-  assert.equal(matched, correctTileFeatures.length, "every correctly-shaped tile feature must resolve to a score");
-});
-
-test("join: today's real A tile fixture (pre-ADR-005-fix) still yields zero matches — VF-003 / D-5 gate, not a bug in D", () => {
-  const scores = readJSON("backend/samples/scores.json");
-  const manifest = readJSON("backend/samples/manifest.json");
-  const featureState = buildFeatureState(scores);
-  const realTileFeatures = readJSON("verification/fixtures/a_tile_features.json");
-
-  const promoteId = { [manifest.source_layer]: manifest.feature_id_property };
-  let matched = 0;
-  for (const f of realTileFeatures) {
-    const promoted = getId(f, manifest.source_layer, promoteId);
-    if (featureState.has(String(promoted))) matched++;
-  }
-
-  // This assertion doubles as the D-5 readiness check DISPATCH.md asked to
-  // poll for via `node verification/fixtures/vf_56_join.mjs`. Once A ships
-  // region_id-in-properties tiles (and C points the manifest at them), this
-  // starts failing with matched > 0 — that failure is the signal to start
-  // D-5 (full-artifact integration), not a regression to fix here.
+  // Real regression guard, not a synthetic stand-in: if A's tile stops
+  // carrying region_id in properties, or someone reverts D's promoteId join
+  // (D-1/ADR-005), matched drops below scores.length and this fails — that
+  // failure IS VF-009 closing the gap the verifier found.
   assert.equal(
     matched,
-    0,
-    `expected 0/${realTileFeatures.length} against A's pre-fix tile fixture, got ${matched} — ` +
-      `if this changed, A/C shipped the ADR-005 fix; proceed to D-5, do not "fix" this test`,
+    scores.scores.length,
+    `expected all ${scores.scores.length} scored regions to match against ${manifestPath} ` +
+      `(tile_url=${manifest.tile_url}, resolved locally to ${tilePath}), got ${matched}/${features.length} tile features`,
   );
 });
 
