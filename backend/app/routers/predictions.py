@@ -1,5 +1,6 @@
 import base64
 import uuid
+from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
@@ -52,7 +53,12 @@ def _expected_revenue_for(
         threshold. privacy.redact() is the one place that check happens so
         a future call site (region detail, xlsx/csv export) inherits it
         automatically instead of re-implementing its own check.
-    """
+
+    Only ever called from _build_views() below - VF-013 was this same
+    function being computed correctly but a *different* piece of code
+    (the revenue_desc sort key) reading the raw RegionScore field instead
+    of this one's output. The fix isn't "remember to redact here too" at
+    every call site; it's that there is now only one call site."""
     if run.data_tier == "T0":
         return None
     p10 = privacy.redact(r.expected_revenue_p10, r.coverage_flag, region_id=r.region_id, field="expected_revenue_p10")
@@ -61,6 +67,49 @@ def _expected_revenue_for(
     if p50 is None:
         return None
     return ExpectedRevenue(p10=p10, p50=p50, p90=p90)
+
+
+@dataclass(frozen=True)
+class _RegionView:
+    """The redacted/clamped view (VF-005, VF-010, VF-013). Every field here
+    is already safe to sort on, filter on, paginate, serialize, or (later)
+    export - nothing downstream of _build_views() may read a
+    prediction_store.RegionScore directly again. That's the whole fix:
+    not "redact at each call site" but "there is only one call site, and
+    everything after it only ever sees this view." A new consumer (a future
+    /regions/{region_id} detail endpoint, an xlsx/csv export) that iterates
+    _build_views()'s output inherits every guarantee below for free -  one
+    that reaches into run.regions itself does not, by construction, compile
+    against this module's intended shape."""
+
+    region_id: str
+    region_name: str
+    rank: int
+    opportunity_score: float
+    score_percentile: float
+    expected_revenue_krw: ExpectedRevenue | None  # already T0/suppressed-redacted
+    confidence_level: str  # already T0-ceiling-clamped
+    data_coverage: float
+
+
+def _build_views(run: prediction_store.PredictionRun) -> list[_RegionView]:
+    """The single choke point every /predictions/{run_id}/* response builds
+    from. sort/filter/paginate all operate on this list, never on
+    run.regions - see _RegionView's docstring for why that ordering is the
+    actual fix, not an implementation detail."""
+    return [
+        _RegionView(
+            region_id=r.region_id,
+            region_name=r.region_name,
+            rank=r.rank,
+            opportunity_score=r.opportunity_score,
+            score_percentile=r.score_percentile,
+            expected_revenue_krw=_expected_revenue_for(r, run),
+            confidence_level=_confidence_for_tier(r.confidence_level, run.data_tier),
+            data_coverage=r.data_coverage,
+        )
+        for r in run.regions
+    ]
 
 
 def _encode_cursor(offset: int) -> str:
@@ -162,50 +211,46 @@ def get_prediction_regions(
             },
         )
 
-    regions = list(run.regions)
+    # Everything below this line reads _RegionView only, never
+    # prediction_store.RegionScore / run.regions directly (VF-013: the old
+    # code redacted correctly for the response but sorted on the raw
+    # field - two code paths reading two different things). min_confidence
+    # filters on the *displayed* confidence_level (already T0-clamped) for
+    # the same reason: filtering on the raw value would let a query select
+    # regions whose displayed confidence doesn't actually meet the
+    # threshold requested.
+    views = _build_views(run)
+
     if min_confidence:
         threshold = _CONFIDENCE_ORDER[min_confidence]
-        regions = [r for r in regions if _CONFIDENCE_ORDER[r.confidence_level] >= threshold]
-
-    # Computed once per region, before sorting: this is the value the client
-    # actually sees (post-T0-null / post-privacy.redact()), and it has to be
-    # the sort key too — sorting on the raw store field instead leaked a
-    # suppressed region's relative magnitude through ranking position even
-    # though expected_revenue_krw itself came back null (VF-013). Same
-    # sentence VF-005 already taught: a rule enforced in only one of the
-    # places a value can escape isn't enforced.
-    revenue_by_region_id = {r.region_id: _expected_revenue_for(r, run) for r in regions}
+        views = [v for v in views if _CONFIDENCE_ORDER[v.confidence_level] >= threshold]
 
     if sort in ("revenue_desc", "profit_desc"):
         # No unit_cost data yet to separate profit from revenue (mock store) —
         # both sort by expected revenue until /intelligence provides profit.
-        def _revenue_sort_key(r: prediction_store.RegionScore) -> int:
-            revenue = revenue_by_region_id[r.region_id]
-            return revenue.p50 if revenue is not None else -1
-
-        regions.sort(key=_revenue_sort_key, reverse=True)
+        views.sort(
+            key=lambda v: v.expected_revenue_krw.p50 if v.expected_revenue_krw else -1,
+            reverse=True,
+        )
     else:
-        regions.sort(key=lambda r: r.opportunity_score, reverse=True)
+        views.sort(key=lambda v: v.opportunity_score, reverse=True)
 
     offset = _decode_cursor(cursor)
-    page = regions[offset : offset + limit]
+    page = views[offset : offset + limit]
     next_offset = offset + limit
-    next_cursor = _encode_cursor(next_offset) if next_offset < len(regions) else None
+    next_cursor = _encode_cursor(next_offset) if next_offset < len(views) else None
 
     data = [
         RegionScoreItem(
-            region_id=r.region_id,
-            region_name=r.region_name,
-            rank=r.rank,
-            opportunity_score=r.opportunity_score,
-            score_percentile=r.score_percentile,
-            expected_revenue_krw=revenue_by_region_id[r.region_id],
-            confidence=RegionScoreConfidence(
-                level=_confidence_for_tier(r.confidence_level, run.data_tier),
-                data_coverage=r.data_coverage,
-            ),
+            region_id=v.region_id,
+            region_name=v.region_name,
+            rank=v.rank,
+            opportunity_score=v.opportunity_score,
+            score_percentile=v.score_percentile,
+            expected_revenue_krw=v.expected_revenue_krw,
+            confidence=RegionScoreConfidence(level=v.confidence_level, data_coverage=v.data_coverage),
         )
-        for r in page
+        for v in page
     ]
 
     return RegionScoresResponse(data=data, next_cursor=next_cursor)
@@ -242,13 +287,13 @@ def get_prediction_scores(
             },
         )
 
-    regions = sorted(run.regions, key=lambda r: r.opportunity_score, reverse=True)
-    scores = [
-        [r.region_id, r.opportunity_score, _confidence_for_tier(r.confidence_level, run.data_tier)]
-        for r in regions
-    ]
+    # Same _build_views() choke point as /regions - confidence_level here
+    # is already T0-clamped, not the raw stored value (VF-013's fix applies
+    # to both endpoints, not just the one it was first found on).
+    views = sorted(_build_views(run), key=lambda v: v.opportunity_score, reverse=True)
+    scores = [[v.region_id, v.opportunity_score, v.confidence_level] for v in views]
 
-    values = sorted(r.opportunity_score for r in regions)
+    values = sorted(v.opportunity_score for v in views)
     score_range = {
         "min": values[0],
         "max": values[-1],

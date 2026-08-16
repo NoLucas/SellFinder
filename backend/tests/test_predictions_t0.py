@@ -83,3 +83,29 @@ def test_t1_baseline_still_allows_high_confidence() -> None:
     )
     levels = [r["confidence"]["level"] for r in resp.json()["data"]]
     assert "high" in levels
+
+
+def test_min_confidence_filter_uses_the_displayed_clamped_value() -> None:
+    """VF-013 follow-up (총괄자 6차 지시 둘째 판정): min_confidence must
+    filter on the same post-clamp value the response actually displays, not
+    the raw pre-clamp confidence_level. run_t0_test's only region is "high"
+    pre-clamp but displays "medium" (T0 ceiling) - a filter reading the raw
+    field would wrongly include it under min_confidence=high even though
+    every row in the response shows "medium"."""
+    resp = client.get(
+        "/v1/predictions/run_t0_test/regions?min_confidence=high", headers=AUTH
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+    # sanity: the same region set, unfiltered, does show up (proves the
+    # empty result above is the filter working correctly, not a broken run)
+    unfiltered = client.get("/v1/predictions/run_t0_test/regions", headers=AUTH)
+    assert len(unfiltered.json()["data"]) == 1
+    assert unfiltered.json()["data"][0]["confidence"]["level"] == "medium"
+
+    # and min_confidence=medium must still include it (clamped value passes)
+    at_medium = client.get(
+        "/v1/predictions/run_t0_test/regions?min_confidence=medium", headers=AUTH
+    )
+    assert len(at_medium.json()["data"]) == 1

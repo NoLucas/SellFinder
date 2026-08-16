@@ -99,6 +99,21 @@ def test_revenue_desc_sort_does_not_leak_suppressed_raw_magnitude() -> None:
     assert ids_in_order.index("11305") < ids_in_order.index("11290")
 
 
+def test_profit_desc_sort_does_not_leak_suppressed_raw_magnitude() -> None:
+    """Same as above for sort=profit_desc - both share the exact same code
+    path (routers/predictions.py's `if sort in ("revenue_desc",
+    "profit_desc")`), but 총괄자 6차 지시 explicitly named both, so both get
+    their own assertion rather than trusting they're covered by one."""
+    resp = client.get(
+        "/v1/predictions/run_privacy_test/regions?sort=profit_desc", headers=AUTH
+    )
+    assert resp.status_code == 200
+    assert str(RAW_SUPPRESSED_VALUE) not in resp.text
+
+    ids_in_order = [r["region_id"] for r in resp.json()["data"]]
+    assert ids_in_order.index("11305") < ids_in_order.index("11290")
+
+
 # ─────────────────── log leg ───────────────────
 
 

@@ -598,3 +598,87 @@ $ grep -rn "_build_demo_regions\|demo_regions_snapshot\|_DEMO_REGIONS" backend/a
   없어 이번엔 안 만들었다. 지금은 `/regions`가 빈 배열을 반환하는 것으로(또는
   `prediction_store.get_run().status`를 직접 봐야) 상태를 짐작해야 한다 — 다음 사이클
   후보로 남긴다.
+
+---
+
+## 2026-08-16 (7차) — VF-013 재점검: 개별 차단 → 단일 뷰로 재설계
+
+검증 4회차가 VF-013(S2)을 다시 열었다. 확인해보니 `routers/predictions.py`의 `sort=revenue_desc`
+/`profit_desc` 정렬은 **이미 `5982238`에서 고쳐져 있었다**(정렬 키가 `_expected_revenue_for()`
+결과를 쓰고 있었다, 회귀 아님). 하지만 총괄자가 요구한 두 번째 자가 점검
+("min_confidence 필터 같은 다른 파라미터도 같은 뷰를 쓰는지")을 실제로 해보니 **진짜 구멍을
+하나 더 찾았다**: `min_confidence` 필터가 T0 상한 클램프 **이전**의 원본 `r.confidence_level`로
+걸러지고 있었다 — 응답에 보이는 신뢰도는 클램프 이후 값인데, 필터 판단 기준은 클램프 이전
+값이었다. T0 run에서 원본이 `"high"`인 지역은 화면엔 `"medium"`으로 나오면서도
+`min_confidence=high` 조회에 걸려 나왔다. VF-005/VF-010/VF-013과 같은 패턴(한 겹만 막음)이
+세 번째가 아니라 **네 번째** 사례였던 셈이다.
+
+지시대로 개별 경로마다 막는 방식을 그만두고, **차단된 뷰를 한 번 만들어 그 뒤 모든 처리가
+그 뷰만 보게** 재설계했다.
+
+### 구현
+
+- `routers/predictions.py`에 `_RegionView`(frozen dataclass) + `_build_views(run)` 신설.
+  `_build_views()`가 `run.regions`를 순회하며 지역당 **정확히 한 번** `_expected_revenue_for()`
+  (T0/suppressed 금액 차단, VF-005·VF-010)와 `_confidence_for_tier()`(T0 신뢰도 상한, VF-005)를
+  호출해 뷰를 만든다. 이게 유일한 진입점이다.
+- `get_prediction_regions()`(`/regions`): `min_confidence` 필터·`sort`(revenue_desc/profit_desc/
+  score_desc) 정렬·커서 페이지네이션·응답 직렬화 **전부**가 이제 `views`(즉 `_RegionView` 리스트)
+  위에서만 일어난다. `run.regions`(원본 `RegionScore`)를 다시 읽는 코드는 `_build_views()`
+  내부 한 곳 말고 없다.
+- `get_prediction_scores()`(`/scores`): 같은 `_build_views()`를 재사용하도록 통일했다 —
+  이전엔 이 엔드포인트도 confidence 클램프를 별도로 호출하고 있어(`_confidence_for_tier`
+  직접 호출) 잠재적으로 같은 종류의 드리프트가 가능한 두 번째 자리였다.
+- 아직 없는 경로(지역 상세, xlsx/csv 내보내기)가 나중에 생겨도 `_build_views()`의 출력만
+  순회하면 자동으로 같은 차단을 상속한다 — `run.regions`를 직접 읽는 새 코드를 작성하지 않는
+  한 구조적으로 막힌다(주석에 이유를 명시해뒀다).
+
+### 완료 판정 확인
+
+**첫째 — suppressed 지역이 섞인 run에서 `sort=revenue_desc`/`profit_desc` 둘 다 원시값을
+반영하지 않음 (독립 재현 스크립트, 테스트 코드 재사용 아님):**
+
+```
+$ backend/.venv/Scripts/python.exe verify_vf013_view.py
+sort=revenue_desc status=200
+  order: [('99999', {'p10': 5000000, 'p50': 9000000, 'p90': 12000000}), ('88888', None)]
+  raw value 777777777 in body? False
+  suppressed region ranked first? False
+sort=profit_desc status=200
+  order: [('99999', {'p10': 5000000, 'p50': 9000000, 'p90': 12000000}), ('88888', None)]
+  raw value 777777777 in body? False
+  suppressed region ranked first? False
+```
+
+(원시 p50=777,777,777인 suppressed 지역과 9,000,000인 일반 지역을 같은 run에 넣고
+revenue_desc/profit_desc 둘 다 조회 — 둘 다 suppressed 지역이 1위로 오지 않고, 원시값
+문자열이 응답 어디에도 없다.)
+
+**둘째 — `min_confidence` 등 다른 파라미터도 같은 뷰를 쓰는지 자가 점검한 결과, 실제 구멍을
+발견해 같은 커밋으로 고쳤다:**
+
+```
+--- min_confidence view-consistency check (T0) ---
+min_confidence=high on T0 run (suppressed region's raw confidence is 'high') -> 0 rows
+unfiltered displayed confidences: ['medium', 'medium']
+```
+
+(수정 전이었다면 이 T0 run에서 `min_confidence=high` 조회가 1개 행을 반환했을 것이다 —
+원본 신뢰도가 `"high"`였기 때문에. 지금은 응답에 실제로 보이는 값(`"medium"`, 클램프 후)
+기준으로 걸러져 0행이다.)
+
+**셋째 — pytest 회귀 없음:**
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+..............................................................           [100%]
+62 passed in 1.41s
+```
+
+(기존 60개 + 신규 2개: `test_predictions_t0.py::test_min_confidence_filter_uses_the_displayed_clamped_value`,
+`test_privacy.py::test_profit_desc_sort_does_not_leak_suppressed_raw_magnitude`.)
+
+### 못 한 것과 이유
+
+없음. 지시된 세 가지 완료 판정 전부 위 출력으로 확인했고, `/scores`까지 같은 뷰로 통일해
+지시 범위(정렬·필터)보다 한 곳 더 넓게 적용했다.
