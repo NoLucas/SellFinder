@@ -1,46 +1,2501 @@
 [
   {
     "layer": "regions",
-    "id": 11,
+    "id": 41135,
     "properties": {
-      "name": "서울특별시",
-      "level": "sido",
+      "region_id": "41135",
+      "name": "수원시 팔달구(합성)",
+      "level": "sigungu",
       "is_synthetic_placeholder": true
     }
   },
   {
     "layer": "regions",
-    "id": 26,
+    "id": 11650,
     "properties": {
-      "name": "부산광역시",
-      "level": "sido",
+      "region_id": "11650",
+      "name": "서초구(합성)",
+      "level": "sigungu",
       "is_synthetic_placeholder": true
     }
   },
   {
     "layer": "regions",
-    "id": 28,
+    "id": 11680,
     "properties": {
-      "name": "인천광역시",
-      "level": "sido",
+      "region_id": "11680",
+      "name": "강남구(합성)",
+      "level": "sigungu",
       "is_synthetic_placeholder": true
     }
   },
   {
     "layer": "regions",
-    "id": 41,
+    "id": 28245,
     "properties": {
-      "name": "경기도",
-      "level": "sido",
+      "region_id": "28245",
+      "name": "연수구(합성)",
+      "level": "sigungu",
       "is_synthetic_placeholder": true
     }
   },
   {
     "layer": "regions",
-    "id": 50,
+    "id": 41461,
     "properties": {
-      "name": "제주특별자치도",
-      "level": "sido",
+      "region_id": "41461",
+      "name": "용인시 처인구(합성)",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11001,
+    "properties": {
+      "region_id": "11001",
+      "name": "합성시군구_11001",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26001,
+    "properties": {
+      "region_id": "26001",
+      "name": "합성시군구_26001",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28001,
+    "properties": {
+      "region_id": "28001",
+      "name": "합성시군구_28001",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41001,
+    "properties": {
+      "region_id": "41001",
+      "name": "합성시군구_41001",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50001,
+    "properties": {
+      "region_id": "50001",
+      "name": "합성시군구_50001",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11002,
+    "properties": {
+      "region_id": "11002",
+      "name": "합성시군구_11002",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26002,
+    "properties": {
+      "region_id": "26002",
+      "name": "합성시군구_26002",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28002,
+    "properties": {
+      "region_id": "28002",
+      "name": "합성시군구_28002",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41002,
+    "properties": {
+      "region_id": "41002",
+      "name": "합성시군구_41002",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50002,
+    "properties": {
+      "region_id": "50002",
+      "name": "합성시군구_50002",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11003,
+    "properties": {
+      "region_id": "11003",
+      "name": "합성시군구_11003",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26003,
+    "properties": {
+      "region_id": "26003",
+      "name": "합성시군구_26003",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28003,
+    "properties": {
+      "region_id": "28003",
+      "name": "합성시군구_28003",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41003,
+    "properties": {
+      "region_id": "41003",
+      "name": "합성시군구_41003",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50003,
+    "properties": {
+      "region_id": "50003",
+      "name": "합성시군구_50003",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11004,
+    "properties": {
+      "region_id": "11004",
+      "name": "합성시군구_11004",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26004,
+    "properties": {
+      "region_id": "26004",
+      "name": "합성시군구_26004",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28004,
+    "properties": {
+      "region_id": "28004",
+      "name": "합성시군구_28004",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41004,
+    "properties": {
+      "region_id": "41004",
+      "name": "합성시군구_41004",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50004,
+    "properties": {
+      "region_id": "50004",
+      "name": "합성시군구_50004",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11005,
+    "properties": {
+      "region_id": "11005",
+      "name": "합성시군구_11005",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26005,
+    "properties": {
+      "region_id": "26005",
+      "name": "합성시군구_26005",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28005,
+    "properties": {
+      "region_id": "28005",
+      "name": "합성시군구_28005",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41005,
+    "properties": {
+      "region_id": "41005",
+      "name": "합성시군구_41005",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50005,
+    "properties": {
+      "region_id": "50005",
+      "name": "합성시군구_50005",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11006,
+    "properties": {
+      "region_id": "11006",
+      "name": "합성시군구_11006",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26006,
+    "properties": {
+      "region_id": "26006",
+      "name": "합성시군구_26006",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28006,
+    "properties": {
+      "region_id": "28006",
+      "name": "합성시군구_28006",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41006,
+    "properties": {
+      "region_id": "41006",
+      "name": "합성시군구_41006",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50006,
+    "properties": {
+      "region_id": "50006",
+      "name": "합성시군구_50006",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11007,
+    "properties": {
+      "region_id": "11007",
+      "name": "합성시군구_11007",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26007,
+    "properties": {
+      "region_id": "26007",
+      "name": "합성시군구_26007",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28007,
+    "properties": {
+      "region_id": "28007",
+      "name": "합성시군구_28007",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41007,
+    "properties": {
+      "region_id": "41007",
+      "name": "합성시군구_41007",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50007,
+    "properties": {
+      "region_id": "50007",
+      "name": "합성시군구_50007",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11008,
+    "properties": {
+      "region_id": "11008",
+      "name": "합성시군구_11008",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26008,
+    "properties": {
+      "region_id": "26008",
+      "name": "합성시군구_26008",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28008,
+    "properties": {
+      "region_id": "28008",
+      "name": "합성시군구_28008",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41008,
+    "properties": {
+      "region_id": "41008",
+      "name": "합성시군구_41008",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50008,
+    "properties": {
+      "region_id": "50008",
+      "name": "합성시군구_50008",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11009,
+    "properties": {
+      "region_id": "11009",
+      "name": "합성시군구_11009",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26009,
+    "properties": {
+      "region_id": "26009",
+      "name": "합성시군구_26009",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28009,
+    "properties": {
+      "region_id": "28009",
+      "name": "합성시군구_28009",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41009,
+    "properties": {
+      "region_id": "41009",
+      "name": "합성시군구_41009",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50009,
+    "properties": {
+      "region_id": "50009",
+      "name": "합성시군구_50009",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11010,
+    "properties": {
+      "region_id": "11010",
+      "name": "합성시군구_11010",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26010,
+    "properties": {
+      "region_id": "26010",
+      "name": "합성시군구_26010",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28010,
+    "properties": {
+      "region_id": "28010",
+      "name": "합성시군구_28010",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41010,
+    "properties": {
+      "region_id": "41010",
+      "name": "합성시군구_41010",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50010,
+    "properties": {
+      "region_id": "50010",
+      "name": "합성시군구_50010",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11011,
+    "properties": {
+      "region_id": "11011",
+      "name": "합성시군구_11011",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26011,
+    "properties": {
+      "region_id": "26011",
+      "name": "합성시군구_26011",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28011,
+    "properties": {
+      "region_id": "28011",
+      "name": "합성시군구_28011",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41011,
+    "properties": {
+      "region_id": "41011",
+      "name": "합성시군구_41011",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50011,
+    "properties": {
+      "region_id": "50011",
+      "name": "합성시군구_50011",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11012,
+    "properties": {
+      "region_id": "11012",
+      "name": "합성시군구_11012",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26012,
+    "properties": {
+      "region_id": "26012",
+      "name": "합성시군구_26012",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28012,
+    "properties": {
+      "region_id": "28012",
+      "name": "합성시군구_28012",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41012,
+    "properties": {
+      "region_id": "41012",
+      "name": "합성시군구_41012",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50012,
+    "properties": {
+      "region_id": "50012",
+      "name": "합성시군구_50012",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11013,
+    "properties": {
+      "region_id": "11013",
+      "name": "합성시군구_11013",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26013,
+    "properties": {
+      "region_id": "26013",
+      "name": "합성시군구_26013",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28013,
+    "properties": {
+      "region_id": "28013",
+      "name": "합성시군구_28013",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41013,
+    "properties": {
+      "region_id": "41013",
+      "name": "합성시군구_41013",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50013,
+    "properties": {
+      "region_id": "50013",
+      "name": "합성시군구_50013",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11014,
+    "properties": {
+      "region_id": "11014",
+      "name": "합성시군구_11014",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26014,
+    "properties": {
+      "region_id": "26014",
+      "name": "합성시군구_26014",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28014,
+    "properties": {
+      "region_id": "28014",
+      "name": "합성시군구_28014",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41014,
+    "properties": {
+      "region_id": "41014",
+      "name": "합성시군구_41014",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50014,
+    "properties": {
+      "region_id": "50014",
+      "name": "합성시군구_50014",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11015,
+    "properties": {
+      "region_id": "11015",
+      "name": "합성시군구_11015",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26015,
+    "properties": {
+      "region_id": "26015",
+      "name": "합성시군구_26015",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28015,
+    "properties": {
+      "region_id": "28015",
+      "name": "합성시군구_28015",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41015,
+    "properties": {
+      "region_id": "41015",
+      "name": "합성시군구_41015",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50015,
+    "properties": {
+      "region_id": "50015",
+      "name": "합성시군구_50015",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11016,
+    "properties": {
+      "region_id": "11016",
+      "name": "합성시군구_11016",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26016,
+    "properties": {
+      "region_id": "26016",
+      "name": "합성시군구_26016",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28016,
+    "properties": {
+      "region_id": "28016",
+      "name": "합성시군구_28016",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41016,
+    "properties": {
+      "region_id": "41016",
+      "name": "합성시군구_41016",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50016,
+    "properties": {
+      "region_id": "50016",
+      "name": "합성시군구_50016",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11017,
+    "properties": {
+      "region_id": "11017",
+      "name": "합성시군구_11017",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26017,
+    "properties": {
+      "region_id": "26017",
+      "name": "합성시군구_26017",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28017,
+    "properties": {
+      "region_id": "28017",
+      "name": "합성시군구_28017",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41017,
+    "properties": {
+      "region_id": "41017",
+      "name": "합성시군구_41017",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50017,
+    "properties": {
+      "region_id": "50017",
+      "name": "합성시군구_50017",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11018,
+    "properties": {
+      "region_id": "11018",
+      "name": "합성시군구_11018",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26018,
+    "properties": {
+      "region_id": "26018",
+      "name": "합성시군구_26018",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28018,
+    "properties": {
+      "region_id": "28018",
+      "name": "합성시군구_28018",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41018,
+    "properties": {
+      "region_id": "41018",
+      "name": "합성시군구_41018",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50018,
+    "properties": {
+      "region_id": "50018",
+      "name": "합성시군구_50018",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11019,
+    "properties": {
+      "region_id": "11019",
+      "name": "합성시군구_11019",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26019,
+    "properties": {
+      "region_id": "26019",
+      "name": "합성시군구_26019",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28019,
+    "properties": {
+      "region_id": "28019",
+      "name": "합성시군구_28019",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41019,
+    "properties": {
+      "region_id": "41019",
+      "name": "합성시군구_41019",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50019,
+    "properties": {
+      "region_id": "50019",
+      "name": "합성시군구_50019",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11020,
+    "properties": {
+      "region_id": "11020",
+      "name": "합성시군구_11020",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26020,
+    "properties": {
+      "region_id": "26020",
+      "name": "합성시군구_26020",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28020,
+    "properties": {
+      "region_id": "28020",
+      "name": "합성시군구_28020",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41020,
+    "properties": {
+      "region_id": "41020",
+      "name": "합성시군구_41020",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50020,
+    "properties": {
+      "region_id": "50020",
+      "name": "합성시군구_50020",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11021,
+    "properties": {
+      "region_id": "11021",
+      "name": "합성시군구_11021",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26021,
+    "properties": {
+      "region_id": "26021",
+      "name": "합성시군구_26021",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28021,
+    "properties": {
+      "region_id": "28021",
+      "name": "합성시군구_28021",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41021,
+    "properties": {
+      "region_id": "41021",
+      "name": "합성시군구_41021",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50021,
+    "properties": {
+      "region_id": "50021",
+      "name": "합성시군구_50021",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11022,
+    "properties": {
+      "region_id": "11022",
+      "name": "합성시군구_11022",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26022,
+    "properties": {
+      "region_id": "26022",
+      "name": "합성시군구_26022",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28022,
+    "properties": {
+      "region_id": "28022",
+      "name": "합성시군구_28022",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41022,
+    "properties": {
+      "region_id": "41022",
+      "name": "합성시군구_41022",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50022,
+    "properties": {
+      "region_id": "50022",
+      "name": "합성시군구_50022",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11023,
+    "properties": {
+      "region_id": "11023",
+      "name": "합성시군구_11023",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26023,
+    "properties": {
+      "region_id": "26023",
+      "name": "합성시군구_26023",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28023,
+    "properties": {
+      "region_id": "28023",
+      "name": "합성시군구_28023",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41023,
+    "properties": {
+      "region_id": "41023",
+      "name": "합성시군구_41023",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50023,
+    "properties": {
+      "region_id": "50023",
+      "name": "합성시군구_50023",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11024,
+    "properties": {
+      "region_id": "11024",
+      "name": "합성시군구_11024",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26024,
+    "properties": {
+      "region_id": "26024",
+      "name": "합성시군구_26024",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28024,
+    "properties": {
+      "region_id": "28024",
+      "name": "합성시군구_28024",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41024,
+    "properties": {
+      "region_id": "41024",
+      "name": "합성시군구_41024",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50024,
+    "properties": {
+      "region_id": "50024",
+      "name": "합성시군구_50024",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11025,
+    "properties": {
+      "region_id": "11025",
+      "name": "합성시군구_11025",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26025,
+    "properties": {
+      "region_id": "26025",
+      "name": "합성시군구_26025",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28025,
+    "properties": {
+      "region_id": "28025",
+      "name": "합성시군구_28025",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41025,
+    "properties": {
+      "region_id": "41025",
+      "name": "합성시군구_41025",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50025,
+    "properties": {
+      "region_id": "50025",
+      "name": "합성시군구_50025",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11026,
+    "properties": {
+      "region_id": "11026",
+      "name": "합성시군구_11026",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26026,
+    "properties": {
+      "region_id": "26026",
+      "name": "합성시군구_26026",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28026,
+    "properties": {
+      "region_id": "28026",
+      "name": "합성시군구_28026",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41026,
+    "properties": {
+      "region_id": "41026",
+      "name": "합성시군구_41026",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50026,
+    "properties": {
+      "region_id": "50026",
+      "name": "합성시군구_50026",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11027,
+    "properties": {
+      "region_id": "11027",
+      "name": "합성시군구_11027",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26027,
+    "properties": {
+      "region_id": "26027",
+      "name": "합성시군구_26027",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28027,
+    "properties": {
+      "region_id": "28027",
+      "name": "합성시군구_28027",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41027,
+    "properties": {
+      "region_id": "41027",
+      "name": "합성시군구_41027",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50027,
+    "properties": {
+      "region_id": "50027",
+      "name": "합성시군구_50027",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11028,
+    "properties": {
+      "region_id": "11028",
+      "name": "합성시군구_11028",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26028,
+    "properties": {
+      "region_id": "26028",
+      "name": "합성시군구_26028",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28028,
+    "properties": {
+      "region_id": "28028",
+      "name": "합성시군구_28028",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41028,
+    "properties": {
+      "region_id": "41028",
+      "name": "합성시군구_41028",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50028,
+    "properties": {
+      "region_id": "50028",
+      "name": "합성시군구_50028",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11029,
+    "properties": {
+      "region_id": "11029",
+      "name": "합성시군구_11029",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26029,
+    "properties": {
+      "region_id": "26029",
+      "name": "합성시군구_26029",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28029,
+    "properties": {
+      "region_id": "28029",
+      "name": "합성시군구_28029",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41029,
+    "properties": {
+      "region_id": "41029",
+      "name": "합성시군구_41029",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50029,
+    "properties": {
+      "region_id": "50029",
+      "name": "합성시군구_50029",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11030,
+    "properties": {
+      "region_id": "11030",
+      "name": "합성시군구_11030",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26030,
+    "properties": {
+      "region_id": "26030",
+      "name": "합성시군구_26030",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28030,
+    "properties": {
+      "region_id": "28030",
+      "name": "합성시군구_28030",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41030,
+    "properties": {
+      "region_id": "41030",
+      "name": "합성시군구_41030",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50030,
+    "properties": {
+      "region_id": "50030",
+      "name": "합성시군구_50030",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11031,
+    "properties": {
+      "region_id": "11031",
+      "name": "합성시군구_11031",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26031,
+    "properties": {
+      "region_id": "26031",
+      "name": "합성시군구_26031",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28031,
+    "properties": {
+      "region_id": "28031",
+      "name": "합성시군구_28031",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41031,
+    "properties": {
+      "region_id": "41031",
+      "name": "합성시군구_41031",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50031,
+    "properties": {
+      "region_id": "50031",
+      "name": "합성시군구_50031",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11032,
+    "properties": {
+      "region_id": "11032",
+      "name": "합성시군구_11032",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26032,
+    "properties": {
+      "region_id": "26032",
+      "name": "합성시군구_26032",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28032,
+    "properties": {
+      "region_id": "28032",
+      "name": "합성시군구_28032",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41032,
+    "properties": {
+      "region_id": "41032",
+      "name": "합성시군구_41032",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50032,
+    "properties": {
+      "region_id": "50032",
+      "name": "합성시군구_50032",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11033,
+    "properties": {
+      "region_id": "11033",
+      "name": "합성시군구_11033",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26033,
+    "properties": {
+      "region_id": "26033",
+      "name": "합성시군구_26033",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28033,
+    "properties": {
+      "region_id": "28033",
+      "name": "합성시군구_28033",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41033,
+    "properties": {
+      "region_id": "41033",
+      "name": "합성시군구_41033",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50033,
+    "properties": {
+      "region_id": "50033",
+      "name": "합성시군구_50033",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11034,
+    "properties": {
+      "region_id": "11034",
+      "name": "합성시군구_11034",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26034,
+    "properties": {
+      "region_id": "26034",
+      "name": "합성시군구_26034",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28034,
+    "properties": {
+      "region_id": "28034",
+      "name": "합성시군구_28034",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41034,
+    "properties": {
+      "region_id": "41034",
+      "name": "합성시군구_41034",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50034,
+    "properties": {
+      "region_id": "50034",
+      "name": "합성시군구_50034",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11035,
+    "properties": {
+      "region_id": "11035",
+      "name": "합성시군구_11035",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26035,
+    "properties": {
+      "region_id": "26035",
+      "name": "합성시군구_26035",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28035,
+    "properties": {
+      "region_id": "28035",
+      "name": "합성시군구_28035",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41035,
+    "properties": {
+      "region_id": "41035",
+      "name": "합성시군구_41035",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50035,
+    "properties": {
+      "region_id": "50035",
+      "name": "합성시군구_50035",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11036,
+    "properties": {
+      "region_id": "11036",
+      "name": "합성시군구_11036",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26036,
+    "properties": {
+      "region_id": "26036",
+      "name": "합성시군구_26036",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28036,
+    "properties": {
+      "region_id": "28036",
+      "name": "합성시군구_28036",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41036,
+    "properties": {
+      "region_id": "41036",
+      "name": "합성시군구_41036",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50036,
+    "properties": {
+      "region_id": "50036",
+      "name": "합성시군구_50036",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11037,
+    "properties": {
+      "region_id": "11037",
+      "name": "합성시군구_11037",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26037,
+    "properties": {
+      "region_id": "26037",
+      "name": "합성시군구_26037",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28037,
+    "properties": {
+      "region_id": "28037",
+      "name": "합성시군구_28037",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41037,
+    "properties": {
+      "region_id": "41037",
+      "name": "합성시군구_41037",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50037,
+    "properties": {
+      "region_id": "50037",
+      "name": "합성시군구_50037",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11038,
+    "properties": {
+      "region_id": "11038",
+      "name": "합성시군구_11038",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26038,
+    "properties": {
+      "region_id": "26038",
+      "name": "합성시군구_26038",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28038,
+    "properties": {
+      "region_id": "28038",
+      "name": "합성시군구_28038",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41038,
+    "properties": {
+      "region_id": "41038",
+      "name": "합성시군구_41038",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50038,
+    "properties": {
+      "region_id": "50038",
+      "name": "합성시군구_50038",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11039,
+    "properties": {
+      "region_id": "11039",
+      "name": "합성시군구_11039",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26039,
+    "properties": {
+      "region_id": "26039",
+      "name": "합성시군구_26039",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28039,
+    "properties": {
+      "region_id": "28039",
+      "name": "합성시군구_28039",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41039,
+    "properties": {
+      "region_id": "41039",
+      "name": "합성시군구_41039",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50039,
+    "properties": {
+      "region_id": "50039",
+      "name": "합성시군구_50039",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11040,
+    "properties": {
+      "region_id": "11040",
+      "name": "합성시군구_11040",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26040,
+    "properties": {
+      "region_id": "26040",
+      "name": "합성시군구_26040",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28040,
+    "properties": {
+      "region_id": "28040",
+      "name": "합성시군구_28040",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41040,
+    "properties": {
+      "region_id": "41040",
+      "name": "합성시군구_41040",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50040,
+    "properties": {
+      "region_id": "50040",
+      "name": "합성시군구_50040",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11041,
+    "properties": {
+      "region_id": "11041",
+      "name": "합성시군구_11041",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26041,
+    "properties": {
+      "region_id": "26041",
+      "name": "합성시군구_26041",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28041,
+    "properties": {
+      "region_id": "28041",
+      "name": "합성시군구_28041",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41041,
+    "properties": {
+      "region_id": "41041",
+      "name": "합성시군구_41041",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50041,
+    "properties": {
+      "region_id": "50041",
+      "name": "합성시군구_50041",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11042,
+    "properties": {
+      "region_id": "11042",
+      "name": "합성시군구_11042",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26042,
+    "properties": {
+      "region_id": "26042",
+      "name": "합성시군구_26042",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28042,
+    "properties": {
+      "region_id": "28042",
+      "name": "합성시군구_28042",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41042,
+    "properties": {
+      "region_id": "41042",
+      "name": "합성시군구_41042",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50042,
+    "properties": {
+      "region_id": "50042",
+      "name": "합성시군구_50042",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11043,
+    "properties": {
+      "region_id": "11043",
+      "name": "합성시군구_11043",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26043,
+    "properties": {
+      "region_id": "26043",
+      "name": "합성시군구_26043",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28043,
+    "properties": {
+      "region_id": "28043",
+      "name": "합성시군구_28043",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41043,
+    "properties": {
+      "region_id": "41043",
+      "name": "합성시군구_41043",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50043,
+    "properties": {
+      "region_id": "50043",
+      "name": "합성시군구_50043",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11044,
+    "properties": {
+      "region_id": "11044",
+      "name": "합성시군구_11044",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26044,
+    "properties": {
+      "region_id": "26044",
+      "name": "합성시군구_26044",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28044,
+    "properties": {
+      "region_id": "28044",
+      "name": "합성시군구_28044",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41044,
+    "properties": {
+      "region_id": "41044",
+      "name": "합성시군구_41044",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50044,
+    "properties": {
+      "region_id": "50044",
+      "name": "합성시군구_50044",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11045,
+    "properties": {
+      "region_id": "11045",
+      "name": "합성시군구_11045",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26045,
+    "properties": {
+      "region_id": "26045",
+      "name": "합성시군구_26045",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28045,
+    "properties": {
+      "region_id": "28045",
+      "name": "합성시군구_28045",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41045,
+    "properties": {
+      "region_id": "41045",
+      "name": "합성시군구_41045",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50045,
+    "properties": {
+      "region_id": "50045",
+      "name": "합성시군구_50045",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11046,
+    "properties": {
+      "region_id": "11046",
+      "name": "합성시군구_11046",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26046,
+    "properties": {
+      "region_id": "26046",
+      "name": "합성시군구_26046",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28046,
+    "properties": {
+      "region_id": "28046",
+      "name": "합성시군구_28046",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41046,
+    "properties": {
+      "region_id": "41046",
+      "name": "합성시군구_41046",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50046,
+    "properties": {
+      "region_id": "50046",
+      "name": "합성시군구_50046",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11047,
+    "properties": {
+      "region_id": "11047",
+      "name": "합성시군구_11047",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26047,
+    "properties": {
+      "region_id": "26047",
+      "name": "합성시군구_26047",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28047,
+    "properties": {
+      "region_id": "28047",
+      "name": "합성시군구_28047",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41047,
+    "properties": {
+      "region_id": "41047",
+      "name": "합성시군구_41047",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50047,
+    "properties": {
+      "region_id": "50047",
+      "name": "합성시군구_50047",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11048,
+    "properties": {
+      "region_id": "11048",
+      "name": "합성시군구_11048",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26048,
+    "properties": {
+      "region_id": "26048",
+      "name": "합성시군구_26048",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28048,
+    "properties": {
+      "region_id": "28048",
+      "name": "합성시군구_28048",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41048,
+    "properties": {
+      "region_id": "41048",
+      "name": "합성시군구_41048",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50048,
+    "properties": {
+      "region_id": "50048",
+      "name": "합성시군구_50048",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 11049,
+    "properties": {
+      "region_id": "11049",
+      "name": "합성시군구_11049",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 26049,
+    "properties": {
+      "region_id": "26049",
+      "name": "합성시군구_26049",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 28049,
+    "properties": {
+      "region_id": "28049",
+      "name": "합성시군구_28049",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 41049,
+    "properties": {
+      "region_id": "41049",
+      "name": "합성시군구_41049",
+      "level": "sigungu",
+      "is_synthetic_placeholder": true
+    }
+  },
+  {
+    "layer": "regions",
+    "id": 50049,
+    "properties": {
+      "region_id": "50049",
+      "name": "합성시군구_50049",
+      "level": "sigungu",
       "is_synthetic_placeholder": true
     }
   }

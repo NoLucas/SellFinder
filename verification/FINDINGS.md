@@ -6,6 +6,201 @@
 
 ---
 
+## 회차: 2회차 · 2026-08-16 · HEAD `d942dd4`
+
+검증 범위: `orchestrator/DISPATCH.md` 1차 지시 이행 여부. 대상 커밋 —
+A `a0a5eb2` · B `158c4d3` `4436bde` `d7421f9` `775be91` · C `a8f1e34` `61c4eaf` ·
+D `1b4296e` `d942dd4` · 총괄자 게이트 정정 `648669c`.
+(`4707fc5` data-platform 은 DISPATCH 1차 범위 밖의 후속 커밋이라 이번 판정 대상이 아니다.
+`backend/app/services/basemap_registry.py` 등 C 의 후속 작업은 **커밋되지 않은 워킹트리 상태**라
+이번 회차에서 판정하지 않는다 — 다음 회차 대상.)
+
+기준은 `DISPATCH.md` §6 종료조건 4개다. **넷 다 이번 회차에 참으로 전환됐다.**
+1회차 미해결 10건 전건을 재확인했고, 회차 중 신규 결함 1건(VF-011)을 발견해 같은 회차 안에서
+해소까지 확인했다.
+
+## 요약
+
+| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨(누적) | 확인 불가 |
+|---|---|---|---|---|---|---|---|
+| 0 | 1 | 0 | 2 | **3** | 0 | 8 | 2 |
+
+이번 회차 신규: VF-011(발견 즉시 해소) · VF-012(신규, S4, 문서화된 미구현).
+이번 회차 해소: VF-001 · VF-002 · VF-003 · VF-005 · VF-006 · VF-007 · VF-008 · VF-009 · VF-011.
+이번 회차도 열림: VF-004(S2) · VF-010(S4, 변경 없음) · VF-012(S4, 신규).
+
+---
+
+## DISPATCH §6 종료조건 4개 — 판정
+
+| # | 조건 | 재현 | 결과 |
+|---|---|---|---|
+| 1 | `vf_56_join.mjs` 전건 매칭 | 아래 VF-003 참조 | **PASS** |
+| 2 | `vf_t0_api.py` above ceiling 0건 | `backend/.venv/Scripts/python.exe verification/fixtures/vf_t0_api.py` | **PASS** — `/regions`·`/scores` 모두 0건 |
+| 3 | `vf_52_tenant.py` 주입 경로 전부 400 | `backend/.venv/Scripts/python.exe verification/fixtures/vf_52_tenant.py` | **PASS** — 실제로는 6이 아니라 7경로(쿼리 5·헤더 2)가 있고 **7/7 전부 400** |
+| 4 | `vf_51_mutation.py` M1·M2 잡힘 | `python verification/fixtures/vf_51_mutation.py M1` / `M2` | **PASS** — 둘 다 `failures>0`으로 잡힘 |
+
+넷 다 참 — **1차 지시 사이클 종료 조건이 충족됐다.**
+
+---
+
+## 해결 확인됨 (2회차)
+
+### VF-001 · 요인 분해 불변식 항등식 검사 문제 (B-1)
+- 재현: `python verification/fixtures/vf_51_mutation.py M1` / `M2`
+- 결과: M1 → `test_display_effect_agrees_with_exported_log_contribution`,
+  `test_log_contribution_matches_each_factors_own_multiplier`,
+  `test_value_over_benchmark_reconstructs_log_contribution` 3건이 잡음.
+  M2 → 위 중 2건이 잡음. **1회차 SURVIVED → 2회차 CAUGHT.**
+- 담당 B, 커밋: `158c4d3`
+
+### VF-002 · `tenant_id` 주입 무시 (C-4)
+- 재현: `verification/fixtures/vf_52_tenant.py`
+- 결과: 쿼리(`tenant_id`·`tenantId`) 5건 + 헤더(`X-Tenant-Id`·`Tenant-Id`) 2건, **7/7 전부
+  `400 TENANT_ID_NOT_ALLOWED`.** 1회차엔 전부 200 이었다.
+- 담당 C, 커밋: `a8f1e34`
+
+### VF-003 · 경계 타일 ↔ 점수 조인 키 불일치 (A-2, D-20)
+- 재현: `data-platform/.venv/Scripts/python.exe verification/fixtures/vf_56_dump_features.py --source fixture`
+  → `node verification/fixtures/vf_56_join.mjs`
+- 결과: `region_id` 가 이제 properties 에 실제로 있다 (`'region_id' in properties -> True`,
+  250/250 피처). `scores.json` 의 5개 region_id 전부 매칭, **미정의 promoted id 0/250.**
+  245/250 "MISS" 는 결함이 아니다 — `scores.json` 은 250개 시군구 중 5개짜리 데모 표본이고,
+  나머지는 애초에 점수가 없어 회색이 맞다.
+- **독립 교차검증**: D 자신의 신규 테스트(`console/tests/join.test.mjs`, A 의 실제 커밋된
+  `.pmtiles` 픽스처를 직접 디코드)도 동일 결론 — `node --test tests/join.test.mjs` → 3/3 통과,
+  `join: A's real committed .pmtiles fixture matches C's real scores.json, end to end` 통과.
+  검증자 하네스와 D 의 자체 테스트가 서로 다른 구현으로 같은 결론에 도달했다.
+- **주의 — 근본 원인은 두 개였고 이번 회차에 둘 다 닫혔다.** 회차 도중에만 발견 순서가 갈렸다.
+  1. **조인 키 자체 결함 (A-2, ADR-005/D-20)** — `region_id` 가 properties 에 없던 것. **A 의
+     `a0a5eb2` 로 해소.**
+  2. **표본 파일 간 레벨/빈티지 불일치 (신규, VF-011)** — `backend/samples/manifest.json` 이
+     `adm_dong`/`2026-01-01` 을 광고하는데 `scores.json` 은 `sigungu`/`fixture`. 조인 키 필드
+     (`source_layer`/`feature_id_property`) 값이 우연히 레벨 무관하게 같아서 이번 하네스는 실패로
+     드러나진 않았지만, 실제로 D 가 `manifest.tile_url` 로 타일을 받아온다면 존재하지 않는
+     `adm_dong` 아티팩트를 요청하게 됐을 결함이다. **아래 VF-011 참조, C 의 `61c4eaf` 로 해소.**
+  **1번만 고치고 2번을 놓쳤다면 이 조인 테스트는 여전히 통과처럼 보였을 것이다** — `promoteId` 가
+  쓰는 필드들이 레벨 표기와 별개였기 때문. 총괄자가 회차 시작 시점에 2번을 먼저 짚어줘서
+  같은 회차 안에서 분리·확인할 수 있었다.
+- 담당 A(원인 1) · C(원인 2), 커밋: `a0a5eb2`, `61c4eaf`
+
+### VF-005 · T0 `confidence.level` 상한 미적용 (C-1)
+- 재현: `backend/.venv/Scripts/python.exe verification/fixtures/vf_t0_api.py`
+- 결과: `/regions`·`/scores` 모두 `above ceiling (=='high')` **0건** (1회차 2건).
+  `['medium','medium','medium','medium','low']` — 상한 `medium` 정확히 적용됨.
+- 담당 C, 커밋: `a8f1e34`
+
+### VF-006 · 서명 URL + `Cache-Control: public` 공존 (C-5)
+- 재현: `PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_52b_basemap.py`
+- 결과: `level=adm_dong`(서명 필요) → `Cache-Control: private, max-age=3600`.
+  서명 없는 `level=sido` 만 `public` 유지 — 의도대로 분기됨.
+- 담당 C, 커밋: `a8f1e34`
+
+### VF-007 · `tenant_scoped` 키 하드코딩 (B-2)
+- 재현: `cd intelligence && python -m unittest tests.test_synthetic_generator.GeneratedDatasetTestCase.test_no_tenant_scoped_features_leaked_into_the_shared_store -v`
+- 결과: `OK`. 테스트가 `contracts.load_tenant_scoped_feature_keys()` 로 계약 파일에서
+  직접 키를 읽는다 (`intelligence/tests/test_synthetic_generator.py:38-40`) — 하드코딩 제거 확인.
+- 담당 B, 커밋: `4436bde`
+
+### VF-008 · 백엔드 T0 run 테스트 부재 (C-2)
+- 재현: `backend/.venv/Scripts/python.exe -m pytest backend/tests -q`
+- 결과: **28 passed** (1회차 19). `backend/tests/test_predictions_t0.py` 신설, T0 분기가
+  이제 스위트에서 실제로 실행된다.
+- 담당 C, 커밋: `a8f1e34`
+
+### VF-009 · console 실행 가능 테스트 0개 (D-2)
+- 재현: `cd console && node --test tests/join.test.mjs`
+- 결과: **3 passed / 0 failed.** 파서→setFeatureState 키→조인→fill expression 전 구간을
+  D 자신의 실제 코드(`scoreScale.ts`)와 A 의 실제 커밋된 픽스처로 실행.
+- 담당 D, 커밋: `1b4296e`, `d942dd4`
+
+### VF-011 · `backend/samples/manifest.json` 이 `scores.json` 과 레벨·빈티지가 어긋남 (신규 → 해소, C)
+- 발견 경위: 총괄자가 2회차 착수 지시에서 직접 지목. 검증자가 재현·확인만 수행.
+- 위치: `backend/samples/manifest.json` (해소 전: `level:"adm_dong"`, `boundary_vintage:"2026-01-01"`,
+  `tile_url` 이 존재하지 않는 CDN 서명 URL) vs `backend/samples/scores.json`
+  (`region_level:"sigungu"`, `boundary_vintage:"fixture"`, D-15 로 이미 정정됨).
+- 재현: `python tools/validate_contracts.py --check-manifest backend/samples/manifest.json` +
+  `--check-scores backend/samples/scores.json` 를 나란히 놓고 `level`/`boundary_vintage` 대조.
+- 결과: 해소 전 상태에서 두 파일의 `level`·`boundary_vintage` 가 서로 다름 확인.
+  VF-003 과 같은 실패 모양(조인은 구조적으로 성립하는데 조용히 안 맞음)이었으나,
+  이번 조인 하네스가 쓰는 필드(`source_layer`/`feature_id_property`)가 레벨 무관값이라
+  **`vf_56_join.mjs` 자체는 이 결함을 못 잡았다** — 별도로 직접 대조해야 잡히는 종류였다.
+- 해소: `61c4eaf` — `level:"sigungu"`, `boundary_vintage:"fixture"`,
+  `tile_url:"http://localhost:8000/artifacts/regions-sigungu-fixture.pmtiles"`,
+  `minzoom:4` 로 A 의 실제 `manifest-fixture.json` 값을 그대로 복사. 재검증:
+  `--check-manifest`·`--check-scores` 둘 다 **오류 0 + 경고 0.**
+- 근거: `ADR-002-artifact-publishing.md`, `DECISIONS.md` D-15
+- 담당: **C**
+
+---
+
+## S2 — 심각 (2회차, 여전히 열림)
+
+### VF-004 · C 가 광고하는 빈티지·줌이 A 의 실제 산출물과 다르다 (C) — **여전히 열림**
+- 재현: `PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_56_vintage.py`
+- 결과 (1회차와 동일한 모양):
+  ```
+  A 가 실제 발행: sido vintages=['2026-01-01','2026-07-01'] latest=2026-07-01
+  C 가 광고:      sido vintages=['2026-01-01','2025-01-01'] latest=2026-01-01
+  C.get(level=sido, vintage=2026-07-01) -> 404 BOUNDARY_VINTAGE_NOT_FOUND   (실재하는데 없다고 답함)
+  zoom, sido: A manifest minzoom=0 / C response minzoom=5
+  ```
+- **DISPATCH C-7 (하드코딩 3종 제거, A 매니페스트 값 전달)이 아직 커밋되지 않았다.**
+  `backend/app/services/basemap_registry.py` 에 해당 리라이트가 **워킹트리에만 존재**
+  (미커밋 — 이번 회차 판정 대상 아님, §CHARTER 절차상 커밋된 것만 판정한다).
+  코드가 커밋되는 대로 다음 회차에 바로 재확인 가능하다.
+- 근거: `ADR-002-artifact-publishing.md`, `DECISIONS.md` D-08·D-13·D-14
+- 담당: **C** (진행 중으로 관측됨, 미완료)
+- 나이: 1회차부터 — **1일**
+
+---
+
+## S4 — 낮음
+
+### VF-010 · `suppressed` 원시값 차단이 생성기 단계에만 있다 (C, B) — 변경 없음
+- 1회차와 동일. DISPATCH 1차 범위에 포함되지 않았다. API 응답·로그·내보내기 경로에
+  suppressed 처리 자체가 아직 없음 (내보내기 라우트 미구현, 아래 확인 불가 참조).
+- 근거: `05_scoring_spec.md` §8, `06_governance.md` §2.3
+- 담당: **C, B**
+- 나이: 1회차부터 — **1일**
+
+### VF-012 · 백테스트 하네스에 wMAPE·예측구간 coverage 가 없다 (B) — 신규, 문서화된 결함
+- 위치: `intelligence/backtest/harness.py` (B-4, 커밋 `775be91`)
+- 내용: `05_scoring_spec.md` §5.2 는 Spearman ρ·wMAPE·예측구간 coverage 세 지표를 요구한다.
+  이번 하네스는 **Spearman ρ 와 top-decile lift 만** 구현됐다 (`time_split`,
+  `region_holdout_split`, `assert_no_leakage_before_cutoff` 는 구현·검증됨 — 아래 참고).
+  wMAPE·coverage 는 p10/p50/p90 구간 추정치가 필요한데, 그건 모델의 Step 5(잔차 분포) 범위라고
+  커밋 메시지가 스스로 밝히고 있다. **거짓 완료가 아니라 정직하게 선언된 미구현**이라 S4 로 낮춘다.
+- 참고로 `assert_no_leakage_before_cutoff` 는 문서상 주장이 아니라 실제로 이가 있다 — 커밋
+  메시지에 따르면 `as_of` 를 무시하는 스토어로 몽키패치해 실제로 `LeakageDetectedError` 가
+  발생하는 것까지 증명했다고 적혀 있다(검증자가 직접 재실행은 하지 않음, 다음 회차 대상).
+- 근거: `05_scoring_spec.md` §5.2
+- 담당: **B**
+
+---
+
+## 확인 불가 (갱신)
+
+- **RLS 가 DB 레벨에 걸렸는가** — 여전히 확인 불가. DB 자체가 없다 (`prediction_store.py` 인메모리,
+  변경 없음).
+- **내보내기(xlsx/csv)에 T0 금액·suppressed 원시값이 새는가** — 여전히 확인 불가.
+  `backend/app/routers/` 에 export 라우트 0건 (변경 없음). VF-010 이 열려 있는 이유이기도 하다.
+
+### 이번 회차에 확인 완료돼 목록에서 빠진 항목
+
+- **개발 전용 토큰 엔드포인트가 운영에 노출되는가 (D-17 S1 조건)** — **확인 완료, 문제 없음.**
+  `backend/app/routers/dev_auth.py` 신설(C-6, `a8f1e34`). `app/main.py:23-26` 가
+  `settings.env == "development"` 일 때만 라우터를 등록한다. 직접 재현:
+  ```
+  SELLFINDER_ENV=production 로 create_app() 실행 후
+  POST /v1/dev/token -> 404, '/v1/dev/token' in [r.path for r in app.routes] -> False
+  ```
+  핸들러가 조건부로 막는 게 아니라 **라우트 자체가 프로덕션 빌드에 존재하지 않는다** — D-17 이
+  요구한 것과 일치.
+
+---
+
+
 ## 회차: 1회차 · 2026-08-15 · HEAD `8133702`
 
 검증 범위: A~D 전 폴더 (첫 회차라 미해결 항목이 없다).
