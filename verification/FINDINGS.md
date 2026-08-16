@@ -6,6 +6,182 @@
 
 ---
 
+## 회차: 5회차 · 2026-08-16 · 판정 기준 HEAD `525594a` (판정 시작 시점에 고정)
+
+**판정 기준을 먼저 못 박는다.** 이번 회차는 `orchestrator/DISPATCH-2.md` §8 종료조건 4개를
+판정한다. 대상 커밋: A `3925555` · B `bb55f25` · C `3e7e6e3` · D `acc99ac`. 판정 시작 직후
+`git rev-parse --short HEAD` 로 `525594a` 를 먼저 기록했고, **아래 모든 판정은 이 커밋 기준이다.**
+2회차에서 C-7 을 미커밋으로 오판했던 것과 같은 사고를 막기 위해, 이번엔 판정 도중 실제로
+같은 상황이 재발했다 — 어떻게 처리했는지 §0 에 남긴다.
+
+### §0. 판정 도중 발견한 워킹트리 오염 — 격리해서 처리했다
+
+Check 4(§6 evidence 규칙)를 실행하려고 `intelligence/` 를 import 하던 중, 다음이 **미커밋
+상태로 워킹트리에 이미 존재**하는 것을 발견했다:
+
+```
+ M intelligence/scoring/MODEL_CARD.md
+ M intelligence/scoring/factors.py
+?? intelligence/tests/test_evidence_rules.py   (untracked, git log 상 어떤 커밋에도 없음)
+```
+
+B 세션이 evidence 규칙 관련 작업을 **지금 이 순간에도 진행 중**이라는 뜻이다. 워킹트리에서
+그냥 import 했다면 판정이 `525594a` 가 아니라 "판정 시점에 우연히 얼마나 진행돼 있었는가"에
+좌우됐을 것이다. 그래서:
+
+1. `git worktree add --detach <임시경로> 525594a` 로 **판정 전용 격리 체크아웃**을 만들었다
+   (B 의 라이브 세션이 쓰고 있는 공유 워킹트리는 전혀 건드리지 않음 — 다른 폴더를 새로 만드는
+   `git worktree`는 원본 워킹트리에 영향이 없다).
+2. Check 4 는 전부 이 격리 체크아웃 안에서만 실행했다.
+3. 끝난 뒤 `git worktree remove`로 정리했다 — 저장소에 흔적이 남지 않는다.
+
+B 의 미커밋 변경(`factors.py`의 `benchmark_value` None/0 방어, `test_evidence_rules.py`)은
+**이번 회차 판정에 전혀 쓰지 않았다.** 다음 회차가 커밋된 뒤 판정한다.
+
+## 요약
+
+| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨(누적) | 확인 불가 |
+|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 1 | **1(+VF-013 이월)** | 0 | 15 | 2 |
+
+**DISPATCH-2 §8 종료조건 4개 — 넷 다 `525594a` 기준으로 PASS.** 새 결함은 없다.
+1건(VF-015, S4)은 문서-코드 사소 불일치. **VF-013 은 지시대로 이번 회차 판정 대상에서
+제외했다** — 수정 커밋(`5982238`)이 이 HEAD 의 조상에 있지만, 그 자체를 검증하는 것은
+다음 회차 일이다.
+
+---
+
+## DISPATCH-2 §8 종료조건 4개 — 판정
+
+### 1. `POST /predictions` 가 202+`run_id` 를 반환하고 그 run 의 `/scores` 가 B 가 계산한 값을 준다
+
+C 자신의 이음매 테스트(아래 조건 3)와는 **별개로** 검증자가 직접 새 시나리오로 재현했다:
+
+```
+POST /v1/predictions {product_ids:[prd_x], region_level: adm_dong} → 202, elapsed 0.0150s
+  body: {run_id: run_ccff2d9ed413, status: queued, estimated_seconds: 30, data_tier: T1}
+POST 리턴 직후 run.status == 'queued'  ← 계산이 끝나기 전에 202 가 나갔다는 증거
+...대기...
+run.status == 'succeeded', n_regions=5
+
+독립적으로 intelligence_client.run_prediction() 을 직접 호출한 ground truth 순위:
+  ['91001001', '91001003', '91001004', '91001005', '91001002']
+GET /scores 가 실제로 반환한 순위:
+  ['91001001', '91001003', '91001004', '91001005', '91001002']
+match: True
+```
+
+202 가 **동기 계산을 기다리지 않고** 나가는 것(15ms, wall-clock)과 `/scores` 가 B 의 실제
+`predict_batch` 순위와 바이트 단위로 일치하는 것 둘 다 확인. **PASS**
+
+### 2. `backend` 에 `_build_demo_regions()` 가 존재하지 않는다
+
+```
+$ grep -rn "_build_demo_regions" backend/ --include=*.py
+backend/app/services/job_runner.py:12: (주석 — "삭제했다"는 설명)
+backend/app/services/prediction_store.py:15: (주석 — "더 이상 여기 없다"는 설명)
+$ grep -n "def _build_demo_regions" backend/app/services/*.py
+(0건)
+```
+
+함수 정의 자체는 0건 — 남은 건 "이걸 지웠다"는 주석뿐이다. **PASS**
+
+### 3. B↔C 이음매 테스트가 어느 쪽 스위트에서든 실행되고 통과한다
+
+`backend/tests/test_intelligence_seam.py` — B 의 `predict_batch` 를 직접 호출한 결과를
+ground truth 로 삼고, 그 **동일 요청**을 실제 HTTP + job worker 경로로 흘려보내 순위가
+같은지 비교한다(위조 불가 — "후보 지역 전부 같은 점수"가 아님을 먼저 확인하는 자기 검증
+테스트까지 포함).
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests/test_intelligence_seam.py -v
+test_predict_batch_ground_truth_is_not_degenerate PASSED
+test_scores_response_matches_predict_batch_ranking PASSED
+2 passed
+
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+60 passed  (4회차 대비 +21 — C-1~C-5 신규 테스트 포함)
+```
+
+VF-003 이 재발하지 않도록 설계된 테스트라는 점을 코드로 확인했다 (`test_intelligence_seam.py`
+독스트링이 VF-003 을 직접 인용). **PASS**
+
+### 4. 검증이 evidence 규칙(§6) 4개 조항에 대해 구멍이 아닌 판정을 낸다
+
+**가장 중요한 조건이라 가장 크게 봤다.** §0 의 격리 체크아웃 안에서, B 의 실제
+`model.predict_batch()` 를 호출 조합 4가지(cvs/mid, hypermarket/premium, online_marketplace/
+value, cvs/luxury) × adm_dong 지역 50개 × 8요인으로 돌려 **evidence 문자열 1,600개**를 얻고
+네 조항을 전수 검사했다.
+
+```
+total evidence strings: 1600
+crashes: 0
+causal violations: 0            (금지1: 인과 표현 "때문에/그래서/덕분에" 등)
+null-cites-number violations: 0 (금지2: value=None 인데 evidence 가 숫자를 지어냄)
+no-comparison false-positives만 50건 (전부 "온라인 채널은 경쟁강도를 안 씀" 류의 규칙
+  설명 — 애초에 값·비교가 필요 없는 문장이라 §6.1-2 적용 대상이 아님. 수기로 50건 전부
+  확인, 실제 위반 0건)
+```
+
+조항별 판정:
+
+| 조항 | 요구 | 판정 | 근거 |
+|---|---|---|---|
+| §6 반드시 1 — 실제 피처값 인용 | value 가 있으면 evidence 에 그 값이 보여야 함 | **위반 없음** | 코드 레벨: `factors.py` 의 모든 factor 함수가 evidence f-string 을 `FactorResult` 에 넣는 **바로 그 변수**(`relevant_pop`, `spend_index`, `density`, `income_decile` 등)로 만든다 — 독립된 두 번째 숫자가 아니라 같은 변수의 두 표현. 1,600건 실측 0 위반. |
+| §6 반드시 2 — 비교 기준 동반 | benchmark 가 있으면 그 값과 "평균/대비/기준" 표현 동반 | **위반 없음** | 1,600건 실측, "평균"/"대비"/"전국 평균 100" 류 표현이 benchmark 있는 모든 케이스에 동반. |
+| §6 금지 2 — 모델이 안 쓴 근거 지어내기(null 피처 인용 포함) | value=None 인 factor 의 evidence 가 숫자를 지어내면 안 됨 | **위반 없음** | value=None 케이스(온라인 채널 competition, 소득분위 없음 등) 전부 "~데이터 없음 - 중립(1.0)으로 처리" 류 정직한 문구뿐, 수치 0건. 각 factor 함수가 `if X is None: return FactorResult(..., None, ..., "~없음")` 형태로 **조기 반환**하는 구조상 애초에 없는 값을 포맷 문자열에 넣을 코드 경로가 없다. |
+| §6 금지 3 — 인과 주장 | "때문에/그래서 잘 팔릴 것" 류 상관→인과 비약 금지 | **위반 없음** | 1,600건 전수 검색 0건. evidence 는 전부 "X 대비 Y배" 식 비율 서술이지 "그래서 팔린다"류 서술이 아니다. |
+
+**부기 — 이 판정과 별개로, 이 규칙을 강제하는 자동 회귀 테스트는 `525594a` 시점에 아직
+없다.** B 가 `test_evidence_rules.py` 를 작업 중이지만(§0) 미커밋이라 이번 판정엔 안 썼다.
+즉 "지금 코드가 규칙을 지킨다"는 확인됐지만 "미래의 변경도 계속 지킨다"는 아직 자동으로
+보장되지 않는다 — 다음 회차에서 그 테스트가 커밋되면 재확인 대상이다(신규 VF 번호를 매기지
+않는다. 결함이 아니라 아직 안전망이 없는 상태라서 VF-001 의 "안전망 부재"와 같은 결이지만,
+지금 코드 자체는 실측으로 깨끗해서 findings 로 올리지 않는다).
+
+**PASS** — 4개 조항 모두 "구멍"이 아니라 "위반 없음"으로 판정을 냈다.
+
+---
+
+## 종료 조건 총평
+
+**넷 다 참이다. DISPATCH-2 2차 사이클이 `525594a` 기준으로 종료 조건을 충족했다.**
+1차 사이클(DISPATCH.md §6)이 "지도가 실제로 칠해지는가"를 검증했다면, 이번은 "예측이
+실제로 생성되는가"였다 — POST 부터 B 의 실제 계산을 거쳐 evidence 문장까지 인위적 데이터
+없이 전 구간을 검증자가 직접 재현했다.
+
+---
+
+## S4 — 낮음 (신규)
+
+### VF-015 · `intelligence/README.md` 의 `predict_batch` 시그니처 문서와 실제 호출부가 살짝 다르다 (B/C, 정보성)
+
+- 위치: `intelligence/README.md`(B-1 산출물) vs `backend/app/services/intelligence_client.py`
+- 내용: C 의 `run_prediction()` 은 README 가 공개한 시그니처를 따라 `predict_batch` 를
+  호출하지만, `product_attributes`/`price_tier`/`seasonality_profile` 등 선택 인자를
+  아직 넘기지 않는다(`intelligence_client.py` 자신의 주석이 이유를 밝힘 — "Backend has
+  no product catalog yet"). 그 결과 지금 `/scores` 에 실리는 예측은 8요인 중 다수가 중립
+  (1.0)으로 나온다 — **틀린 값이 아니라 입력이 아직 다 안 채워진 것**이고, 그 사실이
+  코드 주석에 정직하게 적혀 있다. 계약 위반도 은폐도 아니라 S4.
+- 판단: DISPATCH-2 C-1~C-5 어디에도 "product_attributes 전달"이 지시 항목으로 없었으므로
+  미이행이 아니라 **다음 사이클 범위**. 기록만 해 둔다 — 나중에 "왜 evidence 가 대부분
+  중립인가"를 다시 묻는 일을 막기 위해서다.
+- 근거: `intelligence/README.md`, `backend/app/services/intelligence_client.py`
+- 담당: C (다음 사이클 후보)
+- 나이: 5회차 신규 — **0일**
+
+---
+
+## 이월 — 이번 회차에서 판정하지 않음
+
+- **VF-013** (S2, `sort=revenue_desc`/`profit_desc` 원시값 정렬) — 총괄자 지시로 이번 회차
+  판정 대상에서 명시적으로 제외했다. 수정 커밋 `5982238` 이 이 HEAD(`525594a`)의 조상에
+  이미 들어있는 것은 확인했지만(`git log --oneline`), **그 수정이 실제로 문제를 닫는지는
+  검증하지 않았다** — 지시대로 다음 회차로 넘긴다.
+
+---
+
+
 ## 회차: 4회차 · 2026-08-16 · HEAD `822a259`
 
 검증 범위: 총괄자가 지정한 2건만 — B 의 VF-012 해소(`7f2222a`), C 의 VF-010 해소(`19373ff`).
