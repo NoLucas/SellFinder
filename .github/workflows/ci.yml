@@ -116,14 +116,9 @@ jobs:
       - name: A 의 커밋된 픽스처 타일에서 피처 덤프
         run: python verification/fixtures/vf_56_dump_features.py --source fixture
       - name: 조인 하네스 (0건 매칭이면 실패)
-        # 주의: 검증 픽스처들은 결과와 무관하게 exit 0 이다. 진단 출력기이지 단언이 아니다.
-        # 그대로 실행만 하면 깨져도 통과하는 가짜 CI 가 된다. 그래서 출력을 여기서 판정한다.
-        # (verification/ 는 검증자 소유라 이쪽에서 픽스처를 고치지 않는다)
-        run: |
-          out=$(node verification/fixtures/vf_56_join.mjs); echo "$out"
-          if echo "$out" | grep -qE 'received a score +: 0/'; then
-            echo "::error::조인 매칭 0건 - 타일과 점수가 붙지 않는다 (VF-003 재발)"; exit 1
-          fi
+        # 픽스처가 원래 결과와 무관하게 exit 0 이라 처음엔 출력을 grep 했다. 검증자가 6회차에서
+        # --strict 를 추가해(feb868d) 실패 시 exit 1 을 반환하므로 문자열 매칭 의존을 없앴다.
+        run: node verification/fixtures/vf_56_join.mjs --strict
 
   privacy-and-honesty:
     name: 정직성 - T0 금액/신뢰도, 테넌트 주입
@@ -137,23 +132,11 @@ jobs:
           python-version: '3.12'
       - name: 의존성
         run: python -m pip install -q -r backend/requirements.txt
-      # 아래 두 픽스처도 exit 0 만 반환한다. 출력을 판정해야 의미가 있다.
+      # 두 픽스처 모두 검증자가 6회차에서 --strict 를 추가했다(feb868d). 실패 시 exit 1 이다.
       - name: T0 는 금액 null 이고 신뢰도 상한이 medium 인가
-        run: |
-          out=$(python verification/fixtures/vf_t0_api.py); echo "$out"
-          if echo "$out" | grep -E 'above ceiling' | grep -qvE ': *0( |$)'; then
-            echo "::error::T0 에 medium 초과 신뢰도가 반환된다 (VF-005 재발)"; exit 1
-          fi
-          if echo "$out" | grep -qE 'non-null expected_revenue_krw *: *[1-9]'; then
-            echo "::error::T0 에 금액이 반환된다 (D-03 위반)"; exit 1
-          fi
+        run: python verification/fixtures/vf_t0_api.py --strict
       - name: tenant_id 주입이 전 경로에서 400 인가
-        run: |
-          out=$(python verification/fixtures/vf_52_tenant.py); echo "$out"
-          # 주입 시도 줄(tenant_id / Tenant-Id 가 등장하는 줄)만 본다. 베이스라인 200 은 정상이다.
-          if echo "$out" | grep -iE 'tenant.?id' | grep -q -- '-> 200'; then
-            echo "::error::tenant_id 주입이 400 이 아니라 200 으로 조용히 무시된다 (VF-002 재발)"; exit 1
-          fi
+        run: python verification/fixtures/vf_52_tenant.py --strict
 
   mutation:
     name: 변이 - 요인 분해 테스트가 실제로 무언가를 막는가
