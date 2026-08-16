@@ -410,6 +410,11 @@ def parse_findings() -> dict:
             continue
         m = re.match(r"^##\s*회차:\s*(.+)$", line)
         if m:
+            # FINDINGS.md 는 회차를 한 파일에 누적한다(최신이 위). 여기서 멈추지 않으면
+            # 과거 회차의 미해결까지 전부 더해져 STATUS 가 "미해결 15건" 같은 거짓을 말한다.
+            # 이미 닫힌 항목이 다시 열린 것처럼 보이는 것이 가장 나쁘다.
+            if result["round_header"] is not None:
+                break
             result["round_header"] = m.group(1).strip()
             continue
 
