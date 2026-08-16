@@ -1,0 +1,178 @@
+name: CI
+
+# 왜 이 파일이 필요한가
+# ---------------------
+# 지금까지 발견된 결함 상당수는 "사람이 기억해서 돌려야 하는 검사"였다.
+# VF-003(지도 조인 0/5)은 네 폴더의 테스트가 전부 통과하는 상태에서 살아남았고,
+# 검증 회차가 돌 때까지 아무도 몰랐다. 이음매 검사가 자동으로 돌았다면 커밋 시점에 잡혔다.
+#
+# 원칙: 사람이 기억해야 하는 검사는 언젠가 안 돌아간다.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    name: 계약 검증 + 폴더 경계
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # 폴더 경계 검사가 base 와 비교하므로 전체 히스토리가 필요하다
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 계약 무결성
+        run: python tools/validate_contracts.py
+      - name: 샘플이 계약 형식을 지키는지
+        run: |
+          python tools/validate_contracts.py --check-scores   backend/samples/scores.json
+          python tools/validate_contracts.py --check-manifest backend/samples/manifest.json
+
+  intelligence:
+    name: B - intelligence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # 이 폴더는 표준 라이브러리만 쓴다. requirements.txt 가 없는 것이 정상이다.
+      - name: unittest
+        working-directory: intelligence
+        run: python -m unittest discover -s tests -v
+
+  backend:
+    name: C - backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: 의존성
+        run: python -m pip install -q -r backend/requirements.txt
+      - name: pytest
+        working-directory: backend
+        run: python -m pytest tests -q
+
+  data-platform:
+    name: A - data-platform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: data-platform/requirements.txt
+      - name: 의존성
+        run: python -m pip install -q -r data-platform/requirements.txt
+      - name: pytest
+        working-directory: data-platform
+        run: python -m pytest tests -q
+
+  console:
+    name: D - console
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - name: 의존성
+        working-directory: console
+        run: npm ci
+      - name: 타입 체크
+        working-directory: console
+        run: npm run typecheck
+      - name: 테스트
+        working-directory: console
+        run: npm test
+
+  seam:
+    name: 이음매 - 타일과 점수가 실제로 조인되는가
+    # 이 잡이 이 CI 의 존재 이유다. 위 잡들은 각 폴더가 자기 안에서 맞는지만 본다.
+    # VF-003 은 그 상태에서 살아남았다. 여기서 A 의 실제 타일과 C 의 실제 응답을 붙인다.
+    needs: [data-platform, backend, console]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 타일 디코딩 의존성
+        run: python -m pip install -q -r data-platform/requirements.txt
+      - name: A 의 커밋된 픽스처 타일에서 피처 덤프
+        run: python verification/fixtures/vf_56_dump_features.py --source fixture
+      - name: 조인 하네스 (0건 매칭이면 실패)
+        # 주의: 검증 픽스처들은 결과와 무관하게 exit 0 이다. 진단 출력기이지 단언이 아니다.
+        # 그대로 실행만 하면 깨져도 통과하는 가짜 CI 가 된다. 그래서 출력을 여기서 판정한다.
+        # (verification/ 는 검증자 소유라 이쪽에서 픽스처를 고치지 않는다)
+        run: |
+          out=$(node verification/fixtures/vf_56_join.mjs); echo "$out"
+          if echo "$out" | grep -qE 'received a score +: 0/'; then
+            echo "::error::조인 매칭 0건 - 타일과 점수가 붙지 않는다 (VF-003 재발)"; exit 1
+          fi
+
+  privacy-and-honesty:
+    name: 정직성 - T0 금액/신뢰도, 테넌트 주입
+    # VF-005(T0 신뢰도), VF-002(테넌트 주입), VF-013(정렬 부채널)이 여기서 회귀 방지된다.
+    needs: [backend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 의존성
+        run: python -m pip install -q -r backend/requirements.txt
+      # 아래 두 픽스처도 exit 0 만 반환한다. 출력을 판정해야 의미가 있다.
+      - name: T0 는 금액 null 이고 신뢰도 상한이 medium 인가
+        run: |
+          out=$(python verification/fixtures/vf_t0_api.py); echo "$out"
+          if echo "$out" | grep -E 'above ceiling' | grep -qvE ': *0( |$)'; then
+            echo "::error::T0 에 medium 초과 신뢰도가 반환된다 (VF-005 재발)"; exit 1
+          fi
+          if echo "$out" | grep -qE 'non-null expected_revenue_krw *: *[1-9]'; then
+            echo "::error::T0 에 금액이 반환된다 (D-03 위반)"; exit 1
+          fi
+      - name: tenant_id 주입이 전 경로에서 400 인가
+        run: |
+          out=$(python verification/fixtures/vf_52_tenant.py); echo "$out"
+          # 주입 시도 줄(tenant_id / Tenant-Id 가 등장하는 줄)만 본다. 베이스라인 200 은 정상이다.
+          if echo "$out" | grep -iE 'tenant.?id' | grep -q -- '-> 200'; then
+            echo "::error::tenant_id 주입이 400 이 아니라 200 으로 조용히 무시된다 (VF-002 재발)"; exit 1
+          fi
+
+  mutation:
+    name: 변이 - 요인 분해 테스트가 실제로 무언가를 막는가
+    # "테스트가 있다"와 "테스트가 무언가를 막는다"는 다른 말이다(VF-001).
+    # M1/M2 를 주입했을 때 B 의 스위트가 실패해야 한다. 통과하면 그 테스트는 장식이다.
+    needs: [intelligence]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: M1 이 잡히는가 (잡히면 성공)
+        run: |
+          if python verification/fixtures/vf_51_mutation.py M1 | grep -q "MUTANT SURVIVED"; then
+            echo "::error::M1 변이가 생존했다 - 요인 분해 테스트가 아무것도 강제하지 못한다"; exit 1
+          fi
+      - name: M2 가 잡히는가 (잡히면 성공)
+        run: |
+          if python verification/fixtures/vf_51_mutation.py M2 | grep -q "MUTANT SURVIVED"; then
+            echo "::error::M2 변이가 생존했다 - 요인 기여도가 조작돼도 통과한다"; exit 1
+          fi
