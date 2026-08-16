@@ -110,4 +110,43 @@ feature-state를 filter에서는 지원하지 않아서). 지역 상세는 클�
 `/console` 자체는 삭제할 코드가 없었고, jin의 전면 폐기 지시에 따라 `/frontend`만 삭제했다.
 `/data-platform`·`/intelligence`·`/backend` 소유 폴더의 레거시 코드(구 `/model`,
 `/data-pipeline`, 구 `shared/contracts` 파일 등)는 이 세션의 권한 밖이라 손대지 않았다.
+
+---
+
+## 8. DISPATCH.md §4 D-2~D-4 (2026-08-16)
+
+**D-2 — 테스트 러너.** 새 devDependency 없이 Node 24 내장 `node --test` 사용.
+Node 24가 `.ts`를 네이티브로 type-strip 하는 걸 확인하고 나서 골랐다 — `scoreScale.ts`를 리임플리
+먼트하지 않고 실제 프로덕션 모듈을 그대로 import 해서 검증한다. `console/tests/join.test.mjs`,
+4개 테스트: (1) 실제 샘플 → `setFeatureState` 키 생성, (2) ADR-005가 요구하는 모양(속성에
+`region_id`)의 합성 타일로 조인 성공을 못박는 회귀 가드, (3) A의 현재(수정 전) 실 타일 픽스처로
+0/5를 못박는 테스트 — **A/C가 ADR-005를 반영하면 이 테스트가 실패로 돌아선다. 그게 버그가 아니라
+D-5(실제 아티팩트 통합) 착수 신호다. "고치지" 말고 D-5로 넘어갈 것.** (4) `scoreScale.ts`의
+fill expression이 실제 `score_range`를 쓰는지. `npm test`로 실행, 실행 결과는 총괄자 보고에 첨부.
+
+**D-3 — 레벨 선택 UI.** 계약(`04_api_contract.yaml` v0.2.2)엔 `/predictions/{run_id}/scores`에
+`level` 쿼리 파라미터가 없다 — `region_level`은 run 생성 시 고정되고 응답이 그걸 알려줄 뿐이다.
+그래서 "레벨 선택"을 이 run의 점수를 다른 레벨로 다시 조회하는 기능으로 만들 수는 없었다(계약에
+없는 걸 지어내는 것 — D-10 위반). 대신 **베이스맵(경계 타일) 자체를 사용자가 시도/시군구/행정동
+중 골라 바꿔 보는 기능**으로 구현했다(`PredictionMap.tsx`의 `LevelPicker`) — `/basemap/regions/
+manifest?level=...`은 계약상 세 값 모두 받으므로 이건 실제 계약 범위 안이다. run 자신의 레벨이
+아닌 걸 고르면 점수 조인은 그대로 시도되지만 `region_id`가 안 맞아 전부 `NO_DATA_FILL`로 칠해진다
+— `scoreFillExpression`의 기존 null-guard가 이미 하는 일이라 별도 분기를 안 넣었다. 줌 이벤트로
+레벨을 바꾸는 코드는 어디에도 없다(D-14). **불확실해서 임의로 결정한 지점 — jin 확인 필요:**
+"레벨 선택"이 이 의미가 맞는지, 아니면 향후 run 생성 UI(§5-2 예정 항목)에서 `region_level`을
+고르는 걸 말한 건지 확실하지 않다. 계약이 후자를 뒷받침하지 않아 전자로 진행했다.
+
+**D-4 — 토큰을 `localStorage`에 넣지 않기.** 확인 결과 애초에 어디에도 저장하지 않고 있었다
+(`page.tsx`의 `useState`뿐, 새로고침하면 날아간다) — `grep -rn "localStorage\|sessionStorage"
+console/src/` 0건. 규칙은 이미 지켜지고 있어서 코드 변경은 회귀 방지 주석 하나만 추가했다.
+httpOnly 쿠키 기반의 실제 영속 로그인은 `/backend`의 로그인/`dev-token` 엔드포인트가 나와야
+붙일 수 있다 — 그 전까지는 지금 상태(비영속 입력창)가 맞다고 보고 진행했다.
+
+**확인 명령 (총괄자 보고에 그대로 첨부):**
+```
+npm test         # D-2 — 4 tests, 4 pass
+npm run typecheck # tsc --noEmit, exit 0
+npm run build     # next build, 정상 완료
+```
+
 다음 지시 대기.

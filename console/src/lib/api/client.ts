@@ -54,16 +54,22 @@ export function getRunSummary(runId: string, token: string): Promise<RunSummary>
 
 /**
  * GET /basemap/regions/manifest (ADR-001-map-tiles.md). Static + cacheable,
- * tenant-agnostic — call this with the `level`/`boundary_vintage` a scores
- * payload reports, never with "latest", or a reopened run's regions can be
- * painted against boundaries that have since moved (redistricting).
+ * tenant-agnostic.
+ *
+ * For the run's OWN region_level, always pass the `boundary_vintage` the
+ * scores payload reports, never "latest" — a reopened run's regions must be
+ * painted against the boundary they were scored on, not one that has since
+ * moved (redistricting). `vintage` is only omittable (contract default:
+ * latest) when browsing a level the run wasn't scored at (D-14 level
+ * picker) — there is no stored vintage to protect in that case.
  */
 export function getBasemapManifest(
   level: RegionLevel,
-  vintage: string,
+  vintage: string | undefined,
   token: string,
 ): Promise<BasemapManifest> {
-  const params = new URLSearchParams({ level, vintage });
+  const params = new URLSearchParams({ level });
+  if (vintage) params.set("vintage", vintage);
   return fetchJSON<BasemapManifest>(`/basemap/regions/manifest?${params.toString()}`, token);
 }
 

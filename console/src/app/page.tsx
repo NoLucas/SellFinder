@@ -13,6 +13,10 @@ import type { PredictionDetail } from "@/lib/api/types";
  */
 export default function ConsolePage() {
   const [runId, setRunId] = useState("run_01J8XM2");
+  // D-17/BRIEF-D D-4: token lives in React state only (lost on refresh) —
+  // do NOT persist it to localStorage/sessionStorage. Real persistence is
+  // httpOnly cookie + refresh, blocked on /backend's login endpoint
+  // (console/RECONCILIATION.md §8).
   const [authToken, setAuthToken] = useState("");
   const [detail, setDetail] = useState<PredictionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);

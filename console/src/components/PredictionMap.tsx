@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol as PMTilesProtocol } from "pmtiles";
 
 import { authTransformRequest, getBasemapManifest, getRegionDetail, getRegionScores } from "@/lib/api/client";
-import type { PredictionDetail, RegionScoresPayload } from "@/lib/api/types";
+import type { PredictionDetail, RegionLevel, RegionScoresPayload } from "@/lib/api/types";
 import { NO_DATA_FILL, scoreFillExpression, type ScoreDomain } from "@/lib/color/scoreScale";
 import { HATCH_IMAGE_ID, hatchOpacityExpression, registerHatchPattern } from "@/lib/map/hatchPattern";
 
@@ -25,6 +25,18 @@ const FILL_LAYER_ID = "region-fill";
 const OUTLINE_LAYER_ID = "region-outline";
 const HATCH_LAYER_ID = "region-hatch";
 
+/**
+ * D-14 (orchestrator/DECISIONS.md): level is a user choice, never an
+ * automatic switch on zoom. This is the full fixed set the picker offers —
+ * `custom_catchment` isn't in it because it has no boundary level to pick,
+ * it's tenant-drawn geometry (handled as its own branch in `bootstrap`).
+ */
+const PICKABLE_LEVELS: { value: RegionLevel; label: string }[] = [
+  { value: "sido", label: "시도" },
+  { value: "sigungu", label: "시군구" },
+  { value: "adm_dong", label: "행정동" },
+];
+
 export interface PredictionMapProps {
   runId: string;
   authToken: string;
@@ -39,9 +51,18 @@ type LoadState = "loading" | "ready" | "error";
 
 export default function PredictionMap({ runId, authToken, productId, channel, onRegionSelect, onError }: PredictionMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [scoreDomain, setScoreDomain] = useState<ScoreDomain>([0, 100]);
+  const [scoresPayload, setScoresPayload] = useState<RegionScoresPayload | null>(null);
+  // D-14: level is a user choice, never derived from zoom. Seeded from the
+  // run's own region_level once scores resolve; the picker below can only
+  // change it via an explicit click — no zoom listener writes to this.
+  const [level, setLevel] = useState<RegionLevel | null>(null);
 
+  // Mount: create the map once, fetch this run's scores, and — for the
+  // custom_catchment case only — paint directly (it has no boundary level
+  // to pick, so it never goes through the level-driven effect below).
   useEffect(() => {
     if (!containerRef.current) return;
     ensurePmtilesProtocol();
@@ -58,102 +79,40 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       zoom: 6.3,
       transformRequest: authTransformRequest(authToken),
     });
+    mapRef.current = map;
 
     map.on("load", () => {
       void bootstrap();
     });
 
-    // Set once bootstrap resolves which vector source-layer (pmtiles path)
-    // or `undefined` (geojson custom_catchment path) the layers/join use.
-    let sourceLayer: string | undefined;
-
     async function bootstrap() {
       setLoadState("loading");
       try {
-        // 1) scores → region_level, boundary_vintage, and the fixed
-        // score_range this run's color scale must use.
-        const scoresPayload: RegionScoresPayload = await getRegionScores(runId, authToken, {
-          productId,
-          channel,
-        });
+        // scores → region_level, boundary_vintage, and the fixed score_range
+        // this run's color scale must use.
+        const payload: RegionScoresPayload = await getRegionScores(runId, authToken, { productId, channel });
         if (cancelled) return;
-        setScoreDomain([scoresPayload.score_range.min, scoresPayload.score_range.max]);
+        setScoreDomain([payload.score_range.min, payload.score_range.max]);
+        setScoresPayload(payload);
 
-        if (scoresPayload.region_level === "custom_catchment" && scoresPayload.custom_geometries) {
+        if (payload.region_level === "custom_catchment" && payload.custom_geometries) {
           // Tenant-defined catchments: too few, too tenant-specific for a
           // shared pmtiles archive — inlined as GeoJSON instead (ADR-001).
-          sourceLayer = undefined;
+          // No level picker applies here, so this is painted directly
+          // rather than through the [level] effect.
           map.addSource(SOURCE_ID, {
             type: "geojson",
-            data: scoresPayload.custom_geometries,
+            data: payload.custom_geometries,
             promoteId: "region_id",
           });
+          addScoreLayers(map, undefined, [payload.score_range.min, payload.score_range.max]);
+          joinScores(map, undefined, payload);
+          setLoadState("ready");
         } else {
-          // 2) manifest → the pmtiles archive for THIS run's boundary
-          // vintage — never "latest" (see getBasemapManifest doc comment).
-          const manifest = await getBasemapManifest(
-            scoresPayload.region_level,
-            scoresPayload.boundary_vintage,
-            authToken,
-          );
-          if (cancelled) return;
-          sourceLayer = manifest.source_layer;
-
-          map.addSource(SOURCE_ID, {
-            type: "vector",
-            url: `pmtiles://${manifest.tile_url}`,
-            promoteId: { [manifest.source_layer]: manifest.feature_id_property },
-            minzoom: manifest.minzoom,
-            maxzoom: manifest.maxzoom,
-          });
+          // Vector-tile levels are painted by the [level] effect (it also
+          // handles the initial paint — setting `level` here triggers it).
+          setLevel(payload.region_level);
         }
-
-        map.addLayer({
-          id: FILL_LAYER_ID,
-          type: "fill",
-          source: SOURCE_ID,
-          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
-          paint: {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            "fill-color": scoreFillExpression([scoresPayload.score_range.min, scoresPayload.score_range.max]) as any,
-            "fill-opacity": 0.85,
-          },
-        });
-
-        map.addLayer({
-          id: OUTLINE_LAYER_ID,
-          type: "line",
-          source: SOURCE_ID,
-          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
-          paint: { "line-color": "rgba(11, 11, 11, 0.15)", "line-width": 0.5 },
-        });
-
-        registerHatchPattern(map);
-        map.addLayer({
-          id: HATCH_LAYER_ID,
-          type: "fill",
-          source: SOURCE_ID,
-          ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
-          paint: {
-            "fill-pattern": HATCH_IMAGE_ID,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            "fill-opacity": hatchOpacityExpression() as any,
-          },
-        });
-
-        // 3) scores → feature-state join, driven by the response's own
-        // `schema` so a field reorder doesn't silently mis-map columns.
-        const idIdx = scoresPayload.schema.indexOf("region_id");
-        const scoreIdx = scoresPayload.schema.indexOf("opportunity_score");
-        const confIdx = scoresPayload.schema.indexOf("confidence_level");
-        for (const row of scoresPayload.scores) {
-          map.setFeatureState(
-            { source: SOURCE_ID, sourceLayer, id: row[idIdx] },
-            { score: row[scoreIdx], confidence_level: row[confIdx] },
-          );
-        }
-
-        setLoadState("ready");
       } catch (err) {
         if (cancelled) return;
         setLoadState("error");
@@ -168,7 +127,7 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       map.getCanvas().style.cursor = "";
     });
 
-    // 4) detail + factor breakdown fetched ONLY on click — never on hover,
+    // detail + factor breakdown fetched ONLY on click — never on hover,
     // never eagerly for the whole viewport.
     map.on("click", FILL_LAYER_ID, (e) => {
       const feature = e.features?.[0];
@@ -188,16 +147,183 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
     return () => {
       cancelled = true;
       map.remove();
+      mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId, authToken, productId, channel]);
+
+  // Level-driven paint: runs once for the run's own level (right after
+  // bootstrap sets it) and again whenever the picker sets a different one.
+  // Swaps the vector source/layers for `level`'s manifest; the score join
+  // uses the SAME scoresPayload every time (scores aren't re-fetched per
+  // level — the run has exactly one region_level). Levels other than the
+  // run's own naturally render all-NO_DATA (scoreFillExpression's existing
+  // null-state guard), which is an honest "no prediction at this level" —
+  // not a special case to branch on.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !level || !scoresPayload || scoresPayload.region_level === "custom_catchment") return;
+    let cancelled = false;
+
+    async function paint() {
+      if (!map || !scoresPayload) return;
+      setLoadState("loading");
+      try {
+        const isRunLevel = level === scoresPayload.region_level;
+        // Only the run's own level carries a `boundary_vintage` worth
+        // pinning (see getBasemapManifest doc comment) — other levels are
+        // pure basemap browsing, so "latest" (vintage omitted) is fine.
+        const manifest = await getBasemapManifest(
+          level as RegionLevel,
+          isRunLevel ? scoresPayload.boundary_vintage : undefined,
+          authToken,
+        );
+        if (cancelled) return;
+
+        removeLayerIfPresent(map, HATCH_LAYER_ID);
+        removeLayerIfPresent(map, OUTLINE_LAYER_ID);
+        removeLayerIfPresent(map, FILL_LAYER_ID);
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+
+        map.addSource(SOURCE_ID, {
+          type: "vector",
+          url: `pmtiles://${manifest.tile_url}`,
+          promoteId: { [manifest.source_layer]: manifest.feature_id_property },
+          minzoom: manifest.minzoom,
+          maxzoom: manifest.maxzoom,
+        });
+        addScoreLayers(map, manifest.source_layer, [scoresPayload.score_range.min, scoresPayload.score_range.max]);
+        joinScores(map, manifest.source_layer, scoresPayload);
+
+        setLoadState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        setLoadState("error");
+        onError?.(err instanceof Error ? err.message : "failed to load prediction map");
+      }
+    }
+
+    void paint();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, scoresPayload, authToken]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {loadState === "loading" && <MapOverlay text="예측 결과를 불러오는 중..." />}
       {loadState === "error" && <MapOverlay text="지도를 불러오지 못했습니다." tone="error" />}
+      {scoresPayload && scoresPayload.region_level !== "custom_catchment" && level && (
+        <LevelPicker
+          selected={level}
+          runLevel={scoresPayload.region_level}
+          onSelect={setLevel}
+        />
+      )}
       <ScoreLegend domain={scoreDomain} />
+    </div>
+  );
+}
+
+/** Fill/outline/hatch layers, shared by the custom_catchment and vector-tile paint paths. */
+function addScoreLayers(map: maplibregl.Map, sourceLayer: string | undefined, domain: ScoreDomain) {
+  map.addLayer({
+    id: FILL_LAYER_ID,
+    type: "fill",
+    source: SOURCE_ID,
+    ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
+    paint: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "fill-color": scoreFillExpression(domain) as any,
+      "fill-opacity": 0.85,
+    },
+  });
+
+  map.addLayer({
+    id: OUTLINE_LAYER_ID,
+    type: "line",
+    source: SOURCE_ID,
+    ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
+    paint: { "line-color": "rgba(11, 11, 11, 0.15)", "line-width": 0.5 },
+  });
+
+  registerHatchPattern(map);
+  map.addLayer({
+    id: HATCH_LAYER_ID,
+    type: "fill",
+    source: SOURCE_ID,
+    ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
+    paint: {
+      "fill-pattern": HATCH_IMAGE_ID,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "fill-opacity": hatchOpacityExpression() as any,
+    },
+  });
+}
+
+/** scores → feature-state join, driven by the response's own `schema` so a field reorder doesn't silently mis-map columns. */
+function joinScores(map: maplibregl.Map, sourceLayer: string | undefined, payload: RegionScoresPayload) {
+  const idIdx = payload.schema.indexOf("region_id");
+  const scoreIdx = payload.schema.indexOf("opportunity_score");
+  const confIdx = payload.schema.indexOf("confidence_level");
+  for (const row of payload.scores) {
+    map.setFeatureState(
+      { source: SOURCE_ID, sourceLayer, id: row[idIdx] },
+      { score: row[scoreIdx], confidence_level: row[confIdx] },
+    );
+  }
+}
+
+function removeLayerIfPresent(map: maplibregl.Map, id: string) {
+  if (map.getLayer(id)) map.removeLayer(id);
+}
+
+/** D-14 level picker — sido/sigungu/adm_dong, user-selected only. Never wired to a zoom event. */
+function LevelPicker({
+  selected,
+  runLevel,
+  onSelect,
+}: {
+  selected: RegionLevel;
+  runLevel: RegionLevel;
+  onSelect: (level: RegionLevel) => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        right: 12,
+        top: 12,
+        display: "flex",
+        gap: 4,
+        background: "#fcfcfb",
+        border: "1px solid rgba(11, 11, 11, 0.10)",
+        borderRadius: 6,
+        padding: 4,
+      }}
+    >
+      {PICKABLE_LEVELS.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onSelect(value)}
+          title={value === runLevel ? "이번 예측이 계산된 레벨" : "경계만 표시됩니다 (이 레벨엔 예측 없음)"}
+          style={{
+            fontSize: 12,
+            padding: "4px 8px",
+            borderRadius: 4,
+            border: "1px solid rgba(11, 11, 11, 0.10)",
+            background: value === selected ? "#0b0b0b" : "transparent",
+            color: value === selected ? "#fcfcfb" : "#0b0b0b",
+            cursor: "pointer",
+          }}
+        >
+          {label}
+          {value === runLevel ? " •" : ""}
+        </button>
+      ))}
     </div>
   );
 }
