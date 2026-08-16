@@ -303,3 +303,46 @@ A-1 확인: `git ls-files data-platform/output/manifest` → `regions-sido-2026-
   `BOUNDARY_VINTAGE_NOT_FOUND`(404, 레벨은 있는데 그 빈티지가 없음)와는 의도적으로
   구분했다. jin/총괄자가 이 이름을 계약에 확정해줬으면 한다 — 지금은 계약 미등재 상태로
   구현만 있다.
+
+---
+
+## 2026-08-16 (3차) — VF-004 재확인 (검증 2회차 타이밍 정정)
+
+검증 2회차(`0497f4f`)는 VF-004를 "여전히 열림"으로 판정하면서 `basemap_registry.py`
+리라이트가 "워킹트리에만 있고 미커밋"이라고 적었다. 그 판정은 커밋 `a760b31`이 들어오기
+**직전 시점**의 관측이다 — `git log`상 `a760b31`(C-7·C-8 커밋)이 `0497f4f`(검증 2회차 커밋)
+**보다 먼저** 마스터에 올라가 있다. 즉 검증자가 관측한 뒤 보고서를 쓰는 사이에 내 커밋이
+먼저 들어갔고, 검증자는 재확인 없이 관측 시점 상태로 기록·커밋한 것으로 보인다. 지금
+`backend/`는 클린하다(`git status --short backend/` 출력 없음) — 커밋할 워킹트리 변경이 없다.
+
+재확인용으로 총괄자가 지정한 세 가지를 이 시점(`a760b31` 이후, 현재 HEAD `0497f4f`)에서
+다시 돌렸다:
+
+```
+$ PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_56_vintage.py
+A (data-platform) actually publishes:
+  level=sido       vintages=['2026-01-01', '2026-07-01']  latest=2026-07-01
+  level=sigungu    vintages=['2026-01-01']  latest=2026-01-01
+  level=adm_dong   vintages=['2026-01-01']  latest=2026-01-01
+
+C (backend) advertises:
+  level=sido       vintages=['2026-07-01', '2026-01-01']  latest=2026-07-01
+  level=sigungu    vintages=['2026-01-01', 'fixture']  latest=2026-01-01
+  level=adm_dong   vintages=['2026-01-01']  latest=2026-01-01
+
+zoom range, sido:
+  A manifest : minzoom=0 maxzoom=10
+  C response : minzoom=0 maxzoom=10
+```
+
+- sido 빈티지: 2026-01-01, 2026-07-01 **둘 다** 나옴. latest=2026-07-01. 없는
+  2025-01-01은 목록에 없음 — 지시한 세 조건 전부 충족.
+- minzoom: A와 C 모두 0으로 일치.
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+32 passed in 0.67s
+```
+
+회귀 없음. C-7·C-8 코드·테스트는 이미 `a760b31`에 커밋돼 있고 이 시점 기준으로도 그대로
+유효하다 — 추가로 커밋할 변경분이 없어 이 노트만 남긴다.
