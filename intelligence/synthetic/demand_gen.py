@@ -8,10 +8,17 @@ plain baseline nodes with no special relationship, for contrast/realism.
 
 Suppression follows 01_domain_model.json's demand_signal.privacy_rule:
 cells with too few stores or transactions get coverage_flag='suppressed'
-and ALL raw fields (spend_krw, transaction_count, store_count) nulled -
-only the index survives, and even that is nulled here to stay
-conservative (03_region_features.json's source_caveats + 06_governance.md
-both treat this as the one rule that must never leak).
+and transaction_count/store_count/spend_index are nulled - only the index
+survives elsewhere, and even that is nulled here to stay conservative
+(03_region_features.json's source_caveats + 06_governance.md both treat
+this as the one rule that must never leak).
+
+ADR-004 / DECISIONS.md D-18: card_mcc (the source spend_krw would come
+from) is not licensed, so spend_krw is always null - suppressed or not.
+avg_value in NODE_PARAMS stays defined (it documents what card_mcc would
+give us) but nothing derives spend_krw from it right now. A generator
+that quietly filled spend_krw anyway would make the model look better on
+synthetic data than the real pipeline can deliver.
 """
 from __future__ import annotations
 
@@ -76,7 +83,7 @@ def generate_demand_signal_rows(
     rows: list[dict] = []
     for node_id in CURATED_NODES:
         node = taxonomy_leaves_by_id[node_id]
-        txn_rate, store_rate, avg_value = NODE_PARAMS[node_id]
+        txn_rate, store_rate, _avg_value = NODE_PARAMS[node_id]  # avg_value unused - see module docstring
         channel_mix = CHANNEL_MIX[node_id]
 
         for region_id, profile in profiles.items():
@@ -102,20 +109,16 @@ def generate_demand_signal_rows(
                         store_count = round((pop_total / 1000) * store_rate * share * density * rng.uniform(0.85, 1.15))
                         store_count = max(0, store_count)
 
-                    spend_krw = round(transaction_count * avg_value * rng.uniform(0.9, 1.1))
-
                     suppressed = transaction_count < _MIN_TRANSACTION_COUNT or (
                         store_count is not None and store_count < _MIN_STORE_COUNT
                     )
                     if suppressed:
                         coverage_flag = "suppressed"
-                        out_spend_krw = None
                         out_txn = None
                         out_store = None
                         out_index = None
                     else:
                         coverage_flag = "estimated" if rng.random() < 0.15 else "actual"
-                        out_spend_krw = spend_krw
                         out_txn = transaction_count
                         out_store = store_count
                         out_index = spend_index
@@ -126,7 +129,9 @@ def generate_demand_signal_rows(
                             "taxonomy_node_id": node_id,
                             "channel": channel,
                             "period": period,
-                            "spend_krw": out_spend_krw,
+                            # ADR-004 / D-18: card_mcc not licensed -> always null,
+                            # suppressed or not. See module docstring.
+                            "spend_krw": None,
                             "transaction_count": out_txn,
                             "store_count": out_store,
                             "spend_index": out_index,

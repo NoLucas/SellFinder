@@ -154,6 +154,17 @@ class GeneratedDatasetTestCase(unittest.TestCase):
             self.assertIsNone(r["store_count"])
             self.assertIsNone(r["spend_index"])
 
+    def test_spend_krw_is_always_null_card_mcc_not_licensed(self) -> None:
+        # ADR-004 / DECISIONS.md D-18: card_mcc isn't licensed, so nothing in
+        # the pipeline has a real source for spend_krw. The generator must not
+        # invent a value even for non-suppressed rows - the model would look
+        # better on synthetic data than the real pipeline can ever deliver.
+        rows = self.dataset["demand_signal"]
+        non_suppressed = [r for r in rows if r["coverage_flag"] != "suppressed"]
+        self.assertGreater(len(non_suppressed), 0)
+        for r in rows:
+            self.assertIsNone(r["spend_krw"])
+
     def test_curated_nodes_exist_in_real_taxonomy(self) -> None:
         leaves = {leaf["node_id"] for leaf in contracts.flatten_taxonomy_leaves()}
         for node_id in demand_gen.CURATED_NODES:

@@ -166,3 +166,33 @@
   않았다. `intelligence/tests/test_synthetic_generator.py`의 하드코딩된 3개 키 집합을 이
   헬퍼 호출로 교체.
 - 못 한 것과 이유: 없음.
+
+- 끝낸 항목: B-3
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v
+  Ran 32 tests in 0.318s
+  OK
+  ```
+
+  DISPATCH §2 B-3 완료 조건("생성기가 spend_krw 를 채우지 않음")을 새 테스트
+  `test_spend_krw_is_always_null_card_mcc_not_licensed` 로 고정. `suppressed`
+  여부와 무관하게 항상 null이어야 하므로 기존 `test_suppressed_cells_never_expose_raw_values`
+  (suppressed 행만 검사)로는 이 조건을 못 잡는다 — non-suppressed 행까지 포함해 별도로 검사한다.
+
+  변경 내용: `intelligence/synthetic/demand_gen.py`에서 `spend_krw` 계산 자체를 제거하고
+  출력 딕셔너리에 무조건 `None`을 넣는다 (ADR-004/D-18: `card_mcc` 미라이선스). `NODE_PARAMS`의
+  `avg_value` 원소는 향후 `card_mcc` 확보 시를 위해 스키마는 유지하되 지금은 `_avg_value`로
+  미사용 표시만 했다.
+
+  `category_penetration`(`scoring/factors.py:131`) 재설계는 하지 않았다 — 모델은 애초에
+  `spend_krw`를 읽은 적이 없고 `spend_index`만 소비하며(`model.py:207`), `spend_index`는
+  생성기에서 `spend_krw`와 독립적으로 계산돼 있어(플랜티드 관계 재현용) 이번 변경의 영향을
+  받지 않는다. `store_count`·소비력 프록시로 `spend_index`를 실제로 유도하는 설계는
+  BRIEF-B §2 항목 2에 "3단계(백테스트)에 포함"이라 명시돼 있으므로 B-4에서 다룬다.
+- 못 한 것과 이유: `category_penetration`의 `spend_index` 유도 재설계와 D-19(택소노미
+  매핑 없는 노드의 confidence 강제 하향)는 하지 않음. 전자는 BRIEF-B §2가 B-4(백테스트) 범위로
+  명시했고, 후자는 confidence 계산 자체가 아직 intelligence 쪽에 없다(PredictionResult에
+  confidence 필드 없음 — 현재 `confidence_level`은 backend 저장소가 갖고 있다, VF-005 참고).
+  DISPATCH B-3의 완료 조건("생성기가 spend_krw 를 채우지 않음")은 충족했다.
