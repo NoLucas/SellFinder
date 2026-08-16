@@ -46,6 +46,19 @@ def load_feature_registry() -> dict[str, dict[str, Any]]:
     return flat
 
 
+def load_tenant_scoped_feature_keys() -> set[str]:
+    """Return the raw key set under 03_region_features.json's `tenant_scoped`
+    category - the features load_feature_registry() excludes. Exists so
+    tests can assert "none of these ever leak into the shared store" by
+    reading the contract instead of hardcoding a copy of the key list,
+    which would silently stop catching a leak the moment jin adds a new
+    tenant_scoped key to the contract without anyone updating the test.
+    """
+    doc = _load_json("03_region_features.json")
+    tenant_scoped = doc["feature_registry"]["tenant_scoped"]
+    return {key for key in tenant_scoped if not key.startswith("$")}
+
+
 def load_taxonomy() -> dict[str, Any]:
     """Return the raw 02_taxonomy.json document (channels + taxonomy tree)."""
     return _load_json("02_taxonomy.json")

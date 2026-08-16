@@ -141,3 +141,28 @@
   참고 구현으로 삼되 수정하지 않고 읽기만 했다.
 - 못 한 것과 이유: 없음. B-2(tenant_scoped 키 계약에서 읽기), B-3(ADR-004 반영), B-4(백테스트)는
   DISPATCH §2 순서대로 다음 작업으로 남겨둔다.
+
+- 끝낸 항목: B-2
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 전체 31개 여전히 통과
+  Ran 31 tests in 0.344s
+  OK
+
+  # 완료 조건 실측: 계약에 키를 추가하면 테스트가 깨지는가
+  # (기존에 실제로 emit 되는 키 pop_total 을 tenant_scoped 집합에 몽키패치로 추가해
+  #  contracts.load_tenant_scoped_feature_keys() 가 그 키를 반환하도록 시뮬레이션)
+  $ python -c "..."  # RECONCILIATION 본문 참고, 실제 unittest 실행
+  FAIL: test_no_tenant_scoped_features_leaked_into_the_shared_store
+  AssertionError: {'pop_total'} is not false
+  failures: 1
+  ```
+
+  변경 내용: `intelligence/synthetic/contracts.py`에 `load_tenant_scoped_feature_keys()` 추가
+  (`03_region_features.json`의 `tenant_scoped` 카테고리 키를 그대로 읽어 반환). 생성기가 실제로
+  쓰는 `load_feature_registry()`는 이미 카테고리 단위로 `tenant_scoped`를 통째로 제외하고 있었으므로
+  (VF-007은 생성기가 아니라 그걸 검증하는 테스트가 하드코딩이었다는 지적) 생성기 코드는 바뀌지
+  않았다. `intelligence/tests/test_synthetic_generator.py`의 하드코딩된 3개 키 집합을 이
+  헬퍼 호출로 교체.
+- 못 한 것과 이유: 없음.

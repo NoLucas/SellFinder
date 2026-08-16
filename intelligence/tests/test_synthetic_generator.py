@@ -34,8 +34,11 @@ class GeneratedDatasetTestCase(unittest.TestCase):
         self.assertTrue(non_trap_keys.issubset(self.registry.keys()))
 
     def test_no_tenant_scoped_features_leaked_into_the_shared_store(self) -> None:
-        # tenant_scoped keys per 03_region_features.json must never appear here
-        tenant_scoped_keys = {"own_store_count_2km", "own_distribution_points", "own_share_of_category"}
+        # VF-007: read the tenant_scoped key set from the contract itself
+        # (not a hardcoded copy) so a new tenant_scoped key added later is
+        # covered automatically instead of silently passing unchecked.
+        tenant_scoped_keys = contracts.load_tenant_scoped_feature_keys()
+        self.assertTrue(tenant_scoped_keys, "contract's tenant_scoped category is empty - test can't verify anything")
         seen_keys = {row["feature_key"] for row in self.dataset["region_features"]}
         self.assertFalse(seen_keys & tenant_scoped_keys)
 
