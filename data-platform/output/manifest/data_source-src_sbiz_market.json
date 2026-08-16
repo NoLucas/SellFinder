@@ -1,0 +1,17 @@
+{
+  "source_id": "src_sbiz_market",
+  "name": "소상공인시장진흥공단 상권정보",
+  "provider": "소상공인시장진흥공단",
+  "url": "https://sg.sbiz.or.kr",
+  "license": "공공누리 제1유형",
+  "commercial_use_allowed": true,
+  "refresh_cadence": "quarterly",
+  "granularity": "sigungu / quarterly",
+  "known_limitations": [
+    "분기 갱신으로 최대 3개월 시차",
+    "무점포 사업자 미포함",
+    "대형 유통 채널 일부 누락"
+  ],
+  "last_ingested_at": "2026-08-16T07:15:20.993700+00:00",
+  "is_synthetic_placeholder": true
+}

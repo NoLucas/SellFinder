@@ -149,3 +149,86 @@ PASS (정상 통과): feature_count=5, feature_id_property='region_id'
   좌표(모든 A 산출물이 지금 `is_synthetic_placeholder: true`인 것과 동일 전제)다 — 이는
   region 모델 선행 작업(§5-1) 완료 전까지 이 프로젝트 전체의 기존 상태이지, 이번 지시로
   새로 생긴 제약이 아니다.
+
+---
+
+## 9. DISPATCH-2 (A-1 sbiz 매핑 · A-2 suppressed 산출 · A-3 SGIS 착수) 실행 결과 · 2026-08-16
+
+지시 근거: 총괄자 3차 지시(`orchestrator/DISPATCH-2.md` §5), `shared/contracts/ADR-004-taxonomy-mapping.md`,
+`DECISIONS.md` D-18/D-19, `shared/contracts/06_governance.md` §2.3.
+
+### 9.1 A-1 — sbiz 1차 택소노미 매핑 파이프라인
+
+신규 모듈 `src/taxonomy_mapping/{sbiz_mapping.py, demand_signal.py, build.py}`.
+
+- `sbiz_mapping.py` 가 `shared/contracts/02_taxonomy.json` 전체 리프 노드(36개)를 순회하며
+  자기 노드 → 조상 순으로 `sbiz_codes` 를 상속 해석한다.
+- **가장 중요한 실측 결과**: 현재 계약 스냅샷 기준 **36개 리프 노드 중 2개(`TX-FOOD-BEV-COFFEE-RTD`,
+  `TX-FNB-CAFE`)만 직접 매핑이 있고, 나머지 34개는 상속으로도 해소되지 않는다** — 상위 L1/L2 노드
+  어디에도 `sbiz_codes` 가 없기 때문이다(`output/manifest/taxonomy_sbiz_coverage.json` 에 전체
+  목록 커밋). 이건 ADR-004 "A가 할 일 #2"가 요구한 보고이자, jin 이 판단해야 할 사안이다 — 매핑을
+  더 채울지, 아니면 v1 스코프를 이 2개 노드로 좁힐지는 A 가 결정할 수 없다. **실제 sbiz 코드값을
+  제가 지어내 채우지 않았다.**
+- 매핑 없는 34개 노드는 `demand_signal` 행 자체를 만들지 않는다(0으로 채우지 않음) —
+  `02_taxonomy.json` 의 `public_data_mapping_note` 문구("상속도 없으면 demand_signal 을
+  만들 수 없다")를 그대로 구현. 테스트(`test_unmapped_leaf_never_produces_a_demand_signal_row`)로
+  강제: 매핑 없는 노드를 방어적 필터를 우회해 입력에 섞어도 출력에 안 나오는 것까지 확인.
+- `spend_krw`/`transaction_count` 는 항상 null(카드 MCC 라이선스 미확보, ADR-004) —
+  테스트로 강제(`test_spend_krw_is_always_null_no_card_mcc_license`).
+- `data_source` 레지스트리에 `src_sbiz_market` 등록(`output/manifest/data_source-src_sbiz_market.json`),
+  `known_limitations` 3개는 ADR-004 "A가 할 일 #3" 문구 그대로. `url` 은 계약(`03_region_features.json`
+  `recommended_public_sources`)이 명시한 `https://sg.sbiz.or.kr` 를 그대로 썼다(직접 검증 안 하고
+  지어내지 않음).
+- **아직 실 sbiz API 연동이 아니다** — 결정론적 합성 점포관측치(`_mock_raw_store_count`)로 구조만
+  검증했다. `data_source` 항목에 `is_synthetic_placeholder: true` 를 남겨 숨기지 않는다
+  (계약 스키마엔 없는 필드지만, 파이프라인 전체가 이 정직성 원칙을 따르고 있어 통일했다).
+
+### 9.2 A-2 — coverage_flag='suppressed' 셀을 실제로 산출물에 싣기
+
+- `demand_signal.py` 의 합성 관측치 생성기가 셀당 18% 확률로 0~4개(임계 5개 미만, `06_governance.md`
+  §2.3) 를 굴리도록 설계 — 억제 대상이 실제로 나오게 하기 위함.
+- 억제된 셀은 **원시값을 그 어떤 필드에도 대입하지 않는다.** 대신 같은 sido 안의 억제되지 않은
+  시군구 관측치 평균으로 대체(`06` §2.3 "상위 지역 값으로 대체")하고, 대체 불가 시(같은 sido에
+  비억제 관측치가 하나도 없는 경우) null.
+- 실행 결과(250개 시군구 × 매핑된 2개 노드 = 500행): **actual 402행, suppressed 98행(19.6%)**.
+  C 의 VF-010 차단이 실제로 뭔가를 차단해볼 대상이 이제 존재한다.
+- 테스트(`test_suppression_threshold_hides_raw_value_and_flags_suppressed`)가 매 행에 대해
+  "raw < 5 → 최종 store_count 는 raw 와 다르거나 null" 을 직접 재계산해 검증.
+
+### 9.3 A-3 — SGIS 실데이터 연동 착수 (계획 + 첫 단계, 규모상 여기까지)
+
+`src/boundary_tiles/sgis_source.py` 신설. **실제 HTTP 호출은 아직 하지 않는다** — 이유를 아래에 명시한다.
+
+- **막힌 지점**: SGIS Open API 는 계정 신청·승인이 필요하고(`https://sgis.kostat.go.kr`,
+  계약이 명시한 URL), 이건 **사람이 해야 하는 외부 절차**라 에이전트 세션이 대신 할 수 없다.
+  정확한 인증 흐름·요청/응답 스키마(좌표계 등)도 이 세션에서 실제 API 문서를 열람해 검증하지
+  못했다 — 검증 안 된 가정을 코드로 굳히지 않기 위해 일부러 구현하지 않았다.
+- **한 것**: `SgisCredentials.from_env()` 가 `SGIS_CONSUMER_KEY`/`SGIS_CONSUMER_SECRET` 환경변수를
+  확인하고, 없으면 `SgisCredentialsMissingError` 로 **명확히 실패**한다(합성 데이터로 조용히
+  대체하지 않음, DISPATCH-2 §9 "모르면 503/null/질문이지 추측이 아니다"). `fetch_boundary_geojson()`
+  은 자격증명 확인 이후 `NotImplementedError` 로 멈춘다 — 이것도 "조용한 no-op" 이 아니라
+  명시적 실패다. 3개 테스트로 이 fail-closed 동작을 고정(`test_sgis_source.py`).
+- **계획**(모듈 독스트링에도 기록): ①SGIS 계정 신청/승인(외부, 사람) → ②`consumer_key`/`secret`
+  을 환경변수로 주입(하드코딩 금지, `06_governance.md` 비밀 관리 규칙) → ③인증 토큰 발급 →
+  경계 API 호출 → 좌표계/응답 형식을 **실제 응답을 보고** GeoJSON(EPSG:4326)으로 변환하는
+  계층 구현 → ④기존 `tiler.build_tiles`/`build.build_vintage` 파이프라인에 그대로 투입(타일링·
+  조인키·매니페스트 로직은 이미 있어 재사용) → ⑤`data_source` 에 `src_sgis_boundary` 등록,
+  해당 빈티지 매니페스트에서 `is_synthetic_placeholder` 문구 제거 → ⑥동일 인증 계층으로
+  인구·가구 통계(§5 region_feature 스토어)까지 확장.
+- **`is_synthetic_placeholder` 가 붙지 않은 빈티지는 이번 사이클에 만들지 않았다** — 실제로
+  SGIS 를 호출하지 않았으므로 만들면 그게 곧 "지어낸 값"이다(DISPATCH-2 §9 가 명시적으로
+  경계한 것과 정확히 같은 실수). **다음 필요 행동은 jin/사람이 SGIS Open API 키를 발급받아
+  `SGIS_CONSUMER_KEY`/`SGIS_CONSUMER_SECRET` 로 넘겨주는 것**이고, 그 전까지 A 가 이 항목을
+  더 진행할 방법이 없다.
+
+### 9.4 종합
+
+- **끝낸 항목**: A-1, A-2, A-3(계획 + 자격증명 게이트 첫 단계)
+- **통과 확인**: `pytest tests -q` → **16 passed** (기존 7 + A-1/A-2 전용 6 + A-3 전용 3).
+  `python -m src.taxonomy_mapping.build --period 2026-01` 실행 출력:
+  `{"leaf_nodes_total": 36, "leaf_nodes_mappable": 2, "leaf_nodes_unmappable": 34, "regions": 250,
+  "demand_signal_rows": 500, "rows_actual": 402, "rows_suppressed": 98}`.
+- **못 한 것과 이유**: A-3 의 "실제 non-synthetic 빈티지 1개"는 못 만들었다 — SGIS API 자격증명이
+  없고, 자격증명 신청은 에이전트가 대신 할 수 없는 외부(사람) 절차이기 때문이다. 대체로 계획과
+  자격증명 게이트가 실패로 확인되는 첫 단계를 만들었다(DISPATCH-2 A-3 이 "규모가 크면 계획과
+  첫 단계까지만 해도 된다"고 명시적으로 허용).
