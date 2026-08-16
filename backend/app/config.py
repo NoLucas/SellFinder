@@ -8,5 +8,8 @@ class Settings(BaseSettings):
     basemap_signing_secret: str = "dev-secret-change-me"
     basemap_signed_url_ttl_seconds: int = 3600
 
+    # ADR-003 "개발 중 임시 조치": /v1/dev/token is registered only when this is "development".
+    env: str = "development"
+
 
 settings = Settings()

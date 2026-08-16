@@ -2,39 +2,53 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.routers import basemap, health, predictions
 
-app = FastAPI(
-    title="SellFinder API",
-    version="0.2.0",
-    description="Implements /shared/contracts/04_api_contract.yaml",
-)
 
-app.include_router(health.router)
-app.include_router(basemap.router)
-app.include_router(predictions.router)
-
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    detail = exc.detail
-    if isinstance(detail, dict) and "code" in detail and "message" in detail:
-        error = detail
-    else:
-        error = {"code": "http_error", "message": str(detail)}
-    return JSONResponse(status_code=exc.status_code, content={"error": error})
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error": {
-                "code": "validation_error",
-                "message": str(exc.errors()),
-            }
-        },
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title="SellFinder API",
+        version="0.2.0",
+        description="Implements /shared/contracts/04_api_contract.yaml",
     )
+
+    application.include_router(health.router)
+    application.include_router(basemap.router)
+    application.include_router(predictions.router)
+
+    # ADR-003 "개발 중 임시 조치": only registered in development. Not merely
+    # 404ing at runtime — the route must not exist in a production build
+    # (DECISIONS.md D-17, S1 if it does).
+    if settings.env == "development":
+        from app.routers import dev_auth
+
+        application.include_router(dev_auth.router)
+
+    @application.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        detail = exc.detail
+        if isinstance(detail, dict) and "code" in detail and "message" in detail:
+            error = detail
+        else:
+            error = {"code": "http_error", "message": str(detail)}
+        return JSONResponse(status_code=exc.status_code, content={"error": error})
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "validation_error",
+                    "message": str(exc.errors()),
+                }
+            },
+        )
+
+    return application
+
+
+app = create_app()

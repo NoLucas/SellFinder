@@ -15,6 +15,17 @@ router = APIRouter(tags=["predictions"])
 
 _CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 
+# 05_scoring_spec.md §2: T0 (no first-party sales data) has confidence.level
+# capped at "medium" — same rule as the expected_revenue_krw null rule
+# (D-03), just for confidence instead of money.
+_T0_CONFIDENCE_CEILING = "medium"
+
+
+def _confidence_for_tier(level: str, data_tier: str) -> str:
+    if data_tier == "T0" and _CONFIDENCE_ORDER[level] > _CONFIDENCE_ORDER[_T0_CONFIDENCE_CEILING]:
+        return _T0_CONFIDENCE_CEILING
+    return level
+
 
 def _encode_cursor(offset: int) -> str:
     return base64.urlsafe_b64encode(str(offset).encode()).decode()
@@ -86,7 +97,10 @@ def get_prediction_regions(
                     p10=r.expected_revenue_p10, p50=r.expected_revenue_p50, p90=r.expected_revenue_p90
                 )
             ),
-            confidence=RegionScoreConfidence(level=r.confidence_level, data_coverage=r.data_coverage),
+            confidence=RegionScoreConfidence(
+                level=_confidence_for_tier(r.confidence_level, run.data_tier),
+                data_coverage=r.data_coverage,
+            ),
         )
         for r in page
     ]
@@ -126,7 +140,10 @@ def get_prediction_scores(
         )
 
     regions = sorted(run.regions, key=lambda r: r.opportunity_score, reverse=True)
-    scores = [[r.region_id, r.opportunity_score, r.confidence_level] for r in regions]
+    scores = [
+        [r.region_id, r.opportunity_score, _confidence_for_tier(r.confidence_level, run.data_tier)]
+        for r in regions
+    ]
 
     values = sorted(r.opportunity_score for r in regions)
     score_range = {

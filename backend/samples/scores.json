@@ -1,7 +1,7 @@
 {
   "run_id": "run_demo01",
-  "region_level": "adm_dong",
-  "boundary_vintage": "2026-01-01",
+  "region_level": "sigungu",
+  "boundary_vintage": "fixture",
   "objective": "distribution_push",
   "data_tier": "T1",
   "schema": [

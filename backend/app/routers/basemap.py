@@ -19,7 +19,11 @@ def get_basemap_manifest(
 ) -> BasemapManifestResponse:
     """Points to /data-platform's static .pmtiles artifact only — never
     generates or proxies tile content. Authenticated but tenant-independent,
-    so the response is cacheable."""
+    so the manifest itself is safe to cache — EXCEPT when tile_url carries a
+    per-request signature (adm_dong): a shared/CDN cache serving that body to
+    a second, unauthenticated requester leaks the signed URL (VF-006,
+    06_governance.md §1.5 / ADR-003 §4). Signed responses get
+    "private" so only the requester's own client caches them."""
     try:
         manifest = basemap_registry.get_manifest(level, vintage)
     except basemap_registry.UnknownVintageError as exc:
@@ -28,5 +32,8 @@ def get_basemap_manifest(
             detail={"code": "BOUNDARY_VINTAGE_NOT_FOUND", "message": str(exc)},
         ) from exc
 
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    is_signed = "sig=" in manifest["tile_url"]
+    response.headers["Cache-Control"] = (
+        "private, max-age=3600" if is_signed else "public, max-age=3600"
+    )
     return BasemapManifestResponse(**manifest)

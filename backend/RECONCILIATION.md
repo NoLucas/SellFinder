@@ -119,3 +119,78 @@
 ---
 
 **RECONCILIATION.md 작성 완료. 다음 지시를 기다린다. 기존 코드는 삭제하지 않았고, 계약이 요구하는 새 엔드포인트/미들웨어 코드도 아직 작성하지 않았다.**
+
+---
+
+## 2026-08-16 — DISPATCH C-1~C-6 실행 보고
+
+- 끝낸 항목: C-1, C-2, C-3, C-4, C-5, C-6
+- 통과 확인:
+
+  ```
+  $ PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_t0_api.py
+  ...
+  --- 05_scoring_spec 2: T0 confidence.level ceiling is 'medium' ---
+    /regions (T0) confidence levels : ['medium', 'medium', 'medium', 'medium', 'low']
+    above ceiling (=='high')        : 0   (contract: must be 0)
+    /scores  (T0) confidence levels : ['medium', 'medium', 'medium', 'medium', 'low']
+    above ceiling (=='high')        : 0   (contract: must be 0)
+  ```
+
+  ```
+  $ PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_52_tenant.py
+  --- 06_governance 1.1: tenant_id via QUERY (expect 400 TENANT_ID_NOT_ALLOWED) ---
+  A + ?tenant_id=tnt_other         /regions -> 400  TENANT_ID_NOT_ALLOWED
+  A + ?tenant_id=tnt_demo          /regions -> 400  TENANT_ID_NOT_ALLOWED
+  B + ?tenant_id=tnt_demo          /regions -> 400  TENANT_ID_NOT_ALLOWED
+  A + ?tenant_id=tnt_other         /scores  -> 400  TENANT_ID_NOT_ALLOWED
+  A + ?tenantId=tnt_other          /scores  -> 400  TENANT_ID_NOT_ALLOWED
+
+  --- tenant_id via HEADER (expect 400) ---
+  A + X-Tenant-Id: tnt_other       /regions -> 400  TENANT_ID_NOT_ALLOWED
+  A + Tenant-Id: tnt_other         /scores  -> 400  TENANT_ID_NOT_ALLOWED
+  ```
+
+  (7개 주입 경로 전부 400 — 지시된 "6경로"를 포함한다. `/basemap` 케이스는 픽스처 자체가
+  `/v1/basemap/manifest`라는 존재하지 않는 경로를 치고 있어 404가 나온다 — 실제 경로는
+  `/v1/basemap/regions/manifest`다. 픽스처 오탈자이며 backend 밖이라 여기서 고치지 않았다.)
+
+  ```
+  $ PYTHONIOENCODING=utf-8 python tools/validate_contracts.py --check-scores backend/samples/scores.json
+    점수 응답 검증: 5행, level=sigungu
+  통과: 경고 0건
+  ```
+
+  ```
+  $ cd backend && .venv/Scripts/python.exe -m pytest tests -q
+  26 passed in 0.55s
+  ```
+
+- 구현 요약:
+  - C-1/C-2: `app/routers/predictions.py`에 `_confidence_for_tier()` 추가 — T0 run은
+    `/regions`·`/scores` 양쪽에서 `confidence.level`을 `medium` 상한으로 클램프. 회귀를 잡을
+    `tests/test_predictions_t0.py` 신설(T0 run을 직접 생성해 금액 null + 신뢰도 상한 + T1은
+    영향 없음을 검증).
+  - C-3: `backend/samples/scores.json` → `region_level: "sigungu"`, `boundary_vintage: "fixture"`
+    (D-15). region_id 5자리는 원래도 sigungu 자릿수와 맞아 변경 없음.
+  - C-4: `app/security.py`에 `_reject_tenant_id_injection()` 추가 — 쿼리(`tenant_id`,
+    `tenantId`) · 헤더(`X-Tenant-Id`, `Tenant-Id`)로 들어오면 `get_tenant_id` 진입 즉시
+    400 `TENANT_ID_NOT_ALLOWED`. `/regions`·`/scores`·`/basemap` 전부 이 의존성을 쓰므로
+    자동으로 세 라우터 모두 적용됨.
+  - C-5: `app/routers/basemap.py` — 서명 URL(`sig=` 포함, 지금은 `adm_dong`)인 응답만
+    `Cache-Control: private, max-age=3600`으로 바꿈. 서명이 필요 없는 레벨(`sido`/`sigungu`)은
+    기존대로 `public`. `tests/test_basemap.py`의 관련 단언 갱신.
+  - C-6: `app/security.py`에 `TokenClaims`/`verify_token(raw) -> TokenClaims`/`issue_dev_token()`
+    추가 — 토큰 파싱은 이 파일 하나로 수렴. 기존 "Bearer 값 = tenant_id" 픽스처/테스트는
+    `verify_token`의 폴백 경로로 그대로 통과(하위호환, 회귀 없음). 신규 `app/routers/dev_auth.py`가
+    `POST /v1/dev/token`을 제공하고, `app/main.py`를 `create_app()` 팩토리로 바꿔
+    `settings.env == "development"`일 때만 이 라우터를 등록한다(핸들러 내부 분기가 아니라
+    라우트 자체가 존재하지 않게). `tests/test_dev_token.py`가 개발 모드 발급/인증과
+    `settings.env="production"`일 때 `create_app()`이 만든 앱에서 404 둘 다 확인.
+    `SELLFINDER_ENV`는 `app/config.py`에 `env: str = "development"`로 추가(기본값 development).
+
+- 못 한 것과 이유: 없음. C-1~C-6 전부 위 출력으로 완료 확인.
+
+- **A-1 확인 결과 (직접 확인, 총괄자 응답 대기 안 함)**: `git ls-files data-platform/output/manifest`
+  결과가 **비어 있다** → A-1 미완료. 지시대로 C-7·C-8은 아직 시작하지 않았다. A-1이 커밋되는 대로
+  (`data-platform/output/manifest/regions-{level}-{vintage}.json`이 추적되기 시작하면) 바로 착수한다.

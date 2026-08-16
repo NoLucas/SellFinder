@@ -23,7 +23,8 @@ def test_manifest_returns_pointer_to_pmtiles_only() -> None:
         headers={"Authorization": "Bearer tnt_demo"},
     )
     assert resp.status_code == 200
-    assert resp.headers["cache-control"] == "public, max-age=3600"
+    # signed URL (adm_dong requires signing) must not be shared-cacheable — VF-006
+    assert resp.headers["cache-control"] == "private, max-age=3600"
 
     body = resp.json()
     assert body["level"] == "adm_dong"
@@ -41,6 +42,8 @@ def test_manifest_sido_is_not_signed() -> None:
         "/v1/basemap/regions/manifest?level=sido",
         headers={"Authorization": "Bearer tnt_demo"},
     )
+    assert resp.headers["cache-control"] == "public, max-age=3600"
+
     body = resp.json()
     assert "sig=" not in body["tile_url"]
 
