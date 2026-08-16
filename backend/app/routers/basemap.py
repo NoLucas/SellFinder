@@ -26,6 +26,19 @@ def get_basemap_manifest(
     "private" so only the requester's own client caches them."""
     try:
         manifest = basemap_registry.get_manifest(level, vintage)
+    except basemap_registry.NoBoundaryArtifactsError as exc:
+        # D-13 / ADR-002 결정 3: A 가 이 level 을 아직 발행하지 않았다. 빈 배열을
+        # 돌려주면 "빈티지가 없다"는 거짓 정보가 된다 — 503 + 사유로 명확히 밝힌다.
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "BOUNDARY_MANIFEST_NOT_PUBLISHED",
+                "message": (
+                    f"data-platform 이 아직 level '{level}' 을 발행하지 않았습니다. "
+                    f"data-platform/output/manifest/regions-{level}-*.json 이 없습니다."
+                ),
+            },
+        ) from exc
     except basemap_registry.UnknownVintageError as exc:
         raise HTTPException(
             status_code=404,

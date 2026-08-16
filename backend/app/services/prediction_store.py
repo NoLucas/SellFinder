@@ -8,6 +8,16 @@ This exists so `GET /predictions/{run_id}/regions` and `GET
 recording `boundary_vintage` on a run at creation time per ADR-001.
 `create_run` is not wired to a `POST /predictions` endpoint yet (out of
 scope for this change) — it seeds one demo run below.
+
+`region_level` defaults to "sigungu", not "adm_dong": the demo region_ids
+below (41135, 11650, ...) are 5-digit codes, which is sigungu shape, not
+adm_dong (03_region_features.json region_hierarchy / validate_contracts.py
+_LEVEL_ID_DIGITS) — matches D-15's fix to samples/scores.json. It also has
+to be a level basemap_registry actually has an artifact for (DISPATCH C-7):
+A has published real data for "sido" and a D-12 fixture for "sigungu", but
+nothing yet for "adm_dong", so defaulting here to "adm_dong" would make
+`basemap_registry.latest_vintage()` raise NoBoundaryArtifactsError at
+import time and take the whole app down.
 """
 
 from dataclasses import dataclass
@@ -76,7 +86,7 @@ def create_run(
     run_id: str,
     tenant_id: str,
     data_tier: str = "T1",
-    region_level: str = "adm_dong",
+    region_level: str = "sigungu",
     objective: str = "distribution_push",
 ) -> PredictionRun:
     """Records boundary_vintage at creation time (the level's latest vintage

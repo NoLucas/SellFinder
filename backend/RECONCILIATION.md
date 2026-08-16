@@ -194,3 +194,112 @@
 - **A-1 확인 결과 (직접 확인, 총괄자 응답 대기 안 함)**: `git ls-files data-platform/output/manifest`
   결과가 **비어 있다** → A-1 미완료. 지시대로 C-7·C-8은 아직 시작하지 않았다. A-1이 커밋되는 대로
   (`data-platform/output/manifest/regions-{level}-{vintage}.json`이 추적되기 시작하면) 바로 착수한다.
+
+---
+
+## 2026-08-16 (2차) — DISPATCH C-7~C-8 실행 보고
+
+A-1 확인: `git ls-files data-platform/output/manifest` → `regions-sido-2026-01-01.json`,
+`regions-sido-2026-07-01.json` 추적 확인 (이후 A가 `regions-sigungu-2026-01-01.json`,
+`regions-adm_dong-2026-01-01.json`도 커밋해 지금은 세 레벨 모두 실물이 있다).
+
+- 끝낸 항목: C-7, C-8
+- 통과 확인:
+
+  ```
+  $ PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python.exe verification/fixtures/vf_56_vintage.py
+  A (data-platform) actually publishes:
+    level=sido       vintages=['2026-01-01', '2026-07-01']  latest=2026-07-01
+    level=sigungu    vintages=['2026-01-01']  latest=2026-01-01
+    level=adm_dong   vintages=['2026-01-01']  latest=2026-01-01
+
+  C (backend) advertises:
+    level=sido       vintages=['2026-07-01', '2026-01-01']  latest=2026-07-01
+    level=sigungu    vintages=['2026-01-01', 'fixture']  latest=2026-01-01
+    level=adm_dong   vintages=['2026-01-01']  latest=2026-01-01
+
+  Cross-check — ask C for each vintage A really built:
+    C.get(level=sido, vintage=2026-01-01) -> 200 OK
+    C.get(level=sido, vintage=2026-07-01) -> 200 OK
+    C.get(level=sigungu, vintage=2026-01-01) -> 200 OK
+    C.get(level=adm_dong, vintage=2026-01-01) -> 200 OK
+
+  zoom range, sido:
+    A manifest : minzoom=0 maxzoom=10
+    C response : minzoom=0 maxzoom=10
+  ```
+
+  (이 스크립트는 A의 gitignore된 로컬 집계 파일 `data-platform/output/tiles/manifest.json`을
+  기준으로 비교한다 — 이번 회차에 실제로 존재해서 그대로 실행했다. `sigungu`에 C가 추가로
+  `fixture`를 더 광고하는 것은 불일치가 아니라 D-12 픽스처를 여전히 서빙하기 때문이다.)
+
+  ```
+  $ PYTHONIOENCODING=utf-8 python tools/validate_contracts.py --check-manifest backend/samples/manifest.json
+    매니페스트 검증: level=sigungu, vintage=fixture
+  통과: 경고 0건
+
+  $ PYTHONIOENCODING=utf-8 python tools/validate_contracts.py --check-scores backend/samples/scores.json
+    점수 응답 검증: 5행, level=sigungu
+  통과: 경고 0건
+  ```
+
+  ```
+  $ cd backend && .venv/Scripts/python.exe -m pytest tests -q
+  32 passed in 0.69s
+  ```
+
+- 구현 요약:
+  - C-7: `app/services/basemap_registry.py` 전면 재작성. `_VINTAGES`·`_ZOOM_BY_LEVEL`·
+    모듈 상수 `FEATURE_ID_PROPERTY` 세 하드코딩을 전부 제거했다. 이제 `level`·
+    `boundary_vintage`·`tile_url`·`source_layer`·`feature_id_property`·`minzoom`·`maxzoom`·
+    `attribution`은 전부 A의 실제 커밋된 매니페스트 파일에서 그대로 읽는다(지어내지 않음).
+    소스는 두 곳: (1) `data-platform/output/manifest/regions-{level}-{vintage}.json`
+    (git 추적, D-13이 명시한 경로) — sido 2개, sigungu 1개, adm_dong 1개 파일이 지금 여기
+    있다. (2) `data-platform/fixtures/manifest-fixture.json` (D-12 픽스처, git 추적) —
+    sigungu에 "fixture" 빈티지 하나를 더한다. **의도적으로 gitignore된
+    `data-platform/output/tiles/*`는 절대 읽지 않는다** — D-11이 막으려던 바로 그
+    "생산자 로컬에만 있는 산출물을 소비자가 몰래 읽는" 패턴이다.
+  - 신뢰도(sign) 정책만 유일하게 레벨 기반 상수(`_SIGNED_LEVELS = {"adm_dong"}`)로
+    남겼다 — A의 매니페스트에는 서명 정책 필드가 없고, 이건 경계/줌/빈티지처럼 A의 산출물과
+    어긋날 수 있는 데이터가 아니라 C가 스스로 내리는 "어느 레벨을 서명된 URL 뒤에 둘지"
+    제품 결정이라서다.
+  - 정렬 버그를 하나 직접 잡았다: sigungu가 이제 실물 빈티지("2026-01-01")와 D-12
+    픽스처("fixture")를 동시에 갖는데, 문자열 그대로 내림차순 정렬하면 `"fixture" >
+    "2026-01-01"`이라 픽스처가 "최신"으로 잘못 나온다. `(vintage != "fixture", vintage)`
+    튜플 키로 픽스처가 항상 실물 날짜 뒤로 가도록 정정했다 — `test_manifest_sigungu_prefers_real_vintage_over_fixture`로 고정.
+  - `app/routers/basemap.py`: `basemap_registry.NoBoundaryArtifactsError`를 잡아
+    503 `BOUNDARY_MANIFEST_NOT_PUBLISHED`로 변환 (C-8). 계약에 이 에러 코드가 아직
+    정의돼 있지 않다 — 아래 §6 질문 참고.
+  - `app/services/prediction_store.py`: `create_run`의 기본 `region_level`을
+    `"adm_dong"` → `"sigungu"`로 바꿨다. 이건 C-7의 부작용으로 반드시 필요했다 — 바꾸지
+    않았다면 `run_demo01` 시드가 앱 임포트 시점에 `basemap_registry.latest_vintage("adm_dong")`을
+    호출했을 때, 그 시점엔 (이번 회차 초반) adm_dong 매니페스트가 아직 없어
+    `NoBoundaryArtifactsError`가 임포트를 그대로 죽였을 것이다. 데모 `region_id`가
+    5자리(예: `41135`)라 애초에 sigungu 자릿수(D-15가 이미 `samples/scores.json`에서
+    같은 결론)였던 것과도 맞다.
+  - 테스트: `tests/test_basemap.py`를 A의 실제 값(진짜 `tile_url` 프리픽스, 진짜
+    minzoom/maxzoom, sigungu 이중 빈티지)에 맞춰 다시 썼고, D-13의 503 분기는 지금
+    sido/sigungu/adm_dong 세 레벨 모두 실물이 있어 `level` 쿼리 enum으로는 트리거할 수
+    없어서 `monkeypatch`로 라우터 단까지 end-to-end 확인하는 테스트를 추가했다.
+    `tests/test_basemap_registry.py`를 신설해 registry 단위에서도
+    `NoBoundaryArtifactsError`(미발행 레벨)와 세 레벨 모두 정상 해석됨을 고정했다.
+
+- 못 한 것과 이유:
+  - **정정 사항 (같은 회차, 총괄자가 별도로 지적)**: `backend/samples/manifest.json`이
+    `samples/scores.json`(sigungu/fixture)과 레벨·빈티지가 어긋나 있었다. A의
+    `data-platform/fixtures/manifest-fixture.json` 값을 그대로 복사해 정정했다 (커밋
+    `61c4eaf`, C-7 이전에 별도 커밋 완료).
+  - **ADR-002 "C가 할 일" 5번 — 미착수**: "개발 서버가 `data-platform/fixtures/`를
+    `/artifacts/`로 정적 서빙"이 아직 없다. 지금 매니페스트가 광고하는
+    `http://localhost:8000/artifacts/...` URL은 실제로 아무것도 서빙하지 않는 죽은
+    링크다 — D의 실통합(D-5, `.pmtiles` 바이트를 실제로 받아야 하는 부분)이 이것 없이는
+    완주할 수 없다. 오늘 지시(C-7·C-8)에는 없었고, C-1~C-8 어느 항목의 완료 판정에도
+    걸리지 않아 범위를 넘지 않으려 손대지 않았다. 다음 지시에 넣어달라.
+
+## §6 질문 (D-10 절차 — 추측하지 않고 여기 남긴다)
+
+- **`BOUNDARY_MANIFEST_NOT_PUBLISHED`는 내가 지은 에러 코드다.** `04_api_contract.yaml`에
+  이 상황(레벨 자체가 아직 발행되지 않음, 503)에 대한 기존 코드가 없어서 만들었다.
+  `BOUNDARY_VINTAGE_NOT_FOUND`(404, 레벨은 있는데 그 빈티지가 없음)와는 의도적으로
+  구분했다. jin/총괄자가 이 이름을 계약에 확정해줬으면 한다 — 지금은 계약 미등재 상태로
+  구현만 있다.
