@@ -11,9 +11,10 @@ A~D 폴더는 한 파일도 바뀌지 않았으므로, 아래 실행 결과는 `
 > **2회차 갱신 (2026-08-16 · HEAD `d942dd4`)**: 아래 표의 판정 열 중 **VF-001·002·003·005·006·007·008·009**
 > 는 `orchestrator/DISPATCH.md` 1차 지시 이행으로 이번 회차에 **O 로 전환**됐다 — 각 행에
 > `(2회차: 통과)` 로 표시했다. 상세 재현 경로는 `verification/FINDINGS.md` "회차: 2회차"를 봐라.
-> **VF-004 는 여전히 구멍/위반이다** — 원인 코드(`backend/app/services/basemap_registry.py`
-> 하드코딩 제거)가 아직 미커밋 상태다. 이번 표의 나머지 셀(1행 5·6, 3.4·1.5, 5절 전체)은
-> 1차 지시 범위 밖이라 변경 없음 — 1회차 판정 그대로다.
+> **VF-004 는 3회차(HEAD `641cfa2`)에서 O 로 전환됐다.** 2회차의 "미커밋" 판정은 관측 시점
+> 오류였다 — C-7(`a760b31`)이 실제로는 2회차 커밋보다 먼저 마스터에 있었다. 상세는
+> `verification/FINDINGS.md` "회차: 3회차"를 봐라. 이번 표의 나머지 셀(1행 5·6, 3.4·1.5,
+> 5절 전체)은 1차 지시 범위 밖이라 변경 없음 — 1회차 판정 그대로다.
 
 ## 이번 회차에 실행한 스위트
 
@@ -82,7 +83,7 @@ TS2322 두 건 외에 **구조적 불일치는 없다**. 이건 TS 의 JSON 임�
 | `/regions` 는 유지 (`/scores` 가 대체 아님) | `D-07` | `test_predictions_regions.py:15` | 통과 | O |
 | `prediction_run` 에 `boundary_vintage` 기록·보존 | `D-08` | `test_predictions_scores.py:15`, `data-platform/tests/test_boundary_tiles.py:86,99` | 통과 | O (각 에이전트 내부 한정) |
 | **`feature_id_property` ↔ D 의 `setFeatureState` 키 일치** | `04_api_contract.yaml` v0.2.1, `D-05` | **없음 — 양쪽을 붙여보는 테스트가 어디에도 없다** | 검증자가 A 의 실제 `.pmtiles` + C 의 실제 매니페스트 + D 의 실제 조인 코드로 실행 → **0/5 매칭** | **위반 — VF-003** → **(2회차: 통과)** region_id 가 properties 에 존재(0/250 미정의), scores.json 5건 전부 매칭. D 자체 테스트(`join.test.mjs`)로도 교차 확인 |
-| C 가 광고하는 level/vintage 가 A 의 실제 산출물과 일치 | `D-08` | **없음** | 검증자가 교차 대조 → 불일치 | **위반 — VF-004** — **여전히 열림.** C-7(하드코딩 3종 제거) 미커밋 |
+| C 가 광고하는 level/vintage 가 A 의 실제 산출물과 일치 | `D-08` | `backend/tests/test_basemap.py` (C-7/C-8, `a760b31`) | 통과 | **위반 — VF-004** → **(3회차: 통과)** sido/sigungu/adm_dong 전부 A 실물과 일치, 404 오탐 재현 안 됨, `pytest backend/tests -q` 32 passed |
 | 표준 행정경계는 GeoJSON 금지, 타일만 | `D-09` | `test_basemap.py:20` | 통과 | O |
 | 폐기된 `.mvt` 엔드포인트 부재 | `D-06` | **없음** | 검증자가 전 저장소 grep → 참조 0건 | O (동작 확인, 테스트 미추적) |
 
