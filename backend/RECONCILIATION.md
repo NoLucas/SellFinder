@@ -346,3 +346,77 @@ $ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
 
 회귀 없음. C-7·C-8 코드·테스트는 이미 `a760b31`에 커밋돼 있고 이 시점 기준으로도 그대로
 유효하다 — 추가로 커밋할 변경분이 없어 이 노트만 남긴다.
+
+---
+
+## 2026-08-16 (4차) — VF-010 실행 보고
+
+`06_governance.md` §2.3 / `05_scoring_spec.md` §8-6: `coverage_flag='suppressed'`
+셀의 원시값은 응답·로그·에러 메시지 **어디로도** 나가면 안 된다. 지금까지
+`backend/app` 전체에 "suppressed" 문자열이 0회 등장했다 — 차단이 B의 생성기
+단계에만 있었다.
+
+- 끝낸 항목: VF-010 (3개 경로 동시 차단 + 단일 차단 지점)
+- 구현 요약:
+  - **단일 차단 지점**: `app/services/privacy.py` 신설.
+    `redact(value, coverage_flag, ...)` — 응답에 실릴 값을 반환하는 유일한
+    통로, suppressed면 `None` + "값을 뺐다"는 사실만 로그(원시값은 로그에도
+    안 씀). `guard_or_raise(...)` — 값을 거부해야 하는 자리용,
+    `SuppressedValueError`를 던지며 이 예외의 `__str__`은 `region_id`·`field`만
+    담고 원시값은 **생성자 시점부터 아예 받지 않는 것처럼** 메시지에 넣지 않는다.
+    나중에 xlsx/csv 내보내기가 붙어도 이 두 함수를 통하기만 하면 같은 규칙이
+    자동 적용된다 — VF-005(금액은 막고 신뢰도는 안 막음)처럼 경로마다 따로
+    구현하다 하나 빠뜨리는 실패를 구조적으로 막는 목적이다.
+  - **응답 경로**: `prediction_store.RegionScore`에 `coverage_flag: str | None = None`
+    추가(계약의 `demand_signal.coverage_flag` 값과 동일한 타입, 기본값은 기존
+    5개 데모 지역에 영향 없음). `routers/predictions.py`의 `_expected_revenue_for()`가
+    T0 검사(D-03, 기존)와 `privacy.redact()`(신규) 둘 다 통과해야 `expected_revenue_krw`를
+    채운다 — 하나라도 걸리면 null. `/scores`는 애초에 금액을 안 실어(D-07) 이
+    경로엔 해당 없음, 확인만 함.
+  - **로그 경로**: `privacy.redact()`가 재시도 없이 자체적으로
+    `logging.getLogger("sellfinder.privacy")`에 사실만 기록(원시값 제외).
+  - **에러 메시지 경로**: `SuppressedValueError`가 생성자 차원에서 원시값을
+    받지 않아 구조적으로 못 새고, `app/main.py`에 전역 `Exception` 핸들러를
+    추가해 **어떤** 미처리 예외든 `str(exc)`를 클라이언트에 그대로 돌려주지
+    않게 방어했다(심층 방어 — SuppressedValueError뿐 아니라 다른 예외 타입이
+    실수로 값을 물고 와도 이 겹이 막는다). 서버 로그에는 `exc_info`로 남아
+    디버깅은 가능.
+  - `create_run()`에 `regions: list[RegionScore] | None = None` 선택 인자를
+    추가해, 기존 데모 5개 행을 건드리지 않고 테스트 전용으로 suppressed 셀
+    시나리오를 실제 요청/응답 파이프라인에 태울 수 있게 했다.
+
+- 완료 판정 확인 (지시된 3가지):
+
+  ```
+  $ grep -rl "suppressed" backend/app --include="*.py"
+  backend/app/routers/predictions.py
+  backend/app/services/prediction_store.py
+  backend/app/services/privacy.py
+  ```
+
+  ```
+  $ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+  39 passed in 0.72s
+  ```
+
+  (7개 신규 테스트가 `test_privacy.py`에 있다 — 응답 경로 2개, 로그 경로 2개,
+  에러 메시지 경로 3개. 실제 원시값 918273645를 심어 `/regions`·`/scores`
+  응답 본문 텍스트에 그 문자열이 없는지, `caplog`로 로그 텍스트에 없는지,
+  `SuppressedValueError` 문자열·전역 500 핸들러 응답 본문에 없는지를 각각
+  직접 검사한다.)
+
+- 못 한 것과 이유: 없음. 지시된 3개 경로(응답·로그·에러 메시지) 전부 테스트로
+  고정했다.
+
+## §6 질문 추가 (D-10 절차 — 추측하지 않고 여기 남긴다)
+
+- **B의 `coverage_flag` → API 인터페이스 미정**: 지금 `RegionScore.coverage_flag`는
+  내가 백엔드 내부에만 추가한 필드고, `intelligence/synthetic/demand_gen.py`가
+  만드는 실제 `demand_signal.coverage_flag`가 `/backend`로 어떤 경로로
+  들어올지(동기 호출? 잡 결과 스냅샷? region_feature 조인?)는 아직 어디에도
+  정의돼 있지 않다 — 이전 §6 질문("backend ↔ intelligence 내부 호출 계약")과
+  같은 미결이다. 지금 이 필드는 오직 `privacy.redact()`가 실제로 호출되는
+  실제 파이프라인을 테스트로 고정하기 위한 자리이며, B의 실제 연동이
+  붙을 때 이 필드의 채움 방식(그리고 필요하면 `demand_signal` 원본 셀 값 자체를
+  별도 필드로 들고 있을지)은 그 인터페이스가 확정된 뒤 정할 문제로 남겨둔다.
+  지금 추측해서 만들지 않았다.

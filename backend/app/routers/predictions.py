@@ -9,7 +9,7 @@ from app.schemas import (
     RegionScoresResponse,
 )
 from app.security import get_tenant_id
-from app.services import prediction_store
+from app.services import prediction_store, privacy
 
 router = APIRouter(tags=["predictions"])
 
@@ -25,6 +25,29 @@ def _confidence_for_tier(level: str, data_tier: str) -> str:
     if data_tier == "T0" and _CONFIDENCE_ORDER[level] > _CONFIDENCE_ORDER[_T0_CONFIDENCE_CEILING]:
         return _T0_CONFIDENCE_CEILING
     return level
+
+
+def _expected_revenue_for(
+    r: prediction_store.RegionScore, run: prediction_store.PredictionRun
+) -> ExpectedRevenue | None:
+    """Two independent reasons to null this, not one (VF-005 is exactly what
+    happens when only one of two required checks gets implemented — T0's
+    money was blocked but confidence wasn't):
+      - data_tier == "T0" (D-03): no first-party sales, no honest estimate.
+      - coverage_flag == "suppressed" (06_governance.md §2.3, VF-010): the
+        cell backing this region's estimate is below the k-anonymity
+        threshold. privacy.redact() is the one place that check happens so
+        a future call site (region detail, xlsx/csv export) inherits it
+        automatically instead of re-implementing its own check.
+    """
+    if run.data_tier == "T0":
+        return None
+    p10 = privacy.redact(r.expected_revenue_p10, r.coverage_flag, region_id=r.region_id, field="expected_revenue_p10")
+    p50 = privacy.redact(r.expected_revenue_p50, r.coverage_flag, region_id=r.region_id, field="expected_revenue_p50")
+    p90 = privacy.redact(r.expected_revenue_p90, r.coverage_flag, region_id=r.region_id, field="expected_revenue_p90")
+    if p50 is None:
+        return None
+    return ExpectedRevenue(p10=p10, p50=p50, p90=p90)
 
 
 def _encode_cursor(offset: int) -> str:
@@ -90,13 +113,7 @@ def get_prediction_regions(
             rank=r.rank,
             opportunity_score=r.opportunity_score,
             score_percentile=r.score_percentile,
-            expected_revenue_krw=(
-                None
-                if run.data_tier == "T0" or r.expected_revenue_p50 is None
-                else ExpectedRevenue(
-                    p10=r.expected_revenue_p10, p50=r.expected_revenue_p50, p90=r.expected_revenue_p90
-                )
-            ),
+            expected_revenue_krw=_expected_revenue_for(r, run),
             confidence=RegionScoreConfidence(
                 level=_confidence_for_tier(r.confidence_level, run.data_tier),
                 data_coverage=r.data_coverage,

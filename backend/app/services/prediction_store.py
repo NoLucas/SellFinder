@@ -37,6 +37,13 @@ class RegionScore:
     expected_revenue_p90: int | None
     confidence_level: str
     data_coverage: float
+    # 01_domain_model.json demand_signal.coverage_flag: "actual"|"estimated"|
+    # "suppressed". None for regions with no underlying demand_signal cell
+    # yet (the mock data below). When "suppressed", app.services.privacy
+    # must redact expected_revenue_* before it reaches a response
+    # (06_governance.md §2.3 / VF-010) — enforced in routers/predictions.py,
+    # not here, so this dataclass stays a plain data holder.
+    coverage_flag: str | None = None
 
 
 @dataclass
@@ -88,10 +95,16 @@ def create_run(
     data_tier: str = "T1",
     region_level: str = "sigungu",
     objective: str = "distribution_push",
+    regions: list[RegionScore] | None = None,
 ) -> PredictionRun:
     """Records boundary_vintage at creation time (the level's latest vintage
     right now), so it stays fixed for this run even if A republishes later
-    (ADR-001 "경계 빈티지" §2)."""
+    (ADR-001 "경계 빈티지" §2).
+
+    `regions` defaults to the shared demo dataset; tests pass an explicit
+    list to seed scenarios the demo data doesn't cover (e.g. a suppressed
+    coverage_flag cell, tests/test_privacy.py) without disturbing the demo
+    rows other tests already assert against."""
     run = PredictionRun(
         run_id=run_id,
         tenant_id=tenant_id,
@@ -99,7 +112,7 @@ def create_run(
         region_level=region_level,
         objective=objective,
         boundary_vintage=basemap_registry.latest_vintage(region_level),
-        regions=_build_demo_regions(),
+        regions=regions if regions is not None else _build_demo_regions(),
     )
     _RUNS[run_id] = run
     return run

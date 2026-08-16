@@ -1,9 +1,13 @@
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import basemap, health, predictions
+
+logger = logging.getLogger("sellfinder")
 
 
 def create_app() -> FastAPI:
@@ -46,6 +50,22 @@ def create_app() -> FastAPI:
                     "message": str(exc.errors()),
                 }
             },
+        )
+
+    @application.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Defense in depth for 06_governance.md §2.3 / VF-010's "error
+        message" leg: never echo str(exc) to the client. A
+        SuppressedValueError's own message is already safe by construction
+        (app.services.privacy.SuppressedValueError), but this net catches
+        any *other* exception type whose message happens to interpolate a
+        value that must not reach the client — the guarantee shouldn't
+        depend on every exception type remembering to redact itself.
+        exc_info is logged (server-side only) for debugging."""
+        logger.exception("unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"code": "internal_error", "message": "일시적인 오류가 발생했습니다."}},
         )
 
     return application
