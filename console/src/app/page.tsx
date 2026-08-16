@@ -22,11 +22,21 @@ export default function ConsolePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [detail, setDetail] = useState<PredictionDetail | null>(null);
   const [isSampleDetail, setIsSampleDetail] = useState(false);
+  // D-16: a click outside region_scope is a DIFFERENT state from "no detail
+  // yet" or "sample fixture" — never routed through `detail`, so
+  // RegionDetailPanel can't accidentally render it as either of those.
+  const [restrictedRegionId, setRestrictedRegionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function handleRegionSelect({ detail, isSample }: RegionDetailResult) {
+    setRestrictedRegionId(null);
     setDetail(detail);
     setIsSampleDetail(isSample);
+  }
+
+  function handleOutOfScope(regionId: string) {
+    setDetail(null);
+    setRestrictedRegionId(regionId);
   }
 
   return (
@@ -74,14 +84,16 @@ export default function ConsolePage() {
               key={`${runId}:${session.token}`}
               runId={runId}
               authToken={session.token}
+              regionScope={session.regionScope}
               onRegionSelect={handleRegionSelect}
+              onOutOfScope={handleOutOfScope}
               onError={setError}
             />
           ) : (
             <LoginPanel onAuthenticated={setSession} />
           )}
         </div>
-        <RegionDetailPanel detail={detail} isSample={isSampleDetail} />
+        <RegionDetailPanel detail={detail} isSample={isSampleDetail} restrictedRegionId={restrictedRegionId} />
       </div>
     </div>
   );

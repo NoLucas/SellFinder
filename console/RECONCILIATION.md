@@ -366,4 +366,98 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000/v1 npm run dev
 동작하지만, 아직 진짜 값이 화면까지 도달할 길이 없다"로 결론 낸다. 추측으로 통과 처리하지
 않았다.**
 
+---
+
+## 11. 총괄자 지시 5차 — CI 확인 + region_scope (2026-08-17)
+
+### CI (`2791644`) 확인 결과 — 문제 하나 찾아서 고쳤다
+
+1. **`package-lock.json` 추적 확인** — `git ls-files console/package-lock.json` 정상 출력.
+   `npm ci` 는 문제없이 동작한다(클린 재설치로 직접 재현: `rm -rf node_modules && npm ci`).
+2. **테스트 글롭 패턴 확인 — 여기서 진짜 문제를 찾았다.** `package.json`의
+   `"test": "node --test tests/**/*.test.mjs"`를 `sh -c 'echo tests/**/*.test.mjs'`로
+   재현했더니 **셸이 전혀 확장하지 못하고 리터럴 문자열 그대로 넘어갔다** (`**`는 POSIX
+   `sh`가 지원하는 글롭이 아니다 — `bash`의 `globstar` 옵션 없이는 `**`가 재귀 매칭이 안
+   된다). 다행히 Node 자체의 `--test`가 인자를 받아 자체 글롭 매칭을 하는 걸 확인해서(로컬
+   에선 두 패턴 다 9/9 통과) 오늘 당장 깨지진 않았지만, **셸/Node 버전에 따라 달라지는
+   동작에 기대는 건 위험하다** — CI 실패가 gh runner 의 정확한 셸·Node 조합에 좌우되는
+   재현 불가능한 버그가 될 수 있다. **모든 테스트가 `tests/` 바로 아래 평평하게 있어서
+   재귀가 애초에 필요 없으므로**, `tests/*.test.mjs`(단일 `*`, 모든 POSIX 셸이 지원)로
+   바꿨다. `package.json`.
+3. **더 심각한 걸 확인 과정에서 찾았다 — CI 의 Node 버전과 내 테스트의 실제 요구사항이
+   맞지 않는다.** `.github/workflows/ci.yml:87`(console 잡)이 `node-version: '20'`을 쓴다.
+   내 조인/해칭/T0 테스트(`join.test.mjs`, `confidence-hatch.test.mjs`,
+   `revenue-display.test.mjs`, `region-scope.test.mjs`)는 전부 `../src/lib/.../*.ts`를
+   **Node 의 네이티브 TypeScript 스트리핑**으로 직접 import 한다 — 이 기능은 Node 22.6에서
+   플래그로, **23.6부터 기본 활성화**됐다(D-2 세션 때 이걸 발견하고 새 devDependency 없이
+   테스트 러너를 짤 수 있었던 이유이기도 하다). **Node 20 은 이 기능이 아예 없다.** `.ts`
+   확장자를 인식하는 로더 자체가 없어서 import 시점에 즉시 실패할 것으로 강하게 예상된다
+   (Docker 가 이 환경에 없어서 Node 20 으로 직접 재현은 못 했다 — 이 부분은 코드 리뷰 수준의
+   확신이지 실행 확인이 아니다, jin/총괄자가 실제 CI 로그로 확인해 주길 요청).
+   - **`.github/workflows/ci.yml`은 `console/` 밖이라 내가 고치지 않았다.** 대신
+     `console/package.json`에 `"engines": {"node": ">=23.6.0"}`를 추가하고
+     `console/.npmrc`에 `engine-strict=true`를 추가했다 — 이러면 Node 20 에서
+     `npm ci` 단계 자체가 **바로, 명확한 이유로** 실패한다("Unsupported engine"),
+     지금처럼 `npm test` 안쪽 깊은 곳에서 알 수 없는 import 에러로 실패하는 것보다 훨씬
+     디버깅하기 쉽다. **근본 해결은 `ci.yml`의 `node-version: '20'`을 `'24'`(또는 최소
+     `'23.6'`)로 올리는 것 — 이건 jin/총괄자가 해줘야 한다.**
+
+### region_scope 반영 (ADR-003 §1 / D-16)
+
+지시대로 **화면에서 가리는 건 방어가 아니다**를 전제로 짰다 — 서버 강제는 C 담당(§10에서
+이미 확인했듯 아직 안 됨: `/scores`가 region_scope 로 필터링하는지는 이번 검증 범위 밖).
+콘솔이 할 일은 두 가지: (1) 범위 밖 지역이 "데이터 없음"으로 오해되지 않게 표시,
+(2) 좁은 범위 사용자가 빈 화면을 안 보게.
+
+**새 모듈 2개, 둘 다 `PredictionMap.tsx`의 실제 페인트 경로에 연결:**
+
+- `src/lib/map/regionScope.ts` — `isRegionIdInScope()`(접두사 매칭, 빈 배열=전체),
+  `withRegionScopeGuard()`가 `scoreScale.ts`의 `scoreFillExpression()` 결과를 감싸서
+  **범위 밖 판정이 `NO_DATA_FILL` 분기보다 먼저** 평가되게 만든다(`["case", 범위밖조건,
+  OUT_OF_SCOPE_FILL, <원래 점수 표현식 통째로>]` 형태로 중첩 — `scoreScale.ts` 자체는
+  안 건드렸다, 그쪽 테스트·계약은 점수만 다루는 채로 유지). `OUT_OF_SCOPE_FILL`은
+  `NO_DATA_FILL`과 다른 색(차가운 슬레이트 톤 vs 따뜻한 베이지) — 범례에도 조건부로
+  추가했다(`regionScope`가 비어있지 않을 때만 표시, 전체 접근 사용자에게 불필요한 범례
+  줄을 안 늘리려고).
+- `src/lib/map/initialViewport.ts` — `computeInitialViewport()`. 시도 단위 대략 중심/줌
+  표(공개된 잘 알려진 지리 정보, 모델 출력이 아니다 — 초기 카메라 프레이밍에만 쓰고
+  점수·조인 등 데이터 경로엔 전혀 안 들어간다)로 region_scope 접두사를 매핑한다.
+  접두사가 시군구/행정동 길이라도 앞 2자리(시도 코드)로 안전하게 찾는다(한국 행정코드는
+  계층적이라 앞 2자리가 항상 시도). **인식 못 하는 접두사는 추측하지 않고 전국 기본
+  뷰포트로 폴백한다.** 처음엔 실제 타일 데이터에서 bounding box 를 동적으로 계산하는
+  방식(`map.querySourceFeatures` + fitBounds)도 고려했는데, 타일 로드 타이밍에 좌우되는
+  불안정성이 있어 결정론적인 정적 표 방식으로 갔다 — 정밀한 경계가 아니라 "처음 열었을 때
+  빈 화면이 아니다"가 목표라 이 정도 근사로 충분하다고 판단했다.
+
+**클릭 가드도 추가했다.** `PredictionMap.tsx`의 클릭 핸들러가 `resolveRegionDetail()`을
+부르기 **전에** `isRegionIdInScope()`를 확인한다 — 범위 밖 지역을 클릭하면 (지금은 상세
+라우트가 없어 어차피 404 → 샘플 픽스처로 폴백하는데) **그 폴백을 아예 안 타게 막았다.**
+안 그러면 "권한이 없는 지역"에 대해 그럴듯한 가짜 상세 데이터를 보여주는 꼴이 된다 —
+§10 에서 이미 세운 정직성 원칙(진짜 없으면 있는 척 안 한다)에 정면으로 어긋나는 경우라
+반드시 막아야 했다. `page.tsx`에 `restrictedRegionId` 상태를 새로 두고
+`RegionDetailPanel`이 "권한 밖"과 "상세 없음"/"샘플 데이터"를 서로 다른 문구·색으로
+렌더한다("데이터가 없는 것이 아니라 권한이 없는 것입니다" 문장을 명시적으로 넣었다 —
+총괄자 지시 문구 그대로).
+
+**테스트 (신규 2개 파일, 총 11개 케이스):**
+- `tests/region-scope.test.mjs` — 접두사 매칭, `withRegionScopeGuard`가 원본 점수
+  표현식을 안 건드리고 감싸기만 하는지, `OUT_OF_SCOPE_FILL !== NO_DATA_FILL`.
+- `tests/initial-viewport.test.mjs` — 빈 범위→전국 기본값, 단일 시도→해당 시도 프레이밍,
+  시군구 길이 접두사→시도 표로 정확히 폴백, 복수 시도→중심 평균+줌아웃, 미인식 접두사→
+  추측하지 않고 기본값.
+
+**실행 결과 (그대로 첨부):**
+```
+npm test          # 20 tests, 20 pass (기존 9 + region-scope 6 + initial-viewport 5)
+npm run typecheck # tsc --noEmit, exit 0
+npm run build     # next build 정상 완료 (223 kB)
+```
+
+**jin·총괄자 확인 필요:**
+1. **`ci.yml`의 `node-version: '20'` → `'24'`(또는 `'23.6'` 이상)로 올려야 함.** 안 그러면
+   console 잡이 다음 push 부터 깨질 가능성이 높다(Docker 없어 직접 재현은 못 함, 강한
+   근거 있는 추정 — CONFIRMED 아님, 반드시 CI 로그로 재확인 요망).
+2. 서버(C)가 `/scores`·`/regions`를 region_scope 로 실제 필터링하는지는 이번에 확인하지
+   않았다 — §10 의 미해결 항목(C-2 라우트 부재 등)과 별개로 남아 있다.
+
 다음 지시 대기.

@@ -14,8 +14,45 @@ import { formatRevenueDisplay } from "@/lib/format/revenue";
  * it. `isSample` says whether that array is real (from C-2) or the
  * console/src/lib/api/sampleDetail.ts scaffold fixture; the banner below
  * is how that honesty carries through to the screen, not just the code.
+ *
+ * `restrictedRegionId` (D-16): a click outside the session's region_scope
+ * never reaches `detail` at all (PredictionMap.tsx short-circuits before
+ * calling resolveRegionDetail) — it's a third, distinct state from both
+ * "nothing selected yet" and "showing sample/real detail". "권한 밖" and
+ * "데이터 없음" must not collapse into the same message.
  */
-export default function RegionDetailPanel({ detail, isSample = false }: { detail: PredictionDetail | null; isSample?: boolean }) {
+export default function RegionDetailPanel({
+  detail,
+  isSample = false,
+  restrictedRegionId = null,
+}: {
+  detail: PredictionDetail | null;
+  isSample?: boolean;
+  restrictedRegionId?: string | null;
+}) {
+  if (restrictedRegionId) {
+    return (
+      <PanelShell>
+        <div
+          style={{
+            fontSize: 13,
+            color: "#1c4a7a",
+            background: "#e8f0fa",
+            border: "1px solid rgba(28, 74, 122, 0.2)",
+            borderRadius: 4,
+            padding: "10px 12px",
+          }}
+        >
+          <strong>지역 {restrictedRegionId}은(는) 이 계정의 접근 범위 밖입니다.</strong>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#3a5f85" }}>
+            데이터가 없는 것이 아니라 권한이 없는 것입니다. 지역 범위 확장이 필요하면 관리자에게
+            요청하세요.
+          </p>
+        </div>
+      </PanelShell>
+    );
+  }
+
   if (!detail) {
     return <PanelShell>지도에서 지역을 클릭하면 상세 내역이 표시됩니다.</PanelShell>;
   }

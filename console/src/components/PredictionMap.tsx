@@ -10,6 +10,8 @@ import { resolveRegionDetail, type RegionDetailResult } from "@/lib/api/regionDe
 import type { RegionLevel, RegionScoresPayload } from "@/lib/api/types";
 import { NO_DATA_FILL, scoreFillExpression, type ScoreDomain } from "@/lib/color/scoreScale";
 import { HATCH_IMAGE_ID, hatchOpacityExpression, registerHatchPattern } from "@/lib/map/hatchPattern";
+import { computeInitialViewport } from "@/lib/map/initialViewport";
+import { isRegionIdInScope, OUT_OF_SCOPE_FILL, withRegionScopeGuard } from "@/lib/map/regionScope";
 
 // Registered once at module scope — addProtocol is global to maplibre-gl,
 // re-registering per mount/unmount would just thrash the same handler.
@@ -41,16 +43,29 @@ const PICKABLE_LEVELS: { value: RegionLevel; label: string }[] = [
 export interface PredictionMapProps {
   runId: string;
   authToken: string;
+  /** Prefix codes from the session's token (ADR-003 D-16); empty = full access. Display-only — the server is the real enforcement point. */
+  regionScope: readonly string[];
   productId?: string;
   channel?: string;
   /** Called only when a region is clicked and its detail finishes loading. */
   onRegionSelect?: (result: RegionDetailResult) => void;
+  /** Called when a click lands on a region outside regionScope — never routed through resolveRegionDetail (that would risk showing the sample fixture in place of a region the user isn't cleared to see). */
+  onOutOfScope?: (regionId: string) => void;
   onError?: (message: string) => void;
 }
 
 type LoadState = "loading" | "ready" | "error";
 
-export default function PredictionMap({ runId, authToken, productId, channel, onRegionSelect, onError }: PredictionMapProps) {
+export default function PredictionMap({
+  runId,
+  authToken,
+  regionScope,
+  productId,
+  channel,
+  onRegionSelect,
+  onOutOfScope,
+  onError,
+}: PredictionMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -69,6 +84,9 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
     ensurePmtilesProtocol();
     let cancelled = false;
 
+    // D-16: a region_scope-restricted user shouldn't open the map to a
+    // screen of out-of-scope grey they have to pan away from manually.
+    const { center, zoom } = computeInitialViewport(regionScope);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
@@ -76,8 +94,8 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
         sources: {},
         layers: [{ id: "background", type: "background", paint: { "background-color": "#f9f9f7" } }],
       },
-      center: [127.8, 36.5], // Korea
-      zoom: 6.3,
+      center,
+      zoom,
       transformRequest: authTransformRequest(authToken),
     });
     mapRef.current = map;
@@ -106,7 +124,7 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
             data: payload.custom_geometries,
             promoteId: "region_id",
           });
-          addScoreLayers(map, undefined, [payload.score_range.min, payload.score_range.max]);
+          addScoreLayers(map, undefined, [payload.score_range.min, payload.score_range.max], regionScope);
           joinScores(map, undefined, payload);
           setLoadState("ready");
         } else {
@@ -136,6 +154,16 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       const regionId = String(feature.properties?.region_id ?? feature.id ?? "");
       if (!regionId) return;
 
+      // D-16: never call resolveRegionDetail for an out-of-scope region —
+      // its real detail call will 404/403 (server not built yet either
+      // way) and fall back to the sample fixture, which would show made-up
+      // data for a region this user isn't cleared to see. Short-circuit
+      // client-side with the honest reason instead.
+      if (!isRegionIdInScope(regionId, regionScope)) {
+        onOutOfScope?.(regionId);
+        return;
+      }
+
       resolveRegionDetail(runId, regionId, authToken)
         .then((result) => {
           if (!cancelled) onRegionSelect?.(result);
@@ -154,7 +182,7 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId, authToken, productId, channel]);
+  }, [runId, authToken, regionScope, productId, channel]);
 
   // Level-driven paint: runs once for the run's own level (right after
   // bootstrap sets it) and again whenever the picker sets a different one.
@@ -196,7 +224,7 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
           minzoom: manifest.minzoom,
           maxzoom: manifest.maxzoom,
         });
-        addScoreLayers(map, manifest.source_layer, [scoresPayload.score_range.min, scoresPayload.score_range.max]);
+        addScoreLayers(map, manifest.source_layer, [scoresPayload.score_range.min, scoresPayload.score_range.max], regionScope);
         joinScores(map, manifest.source_layer, scoresPayload);
 
         setLoadState("ready");
@@ -212,7 +240,7 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, scoresPayload, authToken]);
+  }, [level, scoresPayload, authToken, regionScope]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -226,21 +254,28 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
           onSelect={setLevel}
         />
       )}
-      <ScoreLegend domain={scoreDomain} />
+      <ScoreLegend domain={scoreDomain} showOutOfScope={regionScope.length > 0} />
     </div>
   );
 }
 
 /** Fill/outline/hatch layers, shared by the custom_catchment and vector-tile paint paths. */
-function addScoreLayers(map: maplibregl.Map, sourceLayer: string | undefined, domain: ScoreDomain) {
+function addScoreLayers(
+  map: maplibregl.Map,
+  sourceLayer: string | undefined,
+  domain: ScoreDomain,
+  regionScope: readonly string[],
+) {
   map.addLayer({
     id: FILL_LAYER_ID,
     type: "fill",
     source: SOURCE_ID,
     ...(sourceLayer ? { "source-layer": sourceLayer } : {}),
     paint: {
+      // D-16: out-of-scope regions never reach the score ramp / NO_DATA_FILL
+      // branch — the guard is evaluated first (see regionScope.ts).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      "fill-color": scoreFillExpression(domain) as any,
+      "fill-color": withRegionScopeGuard(scoreFillExpression(domain), regionScope) as any,
       "fill-opacity": 0.85,
     },
   });
@@ -353,7 +388,7 @@ function MapOverlay({ text, tone = "muted" }: { text: string; tone?: "muted" | "
 }
 
 /** Sequential scale key + the low-confidence pattern swatch — color is never the only channel. */
-function ScoreLegend({ domain }: { domain: ScoreDomain }) {
+function ScoreLegend({ domain, showOutOfScope }: { domain: ScoreDomain; showOutOfScope: boolean }) {
   return (
     <div
       style={{
@@ -389,6 +424,12 @@ function ScoreLegend({ domain }: { domain: ScoreDomain }) {
         <HatchSwatch />
         <span style={{ color: "#52514e" }}>신뢰도 낮음 (confidence: low)</span>
       </div>
+      {showOutOfScope && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div aria-hidden style={{ width: 16, height: 16, borderRadius: 2, background: OUT_OF_SCOPE_FILL }} />
+          <span style={{ color: "#52514e" }}>권한 범위 밖 (데이터 없음과 다름)</span>
+        </div>
+      )}
     </div>
   );
 }
