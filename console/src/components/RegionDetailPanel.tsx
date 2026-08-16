@@ -2,25 +2,41 @@
 
 import type { ReactNode } from "react";
 import type { PredictionDetail } from "@/lib/api/types";
-
-const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
+import { formatRevenueDisplay } from "@/lib/format/revenue";
 
 /**
  * Minimal first pass — full waterfall/comparable-region layout is tracked
  * separately in console/RECONCILIATION.md (§5 item 3). This exists so
  * PredictionMap's click handler has somewhere to render its result.
  *
- * Honesty rule (00_product_spec.md §4.2 / 05_scoring_spec.md §2): a null
- * expected_revenue_krw means data_tier=T0 — never show 0 or a dash in its
- * place, always the upload-data nudge, and only the relative ranking.
+ * DISPATCH-2 D-1 (05_scoring_spec.md §1/§6): renders exactly the `factors`
+ * array it's given — 8 keys, labels, evidence — and invents nothing beyond
+ * it. `isSample` says whether that array is real (from C-2) or the
+ * console/src/lib/api/sampleDetail.ts scaffold fixture; the banner below
+ * is how that honesty carries through to the screen, not just the code.
  */
-export default function RegionDetailPanel({ detail }: { detail: PredictionDetail | null }) {
+export default function RegionDetailPanel({ detail, isSample = false }: { detail: PredictionDetail | null; isSample?: boolean }) {
   if (!detail) {
     return <PanelShell>지도에서 지역을 클릭하면 상세 내역이 표시됩니다.</PanelShell>;
   }
 
   return (
     <PanelShell>
+      {isSample && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "#8a6d1a",
+            background: "#fbf3da",
+            border: "1px solid rgba(138, 109, 26, 0.25)",
+            borderRadius: 4,
+            padding: "4px 8px",
+            marginBottom: 10,
+          }}
+        >
+          예시 데이터입니다 — 실제 예측이 아닙니다 (backend의 예측 생성 경로가 아직 연결되지 않았습니다).
+        </div>
+      )}
       <h2 style={{ margin: 0, fontSize: 16 }}>{detail.region_name}</h2>
       <p style={{ margin: "2px 0 12px", color: "#52514e", fontSize: 13 }}>
         opportunity_score {detail.opportunity_score.toFixed(1)} · #{detail.rank} · 신뢰도 {detail.confidence.level}
@@ -28,7 +44,7 @@ export default function RegionDetailPanel({ detail }: { detail: PredictionDetail
 
       <RevenueBlock detail={detail} />
 
-      <h3 style={{ fontSize: 13, margin: "16px 0 6px" }}>요인 분해</h3>
+      <h3 style={{ fontSize: 13, margin: "16px 0 6px" }}>요인 분해 (8개)</h3>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
         {detail.factors.map((f) => (
           <li key={f.key} style={{ marginBottom: 6 }}>
@@ -61,18 +77,14 @@ export default function RegionDetailPanel({ detail }: { detail: PredictionDetail
 }
 
 function RevenueBlock({ detail }: { detail: PredictionDetail }) {
-  if (detail.expected_revenue_krw === null) {
-    return (
-      <p style={{ fontSize: 13, color: "#52514e" }}>
-        자사 판매 데이터를 업로드하면 매출 추정을 제공합니다. 지금은 상대 랭킹만 참고하세요.
-      </p>
-    );
+  const display = formatRevenueDisplay(detail.expected_revenue_krw);
+  if (display.kind === "unavailable") {
+    return <p style={{ fontSize: 13, color: "#52514e" }}>{display.message}</p>;
   }
-  const { p10, p50, p90 } = detail.expected_revenue_krw;
   return (
     <p style={{ fontSize: 13 }}>
-      예상 매출 <strong>{KRW.format(p50)}</strong>
-      <span style={{ color: "#898781" }}> ({KRW.format(p10)} ~ {KRW.format(p90)})</span>
+      예상 매출 <strong>{display.p50Label}</strong>
+      <span style={{ color: "#898781" }}> ({display.rangeLabel})</span>
     </p>
   );
 }

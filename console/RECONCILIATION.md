@@ -166,4 +166,75 @@ npm run typecheck # tsc --noEmit, exit 0
 npm run build     # next build, 정상 완료
 ```
 
+---
+
+## 9. DISPATCH-2.md §6 D-1~D-4 (2026-08-16, 2차 사이클)
+
+C-2(잡 워커가 B의 `predict_batch` 호출)가 아직 안 들어와서 `GET /predictions/{run_id}/regions/
+{region_id}`는 backend에 라우트 자체가 없다(`grep -n '"/predictions' backend/app/routers/
+predictions.py`로 확인 — `/regions`·`/scores` 두 개뿐). 그래서 D-1은 그 사실을 그대로 반영해서
+짰다: 지금은 항상 실패하는 진짜 호출 뒤에 스캐폴드가 자동으로 받쳐 준다.
+
+**D-1 — 지역 상세 패널, 요인 8개 분해.**
+- `src/lib/api/sampleDetail.ts` — `05_scoring_spec.md` §1의 8개 `factor_key` 그대로, §6의
+  evidence 규칙(실제 값 인용 + 비교 기준, 인과 주장 금지)을 지켜 쓴 **하나짜리 고정 픽스처**.
+  런타임에 값을 지어내지 않는다 — 클릭한 region_id/run_id만 채워 넣고 나머지는 고정.
+- `src/lib/api/regionDetail.ts`의 `resolveRegionDetail()`이 "한 곳에서 주입" 지점이다.
+  진짜 `GET .../regions/{region_id}`를 먼저 시도하고, 실패하면(지금은 항상 실패 — 라우트가
+  없으니까) 픽스처로 폴백한다. **C-2가 라우트를 만들면 이 함수가 코드 변경 없이 자동으로
+  진짜 데이터를 쓰기 시작한다.** `PredictionMap.tsx`는 이 함수만 호출하고 `sampleDetail.ts`를
+  직접 import하지 않는다.
+- `RegionDetailPanel.tsx`는 `factors` 배열을 있는 그대로 렌더한다(라벨·값·evidence 추가 가공
+  없음). `isSample` 플래그가 true면 노란 배너로 "예시 데이터입니다 — 실제 예측이 아닙니다"를
+  화면에 그대로 노출한다 — 코드에서만 정직한 게 아니라 화면에서도 정직해야 한다는 원칙.
+  **주의**: 이 배너는 C-2 이후에도, 만약 그 진짜 호출이 (라우트 부재가 아닌) 다른 이유로
+  실패하면 계속 뜬다 — 의도한 동작이다. 조용히 가짜를 진짜처럼 보여주는 것보다 낫다.
+
+**D-2 — T0 문구를 테스트로 강제.**
+- `RevenueBlock`의 인라인 로직을 `src/lib/format/revenue.ts`의 순수 함수
+  `formatRevenueDisplay()`로 뽑아냈다 — node:test가 React 렌더 없이 직접 단언할 수 있게.
+- `tests/revenue-display.test.mjs`: `expected_revenue_krw === null`이면 반드시
+  `kind: "unavailable"` 분기를 타고, 메시지가 계약 문구 "상대적 유망도 랭킹"을 포함하며,
+  `"0"`이나 `"-"`가 아님을 단언한다. 값이 있는 경우엔 반대로 숫자 분기를 타는지도 같이 확인.
+
+**D-3 — confidence=low가 색이 아니라 패턴인지 회귀 테스트.**
+- `tests/confidence-hatch.test.mjs`가 실제 `scoreScale.ts`/`hatchPattern.ts` 모듈이 만드는
+  MapLibre 표현식 트리를 직접 검사한다: `fill-color` 표현식에 `confidence_level`이 전혀
+  등장하지 않고, 해칭 `fill-opacity` 표현식은 `confidence_level === 'low'`에만 반응하며
+  `score`를 전혀 참조하지 않는다. 누가 "낮은 신뢰도는 색을 옅게" 식으로 고치면 이 테스트가
+  바로 깨진다.
+
+**D-4 — 매직링크 로그인 + region_scope 반영.**
+- backend에 매직링크 발송/검증 엔드포인트가 없다(DISPATCH-2 C-1~C-5 범위 밖). 그래서
+  `LoginPanel.tsx`의 이메일+매직링크 UI는 **비활성 버튼으로 존재만 하고, 안 보내는 이메일을
+  보낸 척하지 않는다** — 툴팁/안내 문구로 "backend 미구현"을 명시. 실제로 동작하는 경로는
+  ADR-003 "개발 중 임시 조치"인 `POST /v1/dev/token`(`backend/app/routers/dev_auth.py`,
+  `SELLFINDER_ENV=development`에서만 등록) — 이걸로 tenant_id·role·region_scope를 실제로
+  발급받는다. `client.ts`에 `requestDevToken()` 추가(인증 전 호출이라 `postJSONUnauthenticated`
+  헬퍼를 새로 뺐다).
+- `region_scope` 반영: 로그인 폼에서 사용자가 입력한 `region_scope`를 세션 상태에 그대로
+  들고 있다가 헤더에 "범위: 41, 11" 또는 "전체 지역"으로 표시한다. 토큰을 클라이언트에서
+  디코드해서 얻지 않는다 — ADR-003 §3 "애플리케이션 코드는 TokenClaims만 본다, 토큰 원문을
+  다른 곳에서 파싱하지 마라"는 서버 얘기지만 같은 정신을 클라이언트에도 적용했다: 콘솔이
+  `/v1/dev/token`에 보낸 요청 바디 값을 그대로 세션에 echo하는 것이지, 토큰을 열어보는 게
+  아니다. 실제 서버 측 `region_scope` 강제(조회·타일·내보내기 전 경로)는 C 담당이고 D는
+  이 세션 밖 범위다.
+- **`tests/token-hygiene.test.mjs`**를 새로 추가해서 D-4를 테스트로도 강제했다(DISPATCH-2가
+  명시적으로 요구하진 않았지만 D-2/D-3 패턴과 맞춰 일관되게). `console/src` 전체를 정적
+  스캔해서 `localStorage.`/`sessionStorage.` 실사용이 0건인지 확인 — 주석에 그 단어가 나와도
+  오탐하지 않도록 정규식을 property-access 형태로 제한했다(처음엔 문장부호 `.` 때문에 두 번
+  오탐 났다가 고쳤다).
+
+**실행 결과 (그대로 첨부):**
+```
+npm test          # 9 tests, 9 pass (D-2 조인 3 + fill-color/hatch 3 + T0 문구 2 + 토큰 위생 1)
+npm run typecheck # tsc --noEmit, exit 0
+npm run build     # next build, 정상 완료 (222 kB)
+```
+
+**jin 확인 필요 — 확신 없이 임의로 결정한 지점:**
+1. §8에 이미 적은 "레벨 선택" 해석 문제, 아직 미해결.
+2. D-1의 `isSample` 배너 — C-2 이후 진짜 호출이 실패했을 때도 계속 뜨는 설계가 맞는지.
+   (개인적으로는 "조용히 가짜를 보여주는 것"보다 안전하다고 보고 이대로 진행했다.)
+
 다음 지시 대기.

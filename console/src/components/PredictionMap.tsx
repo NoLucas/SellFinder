@@ -5,8 +5,9 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol as PMTilesProtocol } from "pmtiles";
 
-import { authTransformRequest, getBasemapManifest, getRegionDetail, getRegionScores } from "@/lib/api/client";
-import type { PredictionDetail, RegionLevel, RegionScoresPayload } from "@/lib/api/types";
+import { authTransformRequest, getBasemapManifest, getRegionScores } from "@/lib/api/client";
+import { resolveRegionDetail, type RegionDetailResult } from "@/lib/api/regionDetail";
+import type { RegionLevel, RegionScoresPayload } from "@/lib/api/types";
 import { NO_DATA_FILL, scoreFillExpression, type ScoreDomain } from "@/lib/color/scoreScale";
 import { HATCH_IMAGE_ID, hatchOpacityExpression, registerHatchPattern } from "@/lib/map/hatchPattern";
 
@@ -43,7 +44,7 @@ export interface PredictionMapProps {
   productId?: string;
   channel?: string;
   /** Called only when a region is clicked and its detail finishes loading. */
-  onRegionSelect?: (detail: PredictionDetail) => void;
+  onRegionSelect?: (result: RegionDetailResult) => void;
   onError?: (message: string) => void;
 }
 
@@ -135,11 +136,14 @@ export default function PredictionMap({ runId, authToken, productId, channel, on
       const regionId = String(feature.properties?.region_id ?? feature.id ?? "");
       if (!regionId) return;
 
-      getRegionDetail(runId, regionId, authToken)
-        .then((detail) => {
-          if (!cancelled) onRegionSelect?.(detail);
+      resolveRegionDetail(runId, regionId, authToken)
+        .then((result) => {
+          if (!cancelled) onRegionSelect?.(result);
         })
         .catch((err) => {
+          // resolveRegionDetail only rejects if even the sample fixture
+          // path throws, which means a bug in this file, not a network/API
+          // failure — those are already caught and turned into isSample.
           if (!cancelled) onError?.(err instanceof Error ? err.message : "failed to load region detail");
         });
     });

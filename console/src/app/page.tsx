@@ -1,25 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import LoginPanel, { type Session } from "@/components/LoginPanel";
 import PredictionMap from "@/components/PredictionMap";
 import RegionDetailPanel from "@/components/RegionDetailPanel";
+import type { RegionDetailResult } from "@/lib/api/regionDetail";
 import type { PredictionDetail } from "@/lib/api/types";
 
 /**
  * First vertical slice of the map view (AGENT_BRIEFS.md STEP 2-D, screen 1).
- * runId/token are query-string inputs for now — real auth/run-selection UI
- * is blocked on /backend's login + run-list endpoints (open question in
- * console/RECONCILIATION.md §6), so this keeps the map testable without them.
+ * run_id is still a plain input — real run-selection UI is blocked on
+ * /backend's run-list endpoint (console/RECONCILIATION.md §6). Auth is no
+ * longer a raw token field: see LoginPanel.tsx (DISPATCH-2 D-4).
  */
 export default function ConsolePage() {
   const [runId, setRunId] = useState("run_01J8XM2");
-  // D-17/BRIEF-D D-4: token lives in React state only (lost on refresh) —
-  // do NOT persist it to localStorage/sessionStorage. Real persistence is
+  // ADR-003 §5 / D-17: session lives in React state only (lost on refresh)
+  // — do NOT persist it to localStorage/sessionStorage. Real persistence is
   // httpOnly cookie + refresh, blocked on /backend's login endpoint
   // (console/RECONCILIATION.md §8).
-  const [authToken, setAuthToken] = useState("");
+  const [session, setSession] = useState<Session | null>(null);
   const [detail, setDetail] = useState<PredictionDetail | null>(null);
+  const [isSampleDetail, setIsSampleDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleRegionSelect({ detail, isSample }: RegionDetailResult) {
+    setDetail(detail);
+    setIsSampleDetail(isSample);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -33,38 +41,47 @@ export default function ConsolePage() {
         }}
       >
         <strong style={{ fontSize: 14 }}>SellFinder</strong>
-        <input
-          value={runId}
-          onChange={(e) => setRunId(e.target.value)}
-          placeholder="run_id"
-          style={{ fontSize: 12, padding: "4px 6px" }}
-        />
-        <input
-          value={authToken}
-          onChange={(e) => setAuthToken(e.target.value)}
-          placeholder="bearer token (dev only)"
-          style={{ fontSize: 12, padding: "4px 6px", width: 220 }}
-        />
+        {session && (
+          <>
+            <input
+              value={runId}
+              onChange={(e) => setRunId(e.target.value)}
+              placeholder="run_id"
+              style={{ fontSize: 12, padding: "4px 6px" }}
+            />
+            <span style={{ fontSize: 12, color: "#52514e" }}>
+              {session.tenantId} · {session.role}
+            </span>
+            {/* region_scope reflected in the UI, not just held silently (ADR-003 §5 / D-16) */}
+            <span
+              style={{ fontSize: 12, color: "#52514e" }}
+              title="region_scope — 접근 가능 지역 코드 접두사"
+            >
+              {session.regionScope.length > 0 ? `범위: ${session.regionScope.join(", ")}` : "전체 지역"}
+            </span>
+            <button type="button" onClick={() => setSession(null)} style={{ fontSize: 12, marginLeft: "auto" }}>
+              로그아웃
+            </button>
+          </>
+        )}
         {error && <span style={{ fontSize: 12, color: "#d03b3b" }}>{error}</span>}
       </header>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <div style={{ flex: 1, position: "relative" }}>
-          {authToken ? (
+          {session ? (
             <PredictionMap
-              key={`${runId}:${authToken}`}
+              key={`${runId}:${session.token}`}
               runId={runId}
-              authToken={authToken}
-              onRegionSelect={setDetail}
+              authToken={session.token}
+              onRegionSelect={handleRegionSelect}
               onError={setError}
             />
           ) : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#898781" }}>
-              토큰을 입력하면 지도가 로드됩니다.
-            </div>
+            <LoginPanel onAuthenticated={setSession} />
           )}
         </div>
-        <RegionDetailPanel detail={detail} />
+        <RegionDetailPanel detail={detail} isSample={isSampleDetail} />
       </div>
     </div>
   );

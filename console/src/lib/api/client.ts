@@ -26,6 +26,16 @@ export class ApiError extends Error {
   }
 }
 
+async function throwApiError(res: Response): Promise<never> {
+  const body = (await res.json().catch(() => null)) as { error?: { code: string; message: string; request_id: string } } | null;
+  throw new ApiError(
+    body?.error?.message ?? res.statusText,
+    body?.error?.code ?? "UNKNOWN",
+    body?.error?.request_id ?? "unknown",
+    res.status,
+  );
+}
+
 async function fetchJSON<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -35,15 +45,18 @@ async function fetchJSON<T>(path: string, token: string, init?: RequestInit): Pr
       ...init?.headers,
     },
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: { code: string; message: string; request_id: string } } | null;
-    throw new ApiError(
-      body?.error?.message ?? res.statusText,
-      body?.error?.code ?? "UNKNOWN",
-      body?.error?.request_id ?? "unknown",
-      res.status,
-    );
-  }
+  if (!res.ok) return throwApiError(res);
+  return res.json() as Promise<T>;
+}
+
+/** For endpoints that issue a token in the first place — no Authorization header to send yet. */
+async function postJSONUnauthenticated<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return throwApiError(res);
   return res.json() as Promise<T>;
 }
 
@@ -132,6 +145,32 @@ export async function listAllRegionScores(
 /** GET /predictions/{run_id}/regions/{region_id} — only called on map click. */
 export function getRegionDetail(runId: string, regionId: string, token: string): Promise<PredictionDetail> {
   return fetchJSON<PredictionDetail>(`/predictions/${runId}/regions/${regionId}`, token);
+}
+
+export interface DevTokenRequest {
+  tenantId: string;
+  role?: string;
+  regionScope?: string[];
+}
+
+export interface DevTokenResponse {
+  accessToken: string;
+}
+
+/**
+ * POST /v1/dev/token (ADR-003 "개발 중 임시 조치"). Registered by backend
+ * only when SELLFINDER_ENV=development — a 404 here in a real deployment
+ * means the dev escape hatch correctly doesn't exist, not a bug to route
+ * around. Stand-in for the real magic-link verify call (LoginPanel.tsx is
+ * the swap point once that endpoint exists, not this function).
+ */
+export async function requestDevToken({ tenantId, role = "analyst", regionScope = [] }: DevTokenRequest): Promise<DevTokenResponse> {
+  const res = await postJSONUnauthenticated<{ access_token: string }>("/dev/token", {
+    tenant_id: tenantId,
+    role,
+    region_scope: regionScope,
+  });
+  return { accessToken: res.access_token };
 }
 
 /**
