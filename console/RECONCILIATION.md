@@ -237,4 +237,133 @@ npm run build     # next build, 정상 완료 (222 kB)
 2. D-1의 `isSample` 배너 — C-2 이후 진짜 호출이 실패했을 때도 계속 뜨는 설계가 맞는지.
    (개인적으로는 "조용히 가짜를 보여주는 것"보다 안전하다고 보고 이대로 진행했다.)
 
+---
+
+## 10. 총괄자 지시 4차 — "골격에 진짜를 흘려보내라" 실제 검증 결과 (2026-08-16)
+
+**결론부터: 세 가지 확인 항목 중 어느 것도 화면까지 온전히 갈 수 없었다.** 골격(D-1~D-4)은
+맞게 짰지만, 예상보다 이른 지점에서 세 개의 독립적인 이음매 결함에 부딪혔다. 추측으로
+파서를 맞추지 않고, 실제로 backend 서버를 띄우고(`uvicorn`, `localhost:8000`) 실제
+`POST /v1/predictions`로 run을 만들고, 실제 HTTP 응답을 콘솔의 **진짜 프로덕션 코드**
+(`resolveRegionDetail`, `formatRevenueDisplay`, `client.ts` — 재구현 아님, `tsc`로 그대로
+컴파일해 돌렸다)로 직접 통과시켜 확인했다. 브라우저로도 시도했다.
+
+### 발견 1 (신규, 가장 심각) — backend에 CORS 설정이 전혀 없다
+
+`grep -rn "CORS\|cors" backend/app/*.py` → 0건. 실제 브라우저(`localhost:3000` → 콘솔
+개발서버, `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000/v1`)에서 로그인 폼으로
+`POST /v1/dev/token`을 호출하니 **"Failed to fetch"** — 브라우저의 CORS 차단이다.
+같은 요청을 `curl`과 Node의 `fetch`(CORS를 안 지키는 환경)로 하면 정상 응답한다 —
+서버는 멀쩡히 살아있고 응답도 맞다, **브라우저만 막힌다.**
+
+- 개발 환경(`:3000` ↔ `:8000`)도, 운영 환경(콘솔 도메인 ↔ `api.sellfinder.kr`)도 **오리진이
+  다르므로 항상 걸린다.** 지금 이 상태로는 콘솔이 브라우저에서 backend를 단 하나도 호출하지
+  못한다 — 로그인은 물론 지도·상세 패널 전부.
+- 콘솔 쪽에서 우회(프록시 rewrite 등)로 해결하지 않았다. 실제 배포에서도 콘솔·API가 다른
+  도메인인 이상 프록시로 덮으면 운영 이슈를 개발 환경에서만 숨기는 꼴이라 판단했다.
+- **backend(C)가 `CORSMiddleware`를 등록해야 하는 문제다.** `console/` 밖이라 내가 고치지
+  않았다. 1차·2차 사이클 내내 아무도 브라우저로 실제 통합을 띄워본 적이 없어서 지금까지
+  아무도 못 잡은 것으로 보인다 — 스크립트/curl 기반 검증은 이 문제를 절대 못 잡는다
+  (CORS는 브라우저만 강제한다).
+
+### 발견 2 — 요인 8개 분해가 화면까지 갈 경로가 아직 없다 (D-1 관련)
+
+`grep -n '"/predictions' backend/app/routers/predictions.py` → `/regions`(목록)·`/scores`
+둘뿐, **`GET /v1/predictions/{run_id}/regions/{region_id}` 단건 상세 라우트 자체가 없다.**
+실제로 쳐봤다: `curl .../regions/91001001` → `404 {"detail":"Not Found"}` (FastAPI 기본
+404, 계약이 정한 에러 봉투 형태가 아니다 — `client.ts`가 이걸 `res.statusText`로 우아하게
+받아넘기는 것까지 확인했다).
+
+- 목록(`/regions`) 응답의 `RegionScoreItem`에도 `factors` 필드가 없다(`backend/app/
+  schemas.py`에 factors/evidence 관련 클래스 자체가 없음).
+- 하지만 **B의 실제 모델은 요인 8개를 만들고 있다.** `intelligence/scoring/model.py`의
+  `PredictionResult.factors`가 그것이다. C의 `job_runner.py`→`prediction_store.compute_
+  regions()`가 `result.factors`를 **아예 읽지 않고 버린다** — `RegionScore` dataclass에
+  `factors` 필드가 없다. B→C 경계에서 데이터가 만들어지자마자 사라진다.
+- 결과: 지금 콘솔에서 어떤 지역을 클릭해도 `resolveRegionDetail()`은 항상 404를 만나
+  **항상 `sampleDetail.ts` 픽스처로 폴백한다.** 설계한 그대로(`isSample: true` + 배너)
+  동작하는 것은 확인했지만, **요인 8개가 실제 모델 출력으로 렌더되는 걸 오늘은 확인할 수
+  없다** — 화면까지 가는 경로가 아예 없어서다. C-2 다음 단계로 "단건 상세 라우트 + B의
+  factors를 실제로 실어 나르는 것"이 필요하다.
+
+### 발견 3 — T0 실제 응답 확인 불가 (D-2 관련) · 구조적으로 T0를 만들 방법이 없다
+
+`backend/app/schemas.py`의 `PredictionRequest`에 `data_tier` 필드 자체가 없고,
+`routers/predictions.py`의 `create_prediction()`은 주석으로도 명시했듯
+**"매 run이 T1로 고정 생성된다."** 실제로 run 세 개를 만들어 봤는데 전부 `data_tier: "T1"`
+이었다. **T0 테넌트로 같은 경로를 타보라는 지시를 오늘은 이행할 방법이 없다** — API가 T0를
+요청할 방법 자체를 안 준다. 추측해서 T0인 척 만들지 않았다.
+
+대신 확인한 것: 실제 T1 run의 `expected_revenue_krw`도 어차피 전부 `null`이었다
+(B의 5단계 매출 모델이 아직 없어서 — `intelligence_client.py` 주석 "always None today").
+그 실제 null 값을 콘솔의 진짜 `formatRevenueDisplay()`에 통과시키니 계약 문구
+`"자사 판매 데이터를 업로드하면... 상대적 유망도 랭킹만 참고하세요"`가 정확히 나왔다 —
+**tier와 무관하게 null이면 항상 정직한 문구를 낸다는 설계는 실동작으로 확인됐다.**
+`confidence.level`도 실제로는 전 지역이 `"low"`로 고정돼 있었다(C가 아직 신뢰도 산식을
+구현 안 해서 — `prediction_store.py` 주석 "no real signal to report... never fabricate").
+**`"high"` 배지가 뜨는지 확인해 달라는 항목도 오늘은 관측 불가** — `"low"` 밖에 안 나온다.
+다만 `_confidence_for_tier()`의 T0 상한 로직 자체는 코드 리뷰로 맞게 짜여 있는 걸 확인했다
+(`_CONFIDENCE_ORDER["low"] > _CONFIDENCE_ORDER["medium"]`이 거짓이라 강등이 안 걸릴 뿐).
+
+### 발견 4 — evidence 문장은 B 쪽에서는 규칙을 지키고 있다 (화면 확인은 아직 불가)
+
+라우트가 없어 화면으로는 못 봤지만, `intelligence_client.run_prediction()`을 직접 호출해
+B의 실제 evidence 문자열을 읽었다:
+```
+addressable_demand: "타깃 인구 규모 562,349명 - 비교대상 지역 평균 562,349명 대비 1.00배"
+category_penetration: "해당 지역·채널의 소비 신호 데이터 없음(또는 suppressed) - 중립(1.0)으로 처리"
+price_acceptance: "소득 6분위 (비교지역 평균 6.0분위), 가격대 'mid'"
+```
+- 값 인용(§6.1)·비교 기준 동반(§6.2) — 지켜지고 있다.
+- 인과 단정(§6.3 금지) — 안 보인다. 데이터가 없는 요인은 "데이터 없음 - 중립 처리"로
+  정직하게 적고 있다(지어내지 않음).
+- **다만 이 run(adm_dong 91001001)은 8개 요인 전부 `log_contribution=0.0000`,
+  `total_multiplier=1.0`이었다** — 완전 중립. `addressable_demand`의 "비교대상 지역 평균
+  대비 1.00배"도 자기 자신과만 비교되는 것처럼 보이는 결과다. 이게 이 지역의 실제
+  피처가 그런 것인지, 비교집단 표본이 너무 작아서(합성 데이터셋이 5개 지역뿐) 생기는
+  퇴화(degenerate) 현상인지는 B가 확인할 문제라 여기서 판단하지 않고 사실만 남긴다.
+- **§6 규칙이 화면에서 깨지는지는 여전히 확인 불가** — 발견 2 때문에 문장이 아직 화면에
+  안 온다. B가 언급한 "§6 테스트 붙이는 중"과는 별개로, 콘솔 쪽 검증은 라우트가 생겨야
+  재개할 수 있다.
+
+### 검증 방법 (재현 가능)
+
+```
+# 1) backend 실행 (dev)
+cd backend && ./.venv/Scripts/python -m uvicorn app.main:app --port 8000
+
+# 2) 토큰 발급 + run 생성 + 목록 조회 (실제 응답 그대로)
+curl -X POST http://127.0.0.1:8000/v1/dev/token -H "Content-Type: application/json" \
+  -d '{"tenant_id":"tnt_verify","role":"analyst","region_scope":[]}'
+curl -X POST http://127.0.0.1:8000/v1/predictions -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"product_ids":["prd_demo"],"objective":"distribution_push","region_level":"adm_dong"}'
+curl http://127.0.0.1:8000/v1/predictions/<run_id>/regions -H "Authorization: Bearer <token>"
+curl -i http://127.0.0.1:8000/v1/predictions/<run_id>/regions/<region_id> -H "Authorization: Bearer <token>"  # 404 확인
+
+# 3) 콘솔의 진짜 코드(재구현 아님)를 그 응답에 직접 통과 — tsc로 컴파일해 node로 실행
+#    (parameter-property를 쓰는 client.ts의 ApiError 클래스가 Node 네이티브 TS 스트리핑
+#    지원 범위 밖이라 tsc 컴파일이 필요했다. 상세 명령은 이 세션에만 있던 임시 스크립트라
+#    재현하려면 tsc -p tsconfig.json --outDir <tmp> 후 결과 .js를 node로 실행)
+
+# 4) 브라우저 재현 (CORS 확인)
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000/v1 npm run dev
+# localhost:3000 접속 → 로그인 폼 제출 → "Failed to fetch"
+```
+
+### jin·C·B 확인 필요 (즉시 보고 대상, 추정 아님)
+
+1. **CORS 미설정 (backend, S1급)** — 지금 상태로 콘솔은 브라우저에서 backend를 전혀 호출
+   못한다. `CORSMiddleware`를 backend에 등록해야 한다. console/에서 고칠 수 있는 범위 밖.
+2. **B의 `factors`가 C의 `prediction_store.RegionScore`에서 버려짐 + 단건 상세 라우트 부재**
+   — D-1이 실제 데이터로 검증되려면 이 둘이 먼저 있어야 한다.
+3. **T0 run을 만들 방법이 API에 없음** — `PredictionRequest`에 `data_tier` 관련 필드가 없다.
+   D-2/D-3의 T0·confidence 상한 검증은 그때까지 코드 리뷰 수준에 머무른다.
+4. (참고, 판단 보류) B의 evidence가 이 particular run에서 전부 중립(1.0)이었던 것 —
+   버그인지 데이터셋이 작아서인지 B가 확인 바람.
+
+**요인 8개 렌더·T0 실제 응답·evidence 화면 검증 세 가지 다 오늘은 "골격은 맞고 정직하게
+동작하지만, 아직 진짜 값이 화면까지 도달할 길이 없다"로 결론 낸다. 추측으로 통과 처리하지
+않았다.**
+
 다음 지시 대기.
