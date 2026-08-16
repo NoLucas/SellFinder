@@ -84,3 +84,68 @@ STEP 2 (역할별 지시)는 아직 착수하지 않았다. 이 문서는 리컨
   - `adm_dong` 레벨의 실제/픽스처 빌드 — 소스 GeoJSON 경계 데이터가 아직 없다(§5 "region 모델" 선행 작업 미착수). A-5 는 순서만 지시했지 이 사이클에 adm_dong 산출을 요구하지 않았다.
   - `python tools/validate_contracts.py --base origin/master --agent A` — 실행하면 오류 21건이 뜨지만, 전부 `backend/`, `intelligence/`, `shared/contracts/`, `tools/` 파일이고 `data-platform/` 은 0건이다(`git diff --cached --name-only` 로 직접 확인 — 이번 스테이징엔 data-platform 파일만 있음). `origin/master` 가 여러 에이전트의 기존 로컬 커밋들보다 한참 뒤처져 있어 이 비교 자체가 지금 시점엔 모두를 걸리게 만드는 것으로 보인다. 이 검사 도구(`tools/`)는 소유 범위 밖이라 고치지 않았다.
   - `--check-manifest` 를 `output/manifest/regions-sido-*.json` 개별 파일에도 돌려보고 싶었으나(픽스처만 검사 대상으로 브리프에 명시돼 있었음), 실행 결과도 함께 남긴다: 두 파일 모두 오류 0건.
+
+---
+
+## 8. DISPATCH 2차 (A-3 재검증 + sigungu·adm_dong 실물) 실행 결과 · 2026-08-16
+
+지시 근거: 총괄자 2차 지시. A-1 게이트 문구("`*.pmtiles` 전체가 비어야 한다")는 D-12와
+모순되는 총괄자 표기 오류였고, `output/tiles` 미추적 여부로 정정됨 — 이미 그 조건대로였다
+(§7의 `git ls-files` 결과가 `output/tiles/` 아래 실 아티팩트 0건이었음). 별도 조치 불필요.
+
+### 8.1 A-3 재검증 — 두 가지 실패 시나리오 + 대조군
+
+일부러 실패를 유도하는 두 시나리오를 다시 돌렸다(첫 회차의 "속성 제거" 외에
+"매니페스트가 광고하는 이름 자체를 존재하지 않는 이름으로 바꾸는" 케이스를 추가):
+
+```
+=== 시나리오 1: properties 에서 region_id 를 아예 뺀다 ===
+PASS (실패로 막힘): TileJoinKeyVerificationError: feature_id_property='region_id' 가 산출 타일
+z0/0/0 의 피처 properties 에 없습니다: ['name', 'level', 'is_synthetic_placeholder']
+
+=== 시나리오 2: FEATURE_ID_PROPERTY 자체를 존재하지 않는 이름으로 바꾼다 ===
+PASS (실패로 막힘): TileJoinKeyVerificationError: feature_id_property='region_code_that_does_not_exist'
+가 산출 타일 z0/0/0 의 피처 properties 에 없습니다: ['region_id', 'name', 'level', 'is_synthetic_placeholder']
+
+=== 대조군: 정상 properties + 정상 FEATURE_ID_PROPERTY 는 통과해야 한다 ===
+PASS (정상 통과): feature_count=5, feature_id_property='region_id'
+```
+
+두 실패 시나리오 모두 예외로 막혔고, 정상 케이스는 그대로 통과한다 — 검사가 "항상 실패"나
+"항상 통과"가 아니라 실제로 광고값과 산출물을 비교해 판별한다는 뜻이다. 가짜 검사가 아니다.
+회귀 테스트(`tests/test_boundary_tiles.py::test_build_fails_when_feature_id_property_missing_from_tile`)로
+시나리오 1은 이미 고정돼 있다.
+
+### 8.2 sigungu·adm_dong 실물 레벨 산출 (D-13)
+
+**선행 조치 — 타일러 성능 문제 발견 및 수정**: adm_dong(zoom 5~14, 전국 bbox)을 그대로
+빌드해보려 하자 `tiler.py::build_tiles()`가 타일 후보 전부 x 피처 전부에 대해 정확 기하
+`.intersection()`을 매번 실행하는 구조라는 게 드러났다. zoom 14 에서 전국 bbox 타일
+후보가 약 14만 개이고, 500 피처 기준 최대 7천만 회의 정확 교차 연산이 필요해 견적상
+수십 분이 걸린다. 실제로 겹칠 여지가 없는 조합을 O(1) 바운딩박스 비교로 먼저 걸러내는
+사전 필터를 추가했다(`tiler.py` `build_tiles`, 결과는 동일하고 속도만 다름 — 회귀 테스트
+7개 전부 그대로 통과 확인). 이 수정이 없었다면 이번 사이클 안에 adm_dong 을 낼 수 없었다.
+
+- **sigungu (실물, `boundary_vintage: "2026-01-01"`)**: A-4 픽스처와 같은 250개 합성 소스
+  (`tests/fixtures/sigungu_sample_fixture.geojson`)를 `build_vintage()`(fixture 아닌 정식
+  경로)로 빌드. `output/manifest/regions-sigungu-2026-01-01.json` 생성,
+  `--check-manifest` 오류 0건. 타일 디코드로 250개 피처 전부 `region_id` 속성 확인.
+- **adm_dong (실물, `boundary_vintage: "2026-01-01"`)**: 신규 소스
+  `tests/fixtures/adm_dong_sample_2026-01-01.geojson` — sigungu 250개 각각의 하위에
+  2개씩(잔단 지터 포함, `parent_id` 로 상위 sigungu 코드 참조) 총 500개 합성 생성.
+  빌드 소요 **41초**(사전 필터 적용 후). `output/manifest/regions-adm_dong-2026-01-01.json`
+  생성, `--check-manifest` 오류 0건. 타일 디코드로 500개 피처 전부 `region_id` 속성 확인.
+  minzoom/maxzoom = 5/14 (D-14).
+
+**현재 4개 레벨×빈티지 조합이 `output/manifest/`에 모두 있다**: sido(2026-01-01,
+2026-07-01), sigungu(2026-01-01), adm_dong(2026-01-01). `git ls-files data-platform/output/tiles`
+는 여전히 비어 있다(pmtiles 실 아티팩트는 계속 미추적).
+
+- **끝낸 항목**: A-3 재검증(2건 실패 시나리오 + 대조군), sigungu 실물, adm_dong 실물
+- **통과 확인**: 위 8.1의 3개 스크립트 출력 그대로. `pytest tests -q` → 7 passed(사전 필터
+  추가 후 재확인). `validate_contracts.py --check-manifest` sigungu/adm_dong 매니페스트
+  각각 오류 0건. 타일 재디코드로 sigungu 250/250, adm_dong 500/500 전부 `region_id` 존재.
+- **못 한 것과 이유**: 없음. 다만 sigungu·adm_dong 소스는 실측 SGIS 경계가 아니라 합성
+  좌표(모든 A 산출물이 지금 `is_synthetic_placeholder: true`인 것과 동일 전제)다 — 이는
+  region 모델 선행 작업(§5-1) 완료 전까지 이 프로젝트 전체의 기존 상태이지, 이번 지시로
+  새로 생긴 제약이 아니다.

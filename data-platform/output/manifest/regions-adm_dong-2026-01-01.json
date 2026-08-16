@@ -1,0 +1,24 @@
+{
+  "level": "adm_dong",
+  "boundary_vintage": "2026-01-01",
+  "tile_url": "http://localhost:8000/artifacts/tiles/regions-adm_dong-2026-01-01.pmtiles",
+  "source_layer": "regions",
+  "feature_id_property": "region_id",
+  "minzoom": 5,
+  "maxzoom": 14,
+  "attribution": "통계청 SGIS 연동 예정 (현재는 합성 표본 경계, is_synthetic_placeholder)",
+  "valid_to": null,
+  "feature_count": 500,
+  "bounds": [
+    124.71115776658633,
+    33.35933417030597,
+    130.87045635029557,
+    38.42149863141332
+  ],
+  "source_id": "src_synthetic_adm_dong",
+  "sha256": "d07bec398cd56b16113ab828713bfa0c835eb3d391556528f3c64f4f80756958",
+  "built_at": "2026-08-16T02:03:36.309530+00:00",
+  "available_vintages": [
+    "2026-01-01"
+  ]
+}

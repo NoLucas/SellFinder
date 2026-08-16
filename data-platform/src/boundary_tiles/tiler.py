@@ -86,8 +86,16 @@ def build_tiles(
     max_zoom: int,
     extents: int = 4096,
 ) -> dict[tuple[int, int, int], bytes]:
-    """레벨 하나(예: sido)의 전체 지역 경계로부터 {(z,x,y): gzip(mvt_bytes)} 를 만든다."""
+    """레벨 하나(예: sido)의 전체 지역 경계로부터 {(z,x,y): gzip(mvt_bytes)} 를 만든다.
+
+    타일 후보 x 피처 전수에 대해 shapely `.intersection()`(정확 기하 연산)을 매번
+    돌리면 adm_dong(zoom 5~14, 전국 bbox)처럼 고줌·다피처 조합에서 타일 후보 수가
+    수만~수십만으로 뛰어 비현실적으로 느려진다. 실제로 겹칠 여지가 없는 조합은
+    바운딩박스 비교(수치 비교 4회, O(1))로 먼저 걸러내고, 겹칠 가능성이 있는
+    조합에만 정확 연산을 돌린다 — 결과는 동일하고 속도만 다르다.
+    """
     merc_features = [(f, _to_mercator(f.geometry)) for f in features]
+    merc_features_with_bounds = [(f, mg, mg.bounds) for f, mg in merc_features]
 
     west = min(f.geometry.bounds[0] for f in features)
     south = min(f.geometry.bounds[1] for f in features)
@@ -101,7 +109,9 @@ def build_tiles(
             tile_box = box(tb.left, tb.bottom, tb.right, tb.top)
 
             layer_features = []
-            for f, merc_geom in merc_features:
+            for f, merc_geom, (fminx, fminy, fmaxx, fmaxy) in merc_features_with_bounds:
+                if fmaxx < tb.left or fminx > tb.right or fmaxy < tb.bottom or fminy > tb.top:
+                    continue  # 바운딩박스가 안 겹치면 정확 교차 연산 자체를 건너뛴다
                 clipped = _polygonal_only(merc_geom.intersection(tile_box))
                 if clipped is None:
                     continue
