@@ -1,9 +1,28 @@
+import glob
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import basemap_registry
 
 client = TestClient(app)
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _a_real_sigungu_vintages() -> set[str]:
+    """Ground truth read directly from A's committed manifest files, not
+    from basemap_registry's own logic (that would just be testing the code
+    against itself) - VF-016: a prior version of this test hardcoded
+    "2026-01-01" as sigungu's latest, and broke the moment A published a
+    newer real vintage (45b7f3d, "2026-07-01"). basemap_registry picked the
+    new latest correctly per D-13 - the test's expectation was just stale.
+    Reading A's manifest directory here means this test can never go stale
+    like that again, no matter how many more vintages A publishes."""
+    paths = glob.glob(str(_REPO_ROOT / "data-platform" / "output" / "manifest" / "regions-sigungu-*.json"))
+    return {json.loads(Path(p).read_text(encoding="utf-8"))["boundary_vintage"] for p in paths}
 
 
 def test_manifest_requires_auth() -> None:
@@ -65,8 +84,10 @@ def test_manifest_sigungu_prefers_real_vintage_over_fixture() -> None:
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["boundary_vintage"] == "2026-01-01"
-    assert set(body["available_vintages"]) == {"2026-01-01", "fixture"}
+
+    real_vintages = _a_real_sigungu_vintages()
+    assert body["boundary_vintage"] == max(real_vintages)
+    assert set(body["available_vintages"]) == real_vintages | {"fixture"}
 
 
 def test_manifest_sigungu_fixture_still_reachable_by_explicit_vintage() -> None:
