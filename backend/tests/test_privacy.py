@@ -78,6 +78,27 @@ def test_suppressed_region_money_absent_from_scores_response() -> None:
     assert str(RAW_SUPPRESSED_VALUE) not in resp.text
 
 
+def test_revenue_desc_sort_does_not_leak_suppressed_raw_magnitude() -> None:
+    """VF-013: sort=revenue_desc must not rank a region by its raw,
+    never-shown money value. The planted suppressed region's raw p50
+    (918273645) dwarfs the normal region's (20,000,000) - before the fix,
+    the sort key read r.expected_revenue_p50 directly (pre-redaction), so
+    the suppressed region ranked first even though expected_revenue_krw
+    itself came back null in that same row. A client could infer "this
+    region outsells that one" purely from ranking position, defeating the
+    point of suppression."""
+    resp = client.get(
+        "/v1/predictions/run_privacy_test/regions?sort=revenue_desc", headers=AUTH
+    )
+    assert resp.status_code == 200
+    assert str(RAW_SUPPRESSED_VALUE) not in resp.text
+
+    ids_in_order = [r["region_id"] for r in resp.json()["data"]]
+    # normal region (real, smaller p50) must rank ahead of the suppressed
+    # one (larger raw p50, but must not be allowed to show it via ranking)
+    assert ids_in_order.index("11305") < ids_in_order.index("11290")
+
+
 # ─────────────────── log leg ───────────────────
 
 

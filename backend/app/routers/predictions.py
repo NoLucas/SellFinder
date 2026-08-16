@@ -94,10 +94,23 @@ def get_prediction_regions(
         threshold = _CONFIDENCE_ORDER[min_confidence]
         regions = [r for r in regions if _CONFIDENCE_ORDER[r.confidence_level] >= threshold]
 
+    # Computed once per region, before sorting: this is the value the client
+    # actually sees (post-T0-null / post-privacy.redact()), and it has to be
+    # the sort key too — sorting on the raw store field instead leaked a
+    # suppressed region's relative magnitude through ranking position even
+    # though expected_revenue_krw itself came back null (VF-013). Same
+    # sentence VF-005 already taught: a rule enforced in only one of the
+    # places a value can escape isn't enforced.
+    revenue_by_region_id = {r.region_id: _expected_revenue_for(r, run) for r in regions}
+
     if sort in ("revenue_desc", "profit_desc"):
         # No unit_cost data yet to separate profit from revenue (mock store) —
         # both sort by expected revenue until /intelligence provides profit.
-        regions.sort(key=lambda r: r.expected_revenue_p50 or -1, reverse=True)
+        def _revenue_sort_key(r: prediction_store.RegionScore) -> int:
+            revenue = revenue_by_region_id[r.region_id]
+            return revenue.p50 if revenue is not None else -1
+
+        regions.sort(key=_revenue_sort_key, reverse=True)
     else:
         regions.sort(key=lambda r: r.opportunity_score, reverse=True)
 
@@ -113,7 +126,7 @@ def get_prediction_regions(
             rank=r.rank,
             opportunity_score=r.opportunity_score,
             score_percentile=r.score_percentile,
-            expected_revenue_krw=_expected_revenue_for(r, run),
+            expected_revenue_krw=revenue_by_region_id[r.region_id],
             confidence=RegionScoreConfidence(
                 level=_confidence_for_tier(r.confidence_level, run.data_tier),
                 data_coverage=r.data_coverage,

@@ -420,3 +420,53 @@ $ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
   붙을 때 이 필드의 채움 방식(그리고 필요하면 `demand_signal` 원본 셀 값 자체를
   별도 필드로 들고 있을지)은 그 인터페이스가 확정된 뒤 정할 문제로 남겨둔다.
   지금 추측해서 만들지 않았다.
+
+---
+
+## 2026-08-16 (5차) — VF-013 실행 보고
+
+검증 4회차가 VF-010 대응(`19373ff`) 범위 밖의 4번째 경로를 찾았다: `GET
+/v1/predictions/{run_id}/regions?sort=revenue_desc`(및 `profit_desc`)의 정렬 키가
+`r.expected_revenue_p50` **원본**(redact 전)을 읽어서, `expected_revenue_krw` 자체는
+`null`로 정확히 가려도 **정렬 순서**가 suppressed 지역의 원시값 상대 크기를 드러냈다.
+VF-010이 막은 응답 본문·로그·에러 메시지 세 경로와 다른, 정렬이라는 네 번째 경로다.
+
+- 끝낸 항목: VF-013
+- 원인: `_expected_revenue_for()`(VF-010에서 신설, 응답 필드용 redact 초크포인트)를
+  거치지 않고 정렬 키 계산이 `r.expected_revenue_p50 or -1`을 직접 읽고 있었다 —
+  정렬 기능 자체가 아니라 정렬 키가 초크포인트를 우회한 것.
+- 수정: `backend/app/routers/predictions.py`의 `get_prediction_regions()`에서
+  `revenue_by_region_id = {r.region_id: _expected_revenue_for(r, run) for r in regions}`를
+  정렬 **전에** 한 번만 계산해, 정렬 키(`revenue.p50 if revenue is not None else -1`)와
+  응답 필드(`expected_revenue_krw=revenue_by_region_id[r.region_id]`) 둘 다 **같은
+  redact-후 값**을 쓰도록 단일화했다. suppressed(또는 T0)라 null된 지역은 `-1`
+  sentinel로 최하위 취급되며, 원시 크기가 정렬 위치에 반영되지 않는다. 정렬 기능
+  자체(내림차순, revenue_desc/profit_desc)는 그대로 유지했다 — 키 계산 지점만 고쳤다.
+  (부수 효과: 이 정렬 키는 T0에도 동일하게 적용되므로, 이전까지 있었을 T0 케이스의
+  같은 유형 정렬 유출도 같은 수정으로 같이 막힌다.)
+- 회귀 테스트: `backend/tests/test_privacy.py`에
+  `test_revenue_desc_sort_does_not_leak_suppressed_raw_magnitude` 추가. 원시 p50이
+  일반 지역(20,000,000)보다 훨씬 큰 suppressed 지역(918273645)을 같은 run에 넣고
+  `sort=revenue_desc`로 조회해, 일반 지역이 suppressed 지역보다 먼저 나오는지 +
+  원시값 문자열이 응답 본문에 없는지 확인.
+
+- 완료 판정 재현 (지시된 그대로, 별도 스크립트로 독립 실행):
+
+  ```
+  $ backend/.venv/Scripts/python.exe /tmp/vf013_repro.py
+  status=200
+  order: [('11305', {'p10': 10000000, 'p50': 20000000, 'p90': 30000000}), ('99999', None)]
+  raw value 999999999 present in response body? False
+  suppressed region ranked first? False
+  ```
+
+  (원시 p50=999,999,999인 suppressed 지역(99999)과 p50=20,000,000인 일반 지역(11305)을
+  같은 run에 넣고 `sort=revenue_desc`로 조회 — suppressed 지역이 1위로 오지 않고,
+  원시값 문자열이 응답 어디에도 없다.)
+
+  ```
+  $ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+  40 passed in 0.66s
+  ```
+
+- 못 한 것과 이유: 없음.
