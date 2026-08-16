@@ -7,10 +7,20 @@
  *   - scoreScale.ts scoreFillExpression / NO_DATA_FILL
  * MapLibre's getId() copied verbatim from
  *   console/node_modules/maplibre-gl/dist/maplibre-gl-dev.js:31486-31495
+ *
+ * --strict (added round 6, for CI 8e047fe): without it this is a diagnostic
+ * printer that always exits 0, same as every other verification/fixtures/
+ * script. --strict exits 1 if zero tile features received a score (the
+ * VF-003 shape - structurally-valid join that matches nothing), so CI can
+ * check the exit code instead of grepping stdout for a specific "0/"
+ * substring, which breaks silently if this script's wording ever changes.
+ * Default behavior unchanged.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+const strict = process.argv.includes("--strict");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const R = path.resolve(here, "..", "..");
@@ -85,3 +95,12 @@ console.log(`  matched: ${cfMatched}/${tileFeatures.length}`);
 console.log(cfMatched === 0
   ? "  still 0 - a SECOND independent mismatch: C scores declare region_level=adm_dong but carry 5-digit sigungu codes (41135/11650/...), while A publishes only sido (11/26/...)."
   : "  join would succeed - promoteId is the sole defect.");
+
+if (strict) {
+  if (matched === 0) {
+    console.log("\nSTRICT: 0 features received a score - join is broken (VF-003 shape)");
+    process.exit(1);
+  }
+  console.log(`\nSTRICT: ${matched} feature(s) received a score - no violation`);
+  process.exit(0);
+}

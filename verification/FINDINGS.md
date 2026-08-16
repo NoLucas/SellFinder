@@ -6,6 +6,160 @@
 
 ---
 
+## 회차: 6회차 · 2026-08-17 · 판정 기준 HEAD `8e047fe` (판정 시작 시점에 고정)
+
+지시받은 두 건을 판정하고, `verification/fixtures/` 세 개에 `--strict` 를 추가했다.
+판정 시작 직후 `git rev-parse --short HEAD` → `8e047fe`, 워킹트리 클린 확인 후 시작했다.
+
+## 요약
+
+| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨(누적) | 확인 불가 |
+|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 1 | **1** | 0 | 16 | 2 |
+
+VF-013 확장 판정(정렬+필터+집계) 해소, evidence 규칙 4개 조항 자동 테스트 해소.
+신규 S4 1건(VF-016, 무관한 관측). `verification/fixtures/vf_56_join.mjs`·`vf_t0_api.py`·
+`vf_52_tenant.py` 에 `--strict` 추가 — CI 문자열 매칭 의존성 제거용, 결함 수정이 아니라
+검증 인프라 변경이라 VF 번호를 매기지 않는다.
+
+---
+
+## 1. VF-013 확장 판정 — 정렬만이 아니라 필터·집계까지 같은 차단 뷰 위에서 일어나는가
+
+C 가 이미 스스로 이 질문을 던지고 답한 상태였다 — 커밋 `2b8633e`(라운드 4 자체 재확인)가
+`min_confidence` 필터에서 별도의 구멍(원시 confidence 로 필터링해 T0 클램프 우회)을 찾아
+`_RegionView`/`_build_views()` 단일 초크포인트로 리팩터했다. **검증자는 이 주장을 그대로
+받지 않고 세 벡터를 전부 새 시나리오로 독립 재현했다** (C 가 커밋 메시지에 적은 것과
+다른 원시값·다른 지역 구성 사용):
+
+```
+[정렬] 원시 p50=555,555,555(suppressed) vs 15,000,000(일반), sort=revenue_desc/profit_desc:
+  둘 다 -> [('77002', {p50:15,000,000}), ('77001', None)]   suppressed 지역이 꼴찌.
+
+[필터] T0 run, 지역 원시confidence='high'(화면표시는 'medium'로 클램프됨):
+  GET /regions?min_confidence=high -> 0 rows (클램프 이전 값이면 1 rows 나왔을 것)
+
+[집계/페이지네이션] limit=2, sort=revenue_desc, 5개 지역(그중 1개 suppressed):
+  page1: [('77002', 15M), ('77100', 2M)]  next_cursor 발급
+  page2(cursor 사용): [('77101', 2M), ('77102', 2M)]  경계에서 값 뒤섞임·중복 없음
+```
+
+- `GET /scores` 도 같은 `_build_views()` 를 쓰는지 확인 — T0 run 의 `/scores` 응답도
+  `confidence_level` 이 `'high'` 가 아니라 `'medium'` 으로 나옴을 확인 (두 엔드포인트가
+  실제로 같은 소스에서 나온다).
+- `pytest backend/tests -q` → **61 passed, 1 failed**(무관한 실패, 아래 VF-016 참조).
+
+**판정: 정렬만 막은 게 아니다.** `_build_views()` 가 `/regions`·`/scores` 양쪽에서 필터·
+정렬·페이지네이션·직렬화 전부의 유일한 데이터 소스이고, 셋 다 독립 재현으로 확인했다.
+VF-013 **해소.**
+
+---
+
+## 2. evidence 규칙(§6) 4개 조항 — 자동 테스트가 진짜인지
+
+5회차 시점엔 `intelligence/tests/test_evidence_rules.py` 가 미커밋이라 판정에서 뺐다.
+이번 HEAD(`8e047fe`)에 `95d8a8e` 로 커밋된 것을 확인했다.
+
+```
+$ cd intelligence && python -m unittest tests.test_evidence_rules -v
+7 tests, OK
+$ python -m unittest discover -s tests -v
+81 tests, OK
+```
+
+**"통과시키면서도 null 피처를 인용하게 만들 수 있으면 가짜다"** — B 가 자기 커밋 메시지에서
+변이로 증명했다고 주장한 것을 **검증자가 B 의 변이와 다른 변이로 독립 재현**했다(B 가 고른
+변이 지점을 그대로 베끼지 않았다 — `income_decile` 을 null 로 만드는 wrapper store 대신,
+`price_acceptance` 함수 자체를 몽키패치해 "추정치"라는 그럴듯한 문구로 소득분위 6을 지어내는
+변이를 주입):
+
+```
+[규칙3 변이] price_acceptance 를 패치 - income_decile=None 인데 "소득 6분위 ... - 추정치"를
+  지어내도록 변경 → 7개 테스트 중 2개 FAIL:
+  CAUGHT BY: test_evidence_is_a_known_placeholder_when_value_is_none
+  CAUGHT BY: test_null_feature_never_leaks_a_fabricated_number_into_evidence
+```
+
+나머지 세 조항도 각각 별도 변이로 확인했다(B 의 커밋이 이미 자체 변이 증명을 했다고 주장한
+지점과 겹치지 않게, category_penetration/competition/addressable_demand 세 함수를 패치):
+
+```
+[규칙1 — 값 인용] category_penetration 이 실제 지수 대신 "카테고리 소비 신호가 관측됨"
+  이라고만 쓰도록 변이 → 3개 테스트 FAIL (값 인용 검사 + 비교 기준 검사 2개까지 동반 실패)
+[규칙2 — 비교 기준] competition 이 benchmark 숫자·비교 단어를 다 빼도록 변이
+  → 2개 테스트 FAIL
+[규칙4 — 인과 금지] addressable_demand 에 "인구가 많기 때문에 잘 팔릴 것으로 예상됨"을
+  덧붙이도록 변이 → 1개 테스트 FAIL (test_evidence_never_uses_causal_language)
+```
+
+**4개 조항 전부, 검증자가 고른 별도의 변이로 실패를 재현했다. 안전망이 실재한다.**
+
+부수 확인: B 의 커밋 메시지가 "감사 중 크래시 버그 3개(addressable_demand, channel_availability
+두 갈래)를 발견해 고쳤다"고 적은 부분 — `factors.py` 에 `if benchmark_value:` 가드 3곳
+(L124, L261, L276) 실제로 들어가 있음을 코드로 직접 확인. 5회차에서 "이론상 가능하나
+당시 표본으로는 재현 안 됨"으로 남겨둔 크래시 우려가 실제 근거 있는 것이었음이 이번에
+드러났다 — 그때 판정("위반 없음")을 뒤집을 필요는 없다(그 표본에서는 실제로 안 터졌다),
+다만 B 의 감사가 더 넓은 표본(희소 rural 요청)에서 진짜 버그를 찾아낸 것은 기록해 둔다.
+
+**판정: 4개 조항 모두 자동 테스트로 강제된다. §6 전체가 더 이상 구멍이 아니다.**
+
+---
+
+## 3. CI 픽스처 판정 방식 — 문자열 매칭 대신 `--strict` 종료 코드
+
+총괄자 지적대로 `vf_56_join.mjs`·`vf_t0_api.py`·`vf_52_tenant.py` 는 결과와 무관하게
+exit 0 이었다. CI(`8e047fe`)는 이걸 알고도 출력 문자열 grep 으로 임시 우회했는데, 스스로
+"출력 형식이 바뀌면 조용히 깨진다"고 명시했다 — 정확한 진단이다.
+
+**세 픽스처 모두 `--strict` 플래그를 추가했다.** 기본 동작(플래그 없음)은 **완전히 그대로**다
+— 기존 출력 문자열 한 줄도 안 바꿨다(`git diff` 로 확인: 삭제된 진단 출력 줄 0개, 전부
+추가만). `--strict` 를 주면 위반을 내부적으로 집계해 있으면 종료코드 1, 없으면 0을 반환한다.
+정상/고장 양방향을 전부 직접 재현해 확인했다(고장 재현은 공유 워킹트리를 건드리지 않으려고
+`git worktree` 로 격리한 사본에서 진행 — vf_t0_api/vf_52_tenant 는 몽키패치, vf_56_join
+은 `backend/samples/scores.json` 사본을 의도적으로 깨뜨림):
+
+| 픽스처 | 정상 상태 `--strict` | 고장 주입 `--strict` |
+|---|---|---|
+| `vf_t0_api.py` | exit 0, "no violations" | T0 confidence 클램프 무력화 → exit 1, 위반 2건 나열 |
+| `vf_52_tenant.py` | exit 0, "no violations" | `get_tenant_id` 무력화 → exit 1, 위반 7건 나열 |
+| `vf_56_join.mjs` | exit 0, "5 feature(s)... no violation" | `scores.json` region_id 오염 → exit 1 |
+
+**CI 쪽(`​.github/workflows/ci.yml`) 은 총괄자 소유라 직접 고치지 않았다** —
+`verification/` 만 쓴다는 경계를 지켰다. 대신 아래를 그대로 적용하면 grep 세 군데가
+전부 없어진다:
+
+```yaml
+# seam job:
+- run: |
+    python verification/fixtures/vf_56_dump_features.py --source fixture
+    node verification/fixtures/vf_56_join.mjs --strict
+
+# privacy-and-honesty job:
+- run: python verification/fixtures/vf_t0_api.py --strict
+- run: python verification/fixtures/vf_52_tenant.py --strict
+```
+
+이 변경 자체는 결함 수정이 아니라 검증 인프라 개선이라 VF 번호를 매기지 않는다.
+
+---
+
+## S4 — 낮음 (신규, 이번 회차 범위 밖 관측)
+
+### VF-016 · `test_manifest_sigungu_prefers_real_vintage_over_fixture` 가 A 의 새 실데이터 발행 때문에 깨져 있다 (C, 무관 관측)
+
+- 위치: `backend/tests/test_basemap.py:68`
+- 내용: `pytest backend/tests -q` 실행 중 발견(이번 회차 지정 작업과 무관, 우연히 관측).
+  `assert body["boundary_vintage"] == "2026-01-01"` 인데 실제로는 `"2026-07-01"` 반환.
+  A 가 `45b7f3d`(DISPATCH-4, admdongkor 실경계)에서 sigungu 에 더 최신 실빈티지를 발행한
+  게 원인 — 로직은 **올바르게** 최신 실빈티지를 골랐다(D-13). 테스트가 A 의 새 발행을
+  못 따라간 것이지 회귀가 아니다.
+- 근거: 없음(관측 기록용) — 결함이 아니라 낡은 기대값
+- 담당: C
+- 나이: 6회차 신규 — **0일**
+
+---
+
+
 ## 회차: 5회차 · 2026-08-16 · 판정 기준 HEAD `525594a` (판정 시작 시점에 고정)
 
 **판정 기준을 먼저 못 박는다.** 이번 회차는 `orchestrator/DISPATCH-2.md` §8 종료조건 4개를
