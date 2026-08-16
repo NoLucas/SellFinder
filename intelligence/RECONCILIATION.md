@@ -383,3 +383,21 @@
   확인 근거 참고). 이 스토어만으로는 `predict_batch`를 끝까지 못 돌린다(수요 데이터가 없어서),
   `get_features()`만 실제 경로로 교체 가능한 상태다. `SyntheticFeatureStore`가 계속 유일한
   완전한 스토어다 — README §2-1에 그대로 남겨뒀다.
+
+- 끝낸 항목: B-3
+- 상태: **이미 완료돼 있었다.** 총괄자 지시 2차(VF-012, 커밋 `7f2222a`)에서
+  `intelligence/scoring/MODEL_CARD.md`를 만들 때 이미 실제 백테스트 수치를 채워 넣었다
+  (§3 표: 검증월별 rho/lift/wmape/coverage + 평균 + 지역 홀드아웃, §3 지역유형별 분해:
+  metro/major_city/mid_city/rural 각각의 rho/wmape/coverage). DISPATCH-2의 완료 조건
+  ("Spearman ρ·wMAPE·coverage 실측값이 카드에 있음")은 그 시점에 이미 충족됐다.
+- 통과 확인 (B-2의 `_select_value_at` 리팩터링이 이 수치에 영향 없는지 재확인):
+
+  ```
+  $ python -c "..."   # run_backtest를 다시 돌려 모델 카드의 수치와 대조
+  mean rho=0.922 lift=2.737 wmape=0.425 coverage=0.800
+  ```
+
+  모델 카드에 적힌 값(평균 rho=0.922, lift=2.737, wmape=0.425, coverage=0.800)과 정확히
+  일치한다 — `SyntheticFeatureStore`의 point-in-time 필터 로직을 공용 함수로 뽑아낸 리팩터링이
+  기존 백테스트 결과를 바꾸지 않았음을 확인했다.
+- 못 한 것과 이유: 없음. 카드 자체는 이전 회차에 완료됐고 이번엔 무결성만 재확인했다.
