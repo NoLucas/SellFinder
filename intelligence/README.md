@@ -41,7 +41,10 @@ class FeatureStore(Protocol):
     def get_demand(self, region_ids: list[str], taxonomy_node_id: str, channel: str, period: str) -> dict[str, dict[str, object]]: ...
 ```
 
-**지금 C가 실제로 쓸 수 있는 구현체는 `SyntheticFeatureStore` 하나뿐이다.**
+**구현체는 지금 두 개다.** 둘 다 같은 `Protocol`을 구현하므로 C 쪽 호출 코드는 `store` 생성
+한 줄만 바뀌면 된다.
+
+### 2-1. `SyntheticFeatureStore` — 지금 당장 통합·데모에 쓸 수 있는 유일한 완전한 스토어
 
 ```python
 from synthetic import generate
@@ -51,13 +54,28 @@ dataset = generate.generate_all(seed=42, start_period="2025-01", end_period="202
 store = SyntheticFeatureStore.from_dataset(dataset)
 ```
 
-`store` 생성은 `predict_batch` 호출마다 새로 하지 마라 — `generate_all()`은 무거운 계산이다.
-C의 잡 워커는 프로세스 시작 시 한 번 만들어 재사용해야 한다. **A(data-platform)가 실제 피처를
-아직 발행하지 않았다** (`data-platform/output/`에 경계 타일만 있고 `region_feature` 형식 산출물
-없음 — 2026-08-16 기준, `find data-platform/output -type f`로 직접 확인 가능). 실피처 스토어
-(`RegionFeatureFileStore`)는 B-2로 이번 사이클에 추가한다 — 나오면 이 문서를 갱신하고
-`SyntheticFeatureStore`와 동일한 `Protocol`을 구현하므로 **C 쪽 호출 코드는 `store` 생성 한 줄만
-바뀌면 된다.**
+`get_features`와 `get_demand`를 모두 구현한다 — `predict_batch`를 지금 당장 끝까지 돌릴 수 있는
+유일한 스토어다.
+
+### 2-2. `RegionFeatureFileStore` — A(data-platform)의 실제 산출물을 읽는 리더 (B-2, 2026-08-16 추가)
+
+```python
+from scoring.feature_store import RegionFeatureFileStore
+
+store = RegionFeatureFileStore.from_directory("data-platform/output/region_features")
+```
+
+**주의: `get_demand()`는 아직 `NotImplementedError`를 던진다.** A가 `region_feature`
+(인구/소득 등)는 물론 `demand_signal`도 아직 발행하지 않았다(2026-08-16 기준,
+`find data-platform/output -type f`로 직접 확인 가능 — 경계 타일 매니페스트만 있다).
+`region_feature` 파일 형식은 `01_domain_model.json`의 `region_feature` 엔티티(`region_id`,
+`feature_key`, `value_num`, `value_json`, `valid_from`, `valid_to`, `source_id`,
+`ingested_at`)를 그대로 따르는 JSON 배열이며, 디렉터리 안의 `*.json` 전부를 읽는다.
+**A가 실제로 이 형식의 파일을 내는 순간 `from_directory()`의 경로만 바꾸면 된다** —
+`as_of` 필터링은 `SyntheticFeatureStore`와 완전히 동일한 코드(`_select_value_at`)를 쓴다.
+파일이 하나도 없으면 `FileNotFoundError`, 필수 필드가 빠진 행이 있으면 `ValueError` —
+조용히 넘어가지 않는다. 검증: `intelligence/tests/test_region_feature_file_store.py`
+(픽스처는 `tests/fixtures/region_features_fixture/`, `as_of` 강제를 9개 케이스로 검증).
 
 ## 3. 반환값 — `PredictionResult`
 

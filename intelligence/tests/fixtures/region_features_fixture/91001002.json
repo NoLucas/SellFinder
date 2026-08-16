@@ -1,0 +1,12 @@
+[
+  {
+    "region_id": "91001002",
+    "feature_key": "pop_age_dist",
+    "value_num": null,
+    "value_json": {"10s": 0.09, "20s": 0.14, "30s": 0.16, "40s": 0.18, "50s": 0.17, "60plus": 0.26},
+    "valid_from": "2025-01-01",
+    "valid_to": null,
+    "source_id": "sgis_population_v1",
+    "ingested_at": "2025-01-15T00:00:00Z"
+  }
+]

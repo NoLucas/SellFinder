@@ -343,3 +343,43 @@
   README에 명시하고, B-2에서 만들 실피처 스토어가 나오면 `store` 생성 한 줄만 바뀐다고
   적어 C가 지금 당장 `SyntheticFeatureStore`로 통합을 시작할 수 있게 했다.
 - 못 한 것과 이유: 없음.
+
+- 끝낸 항목: B-2
+- 착수 전 확인 (DISPATCH-2 §9: "막히면 조건을 스스로 확인한다"): `find data-platform/output -type f`로
+  A의 산출물을 직접 확인 — 경계 타일 매니페스트(`output/manifest/regions-*.json`,
+  `output/tiles/*.pmtiles`)만 있고 `region_feature`(인구/소득 등) 형식 파일은 **하나도 없다**.
+  즉 "A의 산출물을 읽는" 실제 파일이 아직 존재하지 않는다 — 그래서 계약(`01_domain_model.json`의
+  `region_feature` 엔티티)에 직접 맞춰 리더를 만들고, 실제 A 산출물과 동일한 형식의 픽스처로
+  검증했다. A가 실제로 파일을 내면 `from_directory()` 경로만 바뀐다.
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 74개 전체 통과 (B-1~B-2 + 이전 회차 누적)
+  Ran 74 tests in 0.933s
+  OK
+  ```
+
+  완료 조건("`as_of` 이후 값을 절대 읽지 않는 것을 테스트로 강제")을 겨냥한 케이스 9개
+  (`tests/test_region_feature_file_store.py::PointInTimeTestCase`):
+  - `as_of`가 가장 이른 `valid_from`보다 **이전**이면 그 행이 있어도 `None`
+    (가장 가까운 값을 대신 주지 않는다 — "최신값" 헬퍼 금지 규칙의 핵심)
+  - `valid_from` 경계는 포함(inclusive), `valid_to` 경계는 배제(exclusive) — 전환일 당일에
+    새 값이 보이고 그 전날엔 옛 값이 보임을 각각 별도 테스트로 확인
+  - `valid_to=null`(현재 유효)인 행은 먼 미래의 `as_of`에도 계속 보임 — 이건 누수가 아니라
+    "현재 유효"의 정상 동작이라고 테스트 이름에 명시해 혼동 방지
+  - `value_json`/`value_num` 분기, 미등록 지역/키에 대한 `None` 반환(크래시 없음)
+
+  변경 내용: `intelligence/scoring/feature_store.py`에 `RegionFeatureFileStore` 추가.
+  `SyntheticFeatureStore`의 point-in-time 필터 로직을 `_select_value_at()` 공용 함수로
+  추출해 **두 스토어가 같은 코드로 `as_of`를 강제**하게 만들었다(따로 유지되는 두 구현이
+  갈라질 위험 제거). `from_directory()`는 `01_domain_model.json`의 `region_feature` 엔티티
+  스키마를 그대로 요구하며, 파일이 없으면 `FileNotFoundError`, 필수 필드 누락 행이 있으면
+  `ValueError` — 조용히 넘어가지 않는다(DISPATCH-2 §9 "모르면 503이나 null이나 질문이지,
+  추측이 아니다"). `get_demand()`는 의도적으로 `NotImplementedError` — A가 `demand_signal`도
+  아직 발행하지 않아, "진짜 스토어"라는 이름 아래 합성 데이터스러운 숫자를 지어내지 않았다.
+  픽스처: `tests/fixtures/region_features_fixture/*.json` — 계약 스키마와 정확히 같은 형식으로
+  손으로 작성(A의 실제 파일이 아니라고 파일 자체와 docstring에 명시).
+- 못 한 것과 이유: `get_demand()` 미구현 — A가 `demand_signal` 산출물 자체를 아직 안 냈다(위
+  확인 근거 참고). 이 스토어만으로는 `predict_batch`를 끝까지 못 돌린다(수요 데이터가 없어서),
+  `get_features()`만 실제 경로로 교체 가능한 상태다. `SyntheticFeatureStore`가 계속 유일한
+  완전한 스토어다 — README §2-1에 그대로 남겨뒀다.

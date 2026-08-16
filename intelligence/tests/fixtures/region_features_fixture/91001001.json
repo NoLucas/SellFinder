@@ -1,0 +1,32 @@
+[
+  {
+    "region_id": "91001001",
+    "feature_key": "pop_total",
+    "value_num": 50000,
+    "value_json": null,
+    "valid_from": "2025-01-01",
+    "valid_to": "2025-07-01",
+    "source_id": "sgis_population_v1",
+    "ingested_at": "2025-01-15T00:00:00Z"
+  },
+  {
+    "region_id": "91001001",
+    "feature_key": "pop_total",
+    "value_num": 52000,
+    "value_json": null,
+    "valid_from": "2025-07-01",
+    "valid_to": null,
+    "source_id": "sgis_population_v1",
+    "ingested_at": "2025-07-15T00:00:00Z"
+  },
+  {
+    "region_id": "91001001",
+    "feature_key": "income_decile",
+    "value_num": 6,
+    "value_json": null,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "source_id": "sgis_income_v1",
+    "ingested_at": "2024-01-15T00:00:00Z"
+  }
+]
