@@ -111,4 +111,33 @@
 
 ---
 
-**다음 지시를 기다린다. 지금까지 계획 수립만 했고 코드는 작성하지 않았다.**
+## 7. DISPATCH 1차 회신 (`orchestrator/DISPATCH.md` §2)
+
+- 끝낸 항목: B-1
+- 통과 확인:
+
+  ```
+  $ cd intelligence && python -m unittest discover -s tests -v
+  Ran 31 tests in 0.381s
+  OK
+
+  $ python verification/fixtures/vf_51_mutation.py M1
+  [M1] ran=15 failures=3 errors=0
+     CAUGHT BY: test_display_effect_agrees_with_exported_log_contribution
+     CAUGHT BY: test_log_contribution_matches_each_factors_own_multiplier
+     CAUGHT BY: test_value_over_benchmark_reconstructs_log_contribution
+
+  $ python verification/fixtures/vf_51_mutation.py M2
+  [M2] ran=15 failures=2 errors=0
+     CAUGHT BY: test_display_effect_agrees_with_exported_log_contribution
+     CAUGHT BY: test_log_contribution_matches_each_factors_own_multiplier
+  ```
+
+  변경 내용: `intelligence/tests/test_factor_model.py`에 항등식이 아닌 세 개의 독립 단언 추가.
+  기존 `test_log_contribution_sum_matches_log_of_total_multiplier`(항등식, VF-001이 지적한 그 테스트)는
+  배선 검증용으로 유지하되 주석으로 한계를 명시. 새로 추가한 세 테스트는 각각 합에서 파생되지 않은
+  외부 증인과 대조한다: (1) 팩터 자신의 `multiplier`, (2) 사용자에게 보이는 `display_effect` 문자열,
+  (3) evidence로 공개되는 `value`/`benchmark` 비율. `verification/fixtures/vf_51_independent_catch.py`를
+  참고 구현으로 삼되 수정하지 않고 읽기만 했다.
+- 못 한 것과 이유: 없음. B-2(tenant_scoped 키 계약에서 읽기), B-3(ADR-004 반영), B-4(백테스트)는
+  DISPATCH §2 순서대로 다음 작업으로 남겨둔다.
