@@ -46,7 +46,7 @@ TS2322 두 건 외에 **구조적 불일치는 없다**. 이건 TS 의 JSON 임�
 | 3 | `competition` 이 1 을 초과하지 않음 | §8 | `test_factor_model.py:66` | 통과 | O |
 | 4 | 온라인 채널에 `foot_traffic`/`competitor_density` 미투입 | §8 | `test_factor_model.py:75,88`, `test_synthetic_generator.py:159` | 통과 | O |
 | 5 | 학습 시 `as_of` 가 타깃 기간 이후인 케이스 없음 (누수) | §8·§5.1 | **없음** — B 가 Step 3 범위로 명시 선언(`test_factor_model.py` 파일 독스트링) | — | **구멍** (선언된 미구현. 함정 피처 자체는 `test_synthetic_generator.py:74,84,87` 로 검증됨) |
-| 6 | `suppressed` 셀 원시값이 응답 어디에도 노출 안 됨 | §8, `06` §2.3 | 생성기측 `test_synthetic_generator.py:144` | 통과 | **부분 구멍 — VF-010** — 생성기만. **API 응답·로그·내보내기 경로는 테스트 없음** (C 에 suppressed 처리 자체가 없음) |
+| 6 | `suppressed` 셀 원시값이 응답 어디에도 노출 안 됨 | §8, `06` §2.3 | 생성기측 `test_synthetic_generator.py:144`, API측 `backend/tests/test_privacy.py`(7건) | 통과 | **부분 구멍 — VF-010** → **(4회차: 통과)** 응답·로그·에러 메시지 3경로 전부 API 레벨에서 테스트로 고정, 검증자가 C 미작성 시나리오로 독립 재확인. **단 4번째 경로(정렬 순서)가 열려 있다 — VF-013(S2, 신규), 아직 미해소** |
 | 7 | 동일 `run_id` 재실행 결과 100% 동일 | §8, `06` §4 | `test_factor_model.py:114,119`, `test_synthetic_generator.py:200` | 통과 | O |
 | 7b | 〃 **API 응답측** | 〃 | **없음** | 검증자가 직접 5회 반복 → `/scores`·`/regions`·`/basemap` 모두 바이트 동일 | O (동작 확인, 테스트 미추적) |
 | 8 | 인구 3만 미만 행정동이 상위 랭킹 독식 안 함 | §8 | `test_factor_model.py:131` | 통과 | O |

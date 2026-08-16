@@ -6,6 +6,203 @@
 
 ---
 
+## 회차: 4회차 · 2026-08-16 · HEAD `822a259`
+
+검증 범위: 총괄자가 지정한 2건만 — B 의 VF-012 해소(`7f2222a`), C 의 VF-010 해소(`19373ff`).
+3회차 종료 시점 미해결은 이 둘뿐이었고, 나머지 폴더는 이번 회차 대상이 아니다. 커밋 직전
+재현: `git log --oneline -3` (3회차의 절차 메모 적용) — 이 둘 이후 새 에이전트 커밋 없음
+(`c5deeb0`·`822a259`는 총괄자 자신의 기록 커밋).
+
+두 지시 모두 **자기 테스트를 그대로 믿지 않고, 지시받은 대로 독립된 재현으로 다시 확인했다.**
+그 과정에서 지시받은 두 건과는 별개로 **신규 결함 1건(VF-013)** 과 **문서 사소 결함 1건(VF-014)**
+을 찾았다 — 둘 다 열어둔다.
+
+## 요약
+
+| S1 치명 | S2 심각 | S3 보통 | S4 낮음 | 미해결 합계 | 추정 | 해결됨(누적) | 확인 불가 |
+|---|---|---|---|---|---|---|---|
+| 0 | 1 | 0 | 1 | **2** | 0 | 11 | 2 |
+
+이번 회차 해소: VF-010 · VF-012 (지시받은 2건, 아래 상세).
+이번 회차 신규: **VF-013**(S2, 신규 — sort=revenue_desc 가 미차단 원시값으로 순위를 매김)
+· **VF-014**(S4, 신규 — 모델 카드 지역유형별 표에 재현 명령 누락, 수치 자체는 독립 재현 성공).
+
+---
+
+## 해결 확인됨 (4회차)
+
+### VF-010 · suppressed 셀 원시값 차단 (C, `19373ff`)
+
+C 는 응답·로그·에러 메시지 세 경로를 동시에 막았다고 주장했다. 지시받은 대로 **예외 유도를
+직접 시험**했다 — C 자신의 테스트(`tests/test_privacy.py`, 원시값 `918273645`를 심어 7개
+시나리오 검사, `pytest backend/tests -q` → **39 passed**)를 재실행한 뒤, **C 가 고르지 않은
+별도의 예외 시나리오**를 검증자가 직접 만들어 독립적으로 시험했다:
+
+```
+# C의 SuppressedValueError 가 아니라 완전히 다른, 흔한 버그 모양의 예외를 주입:
+# "미래에 어떤 코드가 실수로 원시값을 문자열에 끼워 넣는" 상황을 재현
+ValueError(f"unexpected internal state: raw value was {RAW} for region 11290")
+→ prediction_store.get_run 을 이 예외를 던지도록 몽키패치, /v1/predictions/.../regions 호출
+
+결과: status 500, body {"error":{"code":"internal_error","message":"일시적인 오류가 발생했습니다."}}
+RAW value leaked in body? False
+```
+
+전역 `Exception` 핸들러(`app/main.py`)가 예외 타입과 무관하게 `str(exc)`를 클라이언트에
+돌려주지 않는다는 주장이 **C 가 상정한 시나리오 밖에서도** 성립함을 확인했다. 서버 로그
+(`exc_info`)에는 traceback 이 남지만 이는 계약이 막는 "응답"이 아니라 운영자 전용 채널이라
+위반이 아니다.
+
+- **응답 경로**: `_expected_revenue_for()`가 `data_tier=="T0"` 와 `coverage_flag=="suppressed"`
+  둘 다 독립적으로 검사 — VF-005(한 겹만 막아 신뢰도가 새던 사례)를 의식한 이중 검사.
+- **로그 경로**: `privacy.redact()`가 사실만 로그(`region_id`·`field`), 원시값은 로그 인자에
+  아예 전달되지 않음 — 코드 구조상 못 새는 형태 (`caplog` 로 재검증).
+- **에러 메시지 경로**: `SuppressedValueError.__str__`가 생성자 시점부터 원시값을 받지
+  않음 + 전역 핸들러가 심층 방어. 위에서 C 가 안 쓴 예외 타입으로도 확인.
+- 근거: `06_governance.md` §2.3, `05_scoring_spec.md` §8-6
+- 담당: C, 커밋: `19373ff`
+
+**단, 이 판정은 "지시받은 세 경로"에 한정된다 — 검증 도중 네 번째 경로(정렬 순서)가 열려
+있는 것을 발견했다. VF-013 참조.**
+
+### VF-012 · 백테스트 wMAPE·PI coverage + 모델 카드 (B, `7f2222a`)
+
+지시받은 대로 지표가 실제로 계산되는지, 상수나 항등식이 아닌지, 그럴듯한지, 누수 가드가
+여전히 작동하는지 전부 독립적으로 재현했다.
+
+**1) 지표가 실제 계산인지 — 상수/항등식 여부 검사**
+
+```
+perfect wmape: 0.0
+garbage wmape (무작위 예측, 커야 함): 15.64
+narrow-band coverage, perfect 예측 (거의 1이어야 함): 1.0
+narrow-band coverage, garbage 예측 (0으로 붕괴해야 함): 0.0
+```
+
+무작위/왜곡된 입력에 대해 지표가 실제로 나빠진다 — VF-001 이 잡았던 "합이 자기 자신과만
+비교되는 항등식" 부류의 가짜가 아니다. `test_wmape_worked_example`·`test_pi_coverage_worked_example`
+도 손계산값(35/300, 0.75)과 직접 대조하는 방식이라 항등식이 아니다.
+
+**2) B 가 카드에 올린 수치를 검증자가 독립적으로 재현**
+
+```
+$ cd intelligence && python -c "... harness.run_backtest(...) ..."
+n_splits=6 mean_rho=0.922 mean_lift=2.737 mean_wmape=0.425 mean_coverage=0.800
+  2026-01: rho=0.941 lift=2.698 wmape=0.482 cov=0.818
+  2026-02: rho=0.919 lift=2.522 wmape=0.459 cov=0.786
+  2026-03: rho=0.892 lift=2.669 wmape=0.494 cov=0.837
+  2026-04: rho=0.947 lift=2.835 wmape=0.392 cov=0.773
+  2026-05: rho=0.893 lift=2.789 wmape=0.385 cov=0.814
+  2026-06: rho=0.941 lift=2.910 wmape=0.335 cov=0.773
+```
+
+`intelligence/scoring/MODEL_CARD.md` §3 표와 **소수점까지 정확히 일치.**
+
+**3) 지역유형별 분해 표도 별도로 독립 재현** (카드에 재현 명령이 없어 검증자가 직접
+`model.predict_batch` + `dataset["_profiles"]`의 `region_type` 으로 그룹핑해 재구성):
+
+```
+major_city   n=  60 rho=0.678 wmape=0.567 coverage=0.883
+metro        n=  96 rho=0.782 wmape=0.343 coverage=0.865
+mid_city     n=  84 rho=0.688 wmape=0.695 coverage=0.810
+rural        n=  20 rho=0.451 wmape=0.844 coverage=0.200
+```
+
+카드의 표와 **정확히 일치** — 지어낸 숫자가 아니다. (이 표 자체엔 재현 명령이 빠져 있다는
+점은 별도로 VF-014 로 남긴다.)
+
+**4) 누수 가드가 여전히 작동하는지 재확인**: `test_guard_actually_fires_against_a_store_with_the_bug`
+가 60개 테스트 안에 포함돼 통과 (`cd intelligence && python -m unittest discover -s tests -v`
+→ **60 passed**, 3회차 대비 신규 회귀 없음). `_leaky_latest_value` 를 주입한 깨진 스토어에
+대해 `assert_no_leakage_before_cutoff` 가 여전히 `LeakageDetectedError` 를 던진다.
+
+**5) 모델 카드 내용이 실제 코드와 맞는지 대조** (지시받은 두 가지 특히 확인):
+
+- **"전부 합성 데이터"**: `intelligence/synthetic/`·`intelligence/scoring/` 전체에서 CSV 읽기·
+  HTTP 요청·외부 파일 로드 코드 0건 (`grep`). 생성기(`generate.py`, seed=42)만 데이터 소스.
+- **"`spend_krw` 는 항상 null" (ADR-004)**: `synthetic/demand_gen.py:134` 에 `"spend_krw": None`
+  가 하드코딩돼 있고 이 값을 다른 경로로 채우는 코드가 없음 — `test_spend_krw_is_always_null_card_mcc_not_licensed`
+  통과와 코드 양쪽으로 일치.
+- **"`tenant_calibration` 전 tier 중립 고정"**: 2·3회차에서 이미 확인된 사실과 모순 없음
+  (`scoring/factors.py`, 변경 없음).
+
+카드에 적힌 수치·전제 전부가 검증자의 독립 재현·코드 대조와 일치한다. `wMAPE 0.43 (목표
+≤0.25 미달)`처럼 목표 미달을 숨기지 않고 그대로 실은 것도 확인 — "거짓 완료" 유형이 아니다.
+
+- 근거: `05_scoring_spec.md` §5.2·§5.3
+- 담당: B, 커밋: `7f2222a`
+
+---
+
+## S2 — 심각 (신규)
+
+### VF-013 · `sort=revenue_desc`/`profit_desc` 가 미차단 원시값으로 정렬해 suppressed 셀의 상대 크기가 샌다 (C)
+
+- 위치: `backend/app/routers/predictions.py` (VF-010 수정 범위 밖 — diff 에 없던 기존 코드)
+  ```python
+  if sort in ("revenue_desc", "profit_desc"):
+      regions.sort(key=lambda r: r.expected_revenue_p50 or -1, reverse=True)
+  ```
+  이 정렬은 `r.expected_revenue_p50` **원본**을 쓴다 — `privacy.redact()`를 거친 뒤의 값이
+  아니라, 응답에 실제로 나가는 `expected_revenue_krw`(=null)가 계산되기 **전** 단계.
+- 재현:
+  ```
+  suppressed 지역(region_id=99999, 원시 p50=999,999,999)과
+  일반 지역(region_id=11305, p50=20,000,000)을 같은 run 에 넣고
+  GET /v1/predictions/{run_id}/regions?sort=revenue_desc
+
+  결과: [('99999', None), ('11305', {'p10':10000000,'p50':20000000,'p90':30000000})]
+  ```
+  `expected_revenue_krw` 는 `null` 로 정확히 가려지지만, **정렬 순서가 원시값을 그대로
+  반영해 suppressed 지역이 1위로 올라온다.** 클라이언트는 금액을 못 보지만 "이 지역이
+  일반 지역보다 수요가 크다"는 상대 정보를 얻는다 — suppression(k-익명성 하한 이하 셀은
+  비교조차 노출하지 않음)의 취지를 우회한다.
+- **VF-010 이 막은 세 경로(응답 본문·로그·에러 메시지)와는 다른 네 번째 경로다.** C 의
+  `privacy.redact()`설계는 "값이 응답에 실리는 자리"를 한 곳으로 모았지만, 정렬 키 계산은
+  그 초크포인트를 거치지 않고 원본 필드를 직접 읽는다 — VF-005 가 보여준 "한 겹만 막고
+  다른 겹을 놓친" 실패 모양과 같은 종류다(이번엔 C 자신의 커밋 메시지가 그 정확한 교훈을
+  언급했는데, 그 교훈이 미친 범위 밖에 이 정렬 코드가 있었다).
+- 근거: `06_governance.md` §2.3, `05_scoring_spec.md` §8-6
+- 담당: **C**
+- 나이: 4회차 신규 — **0일**
+
+---
+
+## S4 — 낮음 (신규)
+
+### VF-014 · 모델 카드의 지역유형별 분해 표에 재현 명령이 빠져 있다 (B) — 문서 사소 결함
+
+- 위치: `intelligence/scoring/MODEL_CARD.md` — 파일 서두에 "재현 명령은 각 절에 붙여뒀다",
+  말미에 "재현 불가능한 수치는 이 카드에 올리지 않았다"고 적혀 있으나, 코드 펜스(` ``` `)는
+  파일 전체에 **한 쌍뿐**(§3 전체 백테스트 표용). 지역유형별 분해 표(metro/major_city/
+  mid_city/rural)는 별도 재현 명령이 없다.
+- 결과: **수치 자체는 지어낸 게 아니다** — 검증자가 `dataset["_profiles"]`의 `region_type`
+  으로 직접 그룹핑해 독립 재현했고 카드 표와 정확히 일치했다 (위 VF-012 §해결 확인 3번 참조).
+  즉 이건 "거짓 완료"가 아니라 카드가 스스로 한 약속(모든 절에 재현 명령)을 그 표 하나에서만
+  못 지킨 문서 완성도 문제다.
+- 근거: `05_scoring_spec.md` §5.3 (모델 카드 요구사항)
+- 담당: **B**
+- 나이: 4회차 신규 — **0일**
+
+---
+
+## 남은 미해결 — 명시
+
+**총괄자가 이번 회차에 지정한 VF-010·VF-012 는 둘 다 닫혔다.** 대신 검증 도중 신규 2건이
+열렸다:
+
+| VF | 등급 | 상태 | 왜 남았는가 |
+|---|---|---|---|
+| VF-013 | S2 | 열림 | `sort=revenue_desc`/`profit_desc` 가 redact 되지 않은 원시값으로 정렬 — 이번 회차에 처음 발견, 아직 수정 커밋 없음 |
+| VF-014 | S4 | 열림 | 모델 카드 §3 지역유형별 표에 재현 명령 누락 — 수치는 검증됨, 문서만 보완 필요 |
+
+3회차까지 열려 있던 항목(VF-001~012) 중 이번 회차 대상이 아니었던 것은 없다 — 3회차
+종료 시점에 미해결이던 건 VF-010·VF-012 두 개뿐이었고 이번에 둘 다 닫혔다. **1~3회차에서
+연 것 중 지금 열려 있는 건 없다.**
+
+---
+
+
 ## 회차: 3회차 · 2026-08-16 · HEAD `641cfa2`
 
 **정정: 2회차 VF-004 판정이 관측 시점 오류였다.** `git log` 상 `a760b31`(C-7·C-8, 하드코딩
