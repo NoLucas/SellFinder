@@ -305,3 +305,41 @@
   지역유형별 분해는 `dataset["_profiles"]`의 `region_type`으로 실제 계산한 값이며, 카드에
   적힌 모든 수치는 재현 명령이 달려 있다 — 만들어낸 숫자는 없다.
 - 못 한 것과 이유: 없음. 지시받은 두 항목(VF-012, 모델 카드) 모두 완료.
+
+## 9. 총괄자 지시 3차 (DISPATCH-2, 2차 사이클) 회신
+
+읽음: `orchestrator/DISPATCH-2.md`. 2차 목표는 "예측이 실제로 생성되는가" — B↔C 임계 경로의
+머리가 B-1이므로 최우선 처리.
+
+- 끝낸 항목: B-1
+- 통과 확인:
+
+  ```
+  $ cd intelligence && python -c "..."   # README §6 최소 통합 예시 그대로 실행
+  ok, n= 5 first factors count= 8
+  correctly converted to ValueError: invalid prediction request: 'bogus_channel'
+  ```
+
+  `intelligence/README.md` 신설. `predict_batch` 시그니처(인자·기본값·타입), `FeatureStore`
+  Protocol과 지금 쓸 수 있는 유일한 구현체(`SyntheticFeatureStore`), 반환값
+  `PredictionResult`(8개 factor 고정 순서, `Σ log_contribution == log(total_multiplier)`
+  불변식), 그리고 총괄자가 특히 요구한 세 가지를 전부 실측해서 표로 박았다:
+  1. **결정성** — 동일 인자+동일 store 상태로 두 번 호출 시 `to_dict()` 바이트 단위 동일.
+     `run_id` 재현은 인자 전체를 저장했다가 그대로 재호출해야 한다고 명시(run_id 자체엔
+     아무 재현 마법이 없음).
+  2. **예외가 나는 입력 4가지**(`channel` 미등록→`KeyError`, `period` 형식 오류→`IndexError`,
+     `seasonality_profile` 12개 미만+`horizon_months` 범위초과→`IndexError`,
+     `horizon_months<=0`+`seasonality_profile` 실제 지정→`ZeroDivisionError`) — 전부 직접
+     실행해서 재현.
+  3. **`region_ids=[]`** → 예외 없이 빈 리스트 반환(직접 확인).
+  추가로 예상과 다를 수 있는 "조용히 동작하는" 6가지도 표로 남겼다(미등록 지역 id→중립 예측,
+  중복 id→중복 결과, `data_tier`/`price_tier`/`taxonomy_node_id` 미검증, **`as_of`가 `period`
+  이후여도 예외 없음 — 누수 방지는 호출자 책임이라고 명시, C는 반드시
+  `as_of=f"{period}-01"`로 고정 호출해야 함**). 이게 VF-004·VF-011 원인(모르는 값을
+  지어낸 것)에 대한 직접 대응이다 — C가 이 문서만 보고 추측 없이 호출 코드를 쓸 수 있다.
+
+  `data-platform/output`을 직접 확인해 A가 아직 실제 `region_feature` 산출물을 발행하지
+  않았다는 사실(경계 타일 매니페스트만 존재, `pop_total`/`income_decile` 류 없음)도
+  README에 명시하고, B-2에서 만들 실피처 스토어가 나오면 `store` 생성 한 줄만 바뀐다고
+  적어 C가 지금 당장 `SyntheticFeatureStore`로 통합을 시작할 수 있게 했다.
+- 못 한 것과 이유: 없음.
