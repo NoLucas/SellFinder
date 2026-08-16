@@ -470,3 +470,131 @@ VF-010이 막은 응답 본문·로그·에러 메시지 세 경로와 다른, �
   ```
 
 - 못 한 것과 이유: 없음.
+
+---
+
+## 2026-08-16 (6차) — DISPATCH-2 C-1~C-5 실행 보고
+
+이번 사이클의 핵심 사건(총괄자 표현): **`_build_demo_regions()` 삭제.** `backend/app`에
+하드코딩 점수 테이블이 더 이상 존재하지 않는다 — `/scores`·`/regions`는 이제 전부
+`/intelligence`의 실제 `predict_batch` 결과다.
+
+### 끝낸 항목: C-1, C-2, C-3, C-4, C-5
+
+### C-1 — `POST /v1/predictions`, 즉시 202 + `run_id`
+
+- `app/services/job_runner.py` 신설: 백그라운드 스레드로 잡을 돌리고 핸들러는 `join()`하지
+  않는다. `_FAKE_JOB_DELAY_SECONDS = 0.2` 지연을 잡 본문에 걸어 "202가 계산을 기다리지
+  않는다"를 벽시계 타이밍으로 직접 증명 가능하게 했다(코드를 읽어서 "비동기처럼 보인다"가
+  아니라 실측).
+- `app/services/prediction_store.py`: `create_queued_run`(status="queued", regions=[]) /
+  `complete_run` / `fail_run` 3상태 추가. `create_run`(기존 동기 데모시딩 경로)은
+  테스트 전용으로 남기고 신규 경로와 분리.
+- `tests/test_predictions_create.py::test_create_prediction_returns_202_immediately`가
+  `elapsed < job_runner._FAKE_JOB_DELAY_SECONDS / 2` 로 강제.
+
+### C-2 — 잡 워커가 B의 `predict_batch`를 in-process 호출 (이 사이클의 핵심)
+
+- `intelligence/README.md`(B-1, 커밋 `b01e951`) 공개 확인 후 착수 — 총괄자 응답을 기다리지
+  않고 직접 파일 존재로 확인했다(지시대로).
+- `app/services/intelligence_client.py` 신설. README를 그대로 따랐다:
+  - `SyntheticFeatureStore`를 프로세스당 1회만 빌드(README §2: "predict_batch 호출마다
+    새로 하지 마라").
+  - README §4-2가 요구한 대로 `KeyError`/`IndexError`/`ZeroDivisionError`를
+    `PredictionInputError(ValueError)`로 감싼다.
+  - `as_of = f"{period}-01"`을 항상 강제(README §4-3, 05_scoring_spec §5.1 누수 방지).
+- `prediction_store.compute_regions()` 신설 — `_build_demo_regions()`를 **완전히 대체**.
+  `predict_batch` 결과를 `total_multiplier` 기준으로 직접 정렬해 `rank`/`opportunity_score`/
+  `score_percentile`을 계산한다(README §5: "opportunity_score는 여기서 계산되지 않는다.
+  C가 total_multiplier 기준으로 직접 정렬해야 한다" — B의 지시를 그대로 구현).
+- **이음매 테스트를 먼저 만들었다** (총괄자 원칙 그대로): `tests/test_intelligence_seam.py`가
+  B의 `predict_batch`를 직접 호출한 결과(ground truth)와, 같은 요청을 실제 `POST
+  /v1/predictions` → 잡 워커 → `/scores`로 통과시킨 결과를 **region_id 순서까지 완전히
+  일치**하는지 대조한다. 통과 확인(재현 가능한 실제 출력):
+
+  ```
+  $ backend/.venv/Scripts/python.exe -m pytest backend/tests/test_intelligence_seam.py -v
+  test_predict_batch_ground_truth_is_not_degenerate PASSED
+  test_scores_response_matches_predict_batch_ranking PASSED
+  ```
+
+- **미결이었던 실질 문제 — 값을 지어내지 않고 직접 실행해서 확인한 것들**:
+  1. **candidate region_ids**: backend에는 실제 지역 카탈로그가 없다. B의 합성
+     `region_feature`는 **adm_dong 레벨에만** 실제로 채워져 있음을 직접 실행으로 확인했다
+     (sigungu/sido `region_id`로 조회하면 전부 피처가 `None` → 모든 요인이 중립(1.0)으로
+     붕괴 — README §4-3 "저장소에 없는 지역 → 중립"이 정확히 이 경우다). 그래서
+     `create_run()`의 기본 `region_level`을 `"sigungu"` → `"adm_dong"`으로 바꿨다 —
+     이제 실제로 분산된 점수가 나온다(직접 확인: `total_multiplier` 0.59~1.70).
+  2. **`taxonomy_node_id`/`channel`**: `PredictionRequest.product_ids`는 backend에 상품
+     카탈로그(`POST /products`)가 없어 실제 분류 노드로 해석할 수 없다. **지어내지 않고**
+     계약(`04_api_contract.yaml`)이 스스로 전체 문서에서 반복 사용하는 실제 예시 쌍
+     (`TX-FOOD-BEV-COFFEE-RTD` / `"cvs"`, PredictionDetail의 RTD커피/편의점 예시)을
+     임시값으로 썼다 — `intelligence_client.py`에 이유를 명시하고 아래 §질문에도 남겼다.
+  3. **`confidence_level`**: B의 모델은 아직 신뢰도를 계산하지 않는다(README에 명시 없음,
+     `05_scoring_spec.md §4` 공식 미구현). 지어내지 않고 **`"low"`로 고정**했다 — D-19와
+     같은 원칙("모르면 강제 하향, 조용히 채우지 않는다"). `medium`/`high`를 근거 없이 만들지
+     않았다.
+
+### C-3 — `Idempotency-Key`
+
+- `prediction_store.find_run_id_for_idempotency_key`/`remember_idempotency_key` — 24시간
+  TTL, `(tenant_id, key)`로 스코핑(계약 예시가 `tenant_id`로 나뉘지 않으면 다른 테넌트의
+  키와 충돌할 수 있어서). 같은 키 재요청은 새 run을 만들지 않고 기존 run의 **현재** 상태를
+  반환한다(원 202 응답을 그대로 재생하는 게 아니라 최신 status로 — "queued"였다가 이미
+  끝났으면 "succeeded"를 보여주는 편이 더 유용하다고 판단).
+- 테스트 3개: 같은 키 재사용 시 같은 `run_id`, 테넌트가 다르면 같은 키라도 다른 `run_id`,
+  키가 없으면 매번 새 `run_id`.
+
+### C-4 — 에러 봉투 `request_id` + 감사 로그 미들웨어
+
+- (인용 정정: 총괄자 지시는 "06_governance.md §3"이라고 썼는데, 실제로 감사·재현성 내용은
+  §4다 — §3은 "데이터 리니지·라이선스"로 무관하다. 지시 의도(§4 내용)를 따라 구현했다.)
+- `app/main.py`에 `request_id_and_audit_middleware` 신설 — 요청마다 `request_id` 발급,
+  `X-Request-Id` 응답 헤더, 요청 단위 감사 로그 1줄(method/path/status/duration/request_id).
+- 세 예외 핸들러(HTTPException/RequestValidationError/전역 Exception) 전부
+  `error.request_id`를 채우도록 수정 — `04_api_contract.yaml` `Error` 스키마의
+  `required: [code, message, request_id]`를 지금까지 어기고 있었다.
+- `app/security.py::get_tenant_id`(신원 확인의 유일한 지점, ADR-003 §3)에 행위자
+  감사 로그 1줄 추가(tenant_id/method/path/request_id) — 토큰을 다른 곳에서 다시 파싱하지
+  않기 위해 미들웨어가 아니라 여기서 "누가"를 기록한다.
+- 테스트 7개: 404/401/422 응답 각각 `request_id` 존재, 두 요청의 `request_id`가 다름,
+  성공 응답도 `X-Request-Id` 헤더를 가짐, 인증된 요청이 행위자 감사 로그를 남김, 모든
+  요청이 요청 단위 감사 로그를 남김(`caplog`로 직접 검사).
+
+### C-5 — `/api/v1/health` → `/v1/health`
+
+- 라우트 하나만 프리픽스가 달랐다. 정정 + 옛 경로가 진짜 404인지 확인하는 회귀 테스트 추가.
+  `grep '@router\.(get|post)'` 로 전 라우터 확인 — 이제 예외 없이 전부 `/v1/` 아래.
+
+### 완료 판정 확인
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+............................................................             [100%]
+60 passed in 1.27s
+```
+
+```
+$ grep -rn "_build_demo_regions\|demo_regions_snapshot\|_DEMO_REGIONS" backend/app --include="*.py"
+(주석 두 줄 외 실제 정의/호출 0건 — 함수 자체가 존재하지 않는다)
+```
+
+### §7 질문 (D-10 절차 — 추측하지 않고 여기 남긴다)
+
+- **상품 카탈로그 부재로 `taxonomy_node_id`를 지어내는 대신 계약의 예시 쌍을 임시로 씀**:
+  `POST /products`가 아직 없어 `PredictionRequest.product_ids`를 실제 SKU로 해석할 방법이
+  없다. `TX-FOOD-BEV-COFFEE-RTD`/`"cvs"`를 `intelligence_client.py`에 명시적 임시값으로
+  박아뒀다 — 상품 카탈로그가 생기면 이 상수를 실제 `product.taxonomy_node_id` 조회로
+  바꿔야 한다. 이건 backend 내부 스코프(상품 저장소 설계) 문제라 A/B/D 누구의 계약 문제도
+  아니라고 판단해 CCR 없이 진행했다 — 이견 있으면 알려달라.
+- **`confidence_level`을 전부 `"low"`로 고정한 것**: B의 `predict_batch`가 아직
+  `05_scoring_spec.md §4`의 신뢰도 공식을 구현하지 않아서다(README에 confidence 관련
+  반환값 언급이 아예 없음). 그 공식이 B 쪽에 붙기 전까지는 이 고정값이 유지된다 — B가
+  신뢰도를 반환하기 시작하면 `compute_regions()`의 이 부분을 교체해야 한다.
+- **ADR-002 "C가 할 일 #5"(정적 파일 서빙)는 여전히 미착수** — 5차 보고에서 이미 남긴
+  질문이고 이번 사이클에서도 손대지 않았다. `tile_url`이 아직 죽은 링크다.
+- **`GET /predictions/{run_id}`(상태 요약) 엔드포인트 미구현** — 계약에 정의돼 있고
+  "queued"에서 "succeeded"로의 전이를 관찰할 자연스러운 자리이지만, DISPATCH-2 C 표에
+  없어 이번엔 안 만들었다. 지금은 `/regions`가 빈 배열을 반환하는 것으로(또는
+  `prediction_store.get_run().status`를 직접 봐야) 상태를 짐작해야 한다 — 다음 사이클
+  후보로 남긴다.

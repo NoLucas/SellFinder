@@ -1,17 +1,30 @@
 import base64
+import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from app.schemas import (
     ExpectedRevenue,
+    PredictionCreateResponse,
+    PredictionRequest,
     RegionScoreConfidence,
     RegionScoreItem,
     RegionScoresResponse,
 )
 from app.security import get_tenant_id
-from app.services import prediction_store, privacy
+from app.services import job_runner, prediction_store, privacy
 
 router = APIRouter(tags=["predictions"])
+
+# Not yet real - a fixed placeholder until job sizing is a real thing to
+# estimate (DISPATCH-2 C-1 scope is "returns 202 without waiting", not job
+# duration estimation).
+_ESTIMATED_SECONDS_PLACEHOLDER = 30
+
+
+def _generate_run_id() -> str:
+    return f"run_{uuid.uuid4().hex[:12]}"
+
 
 _CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 
@@ -64,6 +77,66 @@ def _decode_cursor(cursor: str | None) -> int:
             status_code=400,
             detail={"code": "INVALID_CURSOR", "message": "cursor 값이 올바르지 않습니다."},
         ) from exc
+
+
+@router.post(
+    "/v1/predictions",
+    response_model=PredictionCreateResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def create_prediction(
+    body: PredictionRequest,
+    tenant_id: str = Depends(get_tenant_id),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> PredictionCreateResponse:
+    """00_product_spec.md Anti-goals: "예측 API를 동기 호출로 설계" is
+    explicitly forbidden. This handler creates a queued run and hands the
+    actual computation to app.services.job_runner on a background thread
+    it does not wait for - by the time this function returns, the job has
+    not run yet (tests/test_predictions_create.py asserts this with wall
+    clock timing, not just by reading the code).
+
+    `idempotency_key` (04_api_contract.yaml's IdempotencyKey parameter,
+    "반드시 지킬 것" #4): "동일 키로 24시간 내 재요청 시 원 결과를 그대로
+    반환한다" - scoped per tenant_id (a key string is only meaningful
+    within the tenant that sent it, DISPATCH-2 C-3).
+
+    T0/T1/T2 data_tier isn't in PredictionRequest (it depends on whether
+    the tenant has uploaded tenant_sales, not on this request) and nothing
+    in /backend tracks that yet, so every run is created as T1 - same
+    placeholder default create_run() already used before this endpoint
+    existed."""
+    if idempotency_key:
+        existing_run_id = prediction_store.find_run_id_for_idempotency_key(
+            tenant_id, idempotency_key
+        )
+        if existing_run_id is not None:
+            existing_run = prediction_store.get_run(existing_run_id, tenant_id)
+            return PredictionCreateResponse(
+                run_id=existing_run.run_id,
+                status=existing_run.status,
+                estimated_seconds=_ESTIMATED_SECONDS_PLACEHOLDER,
+                data_tier=existing_run.data_tier,
+            )
+
+    run_id = _generate_run_id()
+    prediction_store.create_queued_run(
+        run_id=run_id,
+        tenant_id=tenant_id,
+        region_level=body.region_level,
+        objective=body.objective,
+        data_tier="T1",
+    )
+    if idempotency_key:
+        prediction_store.remember_idempotency_key(tenant_id, idempotency_key, run_id)
+    job_runner.submit_prediction_job(run_id, region_level=body.region_level, data_tier="T1")
+
+    return PredictionCreateResponse(
+        run_id=run_id,
+        status="queued",
+        estimated_seconds=_ESTIMATED_SECONDS_PLACEHOLDER,
+        data_tier="T1",
+    )
 
 
 @router.get(

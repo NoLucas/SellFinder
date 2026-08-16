@@ -16,6 +16,7 @@ param or header — it must only ever come from the verified token.
 
 import base64
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 
@@ -23,6 +24,8 @@ from fastapi import Header, HTTPException, Request
 
 _FORBIDDEN_TENANT_QUERY_KEYS = {"tenant_id", "tenantId"}
 _FORBIDDEN_TENANT_HEADER_NAMES = {"x-tenant-id", "tenant-id"}
+
+audit_logger = logging.getLogger("sellfinder.audit")
 
 
 @dataclass(frozen=True)
@@ -97,4 +100,18 @@ async def get_tenant_id(request: Request, authorization: str | None = Header(def
             status_code=401,
             detail={"code": "UNAUTHORIZED", "message": "Bearer 토큰이 비어 있습니다."},
         )
-    return verify_token(raw).tenant_id
+    tenant_id = verify_token(raw).tenant_id
+
+    # 06_governance.md §4 감사(audit): "누가 언제 어떤 예측을 어떤 파라미터로
+    # 실행했는가". This is the one place identity is ever resolved (ADR-003
+    # §3), so it's the one place that can honestly log "who" without
+    # re-parsing the token elsewhere. request_id ties this line to the
+    # per-request line app.main's middleware already logs.
+    audit_logger.info(
+        "actor tenant_id=%s method=%s path=%s request_id=%s",
+        tenant_id,
+        request.method,
+        request.url.path,
+        getattr(request.state, "request_id", None),
+    )
+    return tenant_id
