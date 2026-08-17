@@ -918,3 +918,76 @@ WHERE 절만 믿지 않는다")과 충돌한다. 가벼운 러너 + raw SQL이 R
 
 지시대로 구현하지 않았다. 위 방향으로 착수해도 되는지, 4절의 마이그레이션 방식(가벼운
 러너 vs Alembic) 중 무엇을 쓸지 확인 부탁한다.
+
+
+---
+
+## 2026-08-17 (2차) — 마이그레이션 방식 확정 + 러너 스캐폴드 구현
+
+jin 지시: "RLS 승인 대기 중이니 지금은 마이그레이션 방식(가벼운 러너) 확정하고 진행해."
+**§4 결정 확정: 가벼운 SQL 마이그레이션 러너.** Alembic+SQLAlchemy는 채택하지 않는다.
+
+**범위를 분명히 한다**: 이번에 만든 건 러너 *메커니즘*뿐이다. RLS 정책이나 `prediction_run`/
+`region_score` 등 실제 테넌트 스키마는 여전히 미착수 - 그건 별도로 대기 중인 전체 승인
+사항이다. 지금 만든 건 그 승인이 떨어졌을 때 "SQL 파일만 쓰면 바로 적용되는" 상태를
+만들어 두는 것이다.
+
+### 만든 것
+
+- `backend/migrations/0001_schema_migrations.sql` - 마이그레이션 이력을 추적하는
+  부기(bookkeeping) 테이블 자체만 만든다. RLS나 테넌트 스키마 내용은 없다 - 순수
+  인프라라 별도 승인 없이 포함해도 안전하다고 판단했다.
+- `backend/tools/migrate.py` - 러너 본체.
+  - `discover_migrations()`: `NNNN_설명.sql` 형식(4자리 0패딩)의 파일을 버전 문자열로
+    정렬해 찾는다. 형식에 안 맞는 파일이 있으면 조용히 넘어가지 않고 즉시 예외.
+  - `pending_migrations()`: 이미 적용된 버전 집합과 비교해 아직 안 돌린 것만 추린다.
+  - `apply_migrations()`: 마이그레이션 하나당 트랜잭션 하나. SQL 실행과
+    `schema_migrations` 기록을 **같은 트랜잭션**에 묶어서, 마이그레이션이 실패하면
+    "적용된 것으로 기록됐는데 실제로는 안 먹힌" 상태가 절대 안 생기게 했다.
+  - `psycopg`는 모듈 최상단이 아니라 `apply_migrations()` 안에서 지연 임포트한다 -
+    그래서 드라이버가 없어도 `discover_migrations`/`pending_migrations`의 순수 로직은
+    테스트할 수 있다(지금 CI에 Postgres 서비스가 없으므로 중요하다).
+  - CLI: `python tools/migrate.py [--dry-run] [--database-url ... | SELLFINDER_DATABASE_URL]`.
+    기존 `SELLFINDER_` 환경변수 접두사 관례(`app/config.py`)를 그대로 따랐다.
+- `backend/requirements.txt`에 `psycopg[binary]==3.2.3` 추가 - 이번에 승인된 유일한
+  실제 의존성 변경이다.
+- `backend/tests/test_migrate.py` - 순수 로직 6개 테스트(발견/정렬/형식 검증/미적용분
+  계산). `apply_migrations()`(실제 DB 접속) 자체는 여기서 테스트하지 않는다 - 아래 한계
+  참고.
+
+### 확인한 것 (이 환경의 한계 포함, 지어내지 않는다)
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+....................................................................     [100%]
+68 passed in 1.62s
+```
+
+(기존 62 + 신규 6.)
+
+```
+$ backend/.venv/Scripts/python.exe backend/tools/migrate.py --dry-run
+error: no database URL (pass --database-url or set SELLFINDER_DATABASE_URL)
+```
+
+(URL 없이 실행 시 정상적으로 종료코드 2로 실패 - 조용히 아무것도 안 하고 넘어가지 않는다.)
+
+```
+$ backend/.venv/Scripts/python.exe backend/tools/migrate.py --dry-run --database-url "postgresql://nouser:nopass@localhost:1/nodb"
+...
+psycopg.OperationalError: connection failed: ...
+```
+
+(psycopg 임포트·`connect()` 호출까지 코드 경로가 정상 도달함을 확인 - 이 환경에는
+Docker도 로컬 Postgres도 없어(직접 확인: `docker --version` -> command not found)
+**실제 DB에 대고 `apply_migrations()`가 마이그레이션을 진짜로 적용/기록하는지는 아직
+검증 못 했다.** 이건 한계로 남겨둔다 - 지어내지 않는다. RLS 스키마가 승인돼 실제로
+붙는 시점, 또는 CI에 `services: postgres:` 컨테이너가 생기는 시점에 end-to-end로
+확인해야 한다.
+
+### 못 한 것과 이유
+
+- **실제 Postgres 대상 통합 테스트**: 이 환경에 DB 엔진이 없어서 못 했다(위 참고).
+  CI에 Postgres 서비스 컨테이너를 추가하는 게 다음 단계가 될 것이다.
+- **RLS 정책·테넌트 스키마 자체**: 지시대로 여전히 미착수. 이번 건 §4 결정과 그
+  실행을 뒷받침할 도구뿐이다.

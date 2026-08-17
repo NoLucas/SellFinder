@@ -4,3 +4,7 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 httpx==0.27.2
 pytest==8.3.3
+# tools/migrate.py's driver. Postgres+RLS design (backend/RECONCILIATION.md,
+# 2026-08-17) is approved for the migration-runner mechanism only, not yet
+# for actual schema/RLS content or for prediction_store.py itself.
+psycopg[binary]==3.2.3
