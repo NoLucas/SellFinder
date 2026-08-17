@@ -460,4 +460,72 @@ npm run build     # next build 정상 완료 (223 kB)
 2. 서버(C)가 `/scores`·`/regions`를 region_scope 로 실제 필터링하는지는 이번에 확인하지
    않았다 — §10 의 미해결 항목(C-2 라우트 부재 등)과 별개로 남아 있다.
 
+---
+
+## 12. 총괄자 지시 6차(최우선) — CI 첫 실행 실패 수정 (2026-08-17)
+
+**원인 진단은 맞았다.** CI 첫 실행은 `2791644` 직후, 즉 `test` 스크립트가 아직
+`node --test tests/**/*.test.mjs`였던 시점의 것 — 그 뒤 5차 지시 때 이미 `tests/*.test.mjs`
+(별표 하나)로 고쳐서 커밋(`02a4c69`)했는데, 총괄자가 본 CI 로그가 그 커밋 이전 실행분이었던
+것으로 보인다. 그래서 "그대로 고쳐라"로 지시된 `node --test tests`(디렉터리만 넘기기)를
+**그대로 적용하기 전에 로컬에서 먼저 확인했는데, 이 환경에서 그 방법 자체가 동작하지
+않았다:**
+
+```
+$ node --test tests
+Error: Cannot find module 'C:\...\console\tests'   (MODULE_NOT_FOUND — CJS 로더가
+                                                      "tests"를 모듈 이름으로 취급)
+$ node --test ./tests
+Could not find './tests'                            (테스트 러너 쪽 에러로 바뀌지만
+                                                      여전히 실패)
+```
+
+**"Node 18+ 테스트 러너가 디렉터리를 인자로 받으면 재귀 탐색한다"는 전제가 이 Node 24
+환경에서는 안 맞았다** — 위치 인자로 준 디렉터리는 재귀 탐색 대상이 아니라 실행할
+파일(글롭)로 취급되는 것으로 보인다. 대신 **인자를 아예 안 주면** Node 가 현재 작업
+디렉터리(`npm test`가 실행되는 `console/`) 아래를 **자체적으로** 재귀 탐색해서 기본
+패턴(`**/*.test.{js,mjs,cjs}` 등, `node_modules` 자동 제외)에 맞는 파일을 전부 찾는다 —
+셸 글롭도, Node 의 위치 인자 글롭도 전혀 관여하지 않는 제일 안전한 형태라 이걸로 고쳤다:
+
+```json
+"test": "node --test"
+```
+
+**확인 (지시대로 로컬에서 `npm test` 직접 실행, 파일 개수까지):**
+```
+$ rm -rf node_modules && npm ci     # 클린 설치로 CI 절차 재현
+$ npm test
+```
+`console/tests/` 의 6개 파일 **전부** 실행됨을 개별 파일의 모듈 워닝 헤더로 확인했다
+(`confidence-hatch.test.mjs`→scoreScale/hatchPattern, `initial-viewport.test.mjs`→
+initialViewport, `join.test.mjs`→scoreScale, `region-scope.test.mjs`→regionScope,
+`revenue-display.test.mjs`→format/revenue, `token-hygiene.test.mjs`→모듈 import 없음,
+정적 스캔이라 워닝 자체가 없음 — 파일명 대신 테스트 이름으로 확인):
+
+| 파일 | 케이스 수 |
+|---|---|
+| confidence-hatch.test.mjs | 3 |
+| initial-viewport.test.mjs | 5 |
+| join.test.mjs | 3 |
+| region-scope.test.mjs | 6 |
+| revenue-display.test.mjs | 2 |
+| token-hygiene.test.mjs | 1 |
+| **합계** | **20** |
+
+```
+ℹ tests 20
+ℹ pass 20
+ℹ fail 0
+```
+**6개 파일 전부, 20개 케이스 전부 — 한 파일만 돌고 통과하는 게 아니라는 걸 파일별 합산으로
+직접 확인했다.** `npm run typecheck`(exit 0)·`npm run build`(정상 완료)도 클린 설치
+상태에서 재확인.
+
+**받아들인 교훈 (그대로 적용):** 앞으로 `console/package.json`의 스크립트에 셸 글롭을 쓰지
+않는다. `*`든 `**`든 셸이 확장하게 두는 형태는 전부 후보에서 제외 — 필요하면 Node 자체
+인자 없는 기본 탐색(이번 선택)이나, 정 안 되면 `"tests/*.test.mjs"`처럼 **따옴표로 감싸서
+Node 에 그대로 넘기는** 형태만 쓴다(단, 이번에 확인했듯 Node 의 위치 인자 처리 자체도
+환경에 따라 다를 수 있으므로 실제로 로컬에서 실행해 파일 개수까지 세어보지 않고는 안
+믿는다).
+
 다음 지시 대기.
