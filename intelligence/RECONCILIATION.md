@@ -620,3 +620,22 @@
   커밋, (b) 세션마다 작업 디렉터리를 분리(`git worktree`)해 인덱스 자체를 나누는 방법. 지금은
   운 좋게 내용이 안 깨졌지만, 두 세션이 **동시에 같은 파일을 건드리는 경우**엔 이 경쟁이
   merge conflict나 한쪽 변경 유실로 이어질 수 있다.
+
+**후속 — 실제로 유실이 있었다.** 위 §11 커밋(`8b0bd8d`, 이후 히스토리 재정렬로 해시가
+`732b262`로 바뀜)이 `git show --stat`에는 `intelligence/scoring/tenant_layer.py`와
+`intelligence/tests/test_tenant_isolation.py`(둘 다 이번 회차의 실제 산출물)를 **신규 파일로
+포함하지 않았다** — 나머지(README/RECONCILIATION/factors.py/model.py)는 정상 커밋됐는데
+이 둘만 디스크에 untracked 상태로 남아 있었다. `factors.py`/`model.py`는 이미
+`tenant_layer`를 import하므로, **그 상태로 fresh clone하면 `ImportError`가 났을 것이다.**
+
+`git ls-files intelligence | grep tenant`(빈 결과)와 `git log --all -- <경로>`(빈 결과)로
+확인한 뒤 즉시 `git add`+`git commit -- intelligence`로 추가했다(커밋 `4f22999`). **별도
+디렉터리에 `git clone`을 새로 떠서**(현재 작업 디렉터리 상태에 전혀 의존하지 않는 진짜
+클린 체크아웃) `python -m unittest discover -s tests -v` → 90/90 통과를 재확인했다.
+
+원인은 추정이다 — §11에서 기술한 경쟁 조건이 한 파일 그룹(수정된 기존 파일)과 다른 파일
+그룹(신규 파일)을 다르게 처리했을 가능성이 있어 보이지만, 정확한 재현은 못 했다.
+**중요한 점은 이 사고 유형(스테이징된 파일 중 일부만 다른 세션 커밋에 흡수되고 나머지는
+누락되는 것)이 한 번 실제로 발생했다는 것**이다 — §11의 제안(직렬화 절차 또는
+`git worktree` 분리)이 더 시급해 보인다. 지금은 fresh clone 검증으로 현재 HEAD가
+온전함을 확인했지만, 앞으로 커밋할 때마다 이 검증을 매번 반복할 수는 없다.
