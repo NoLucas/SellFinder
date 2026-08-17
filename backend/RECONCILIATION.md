@@ -991,3 +991,98 @@ Docker도 로컬 Postgres도 없어(직접 확인: `docker --version` -> command
   CI에 Postgres 서비스 컨테이너를 추가하는 게 다음 단계가 될 것이다.
 - **RLS 정책·테넌트 스키마 자체**: 지시대로 여전히 미착수. 이번 건 §4 결정과 그
   실행을 뒷받침할 도구뿐이다.
+
+
+---
+
+## 2026-08-17 (3차) — 승인 즉시 착수 가능하도록 정리·대기
+
+jin 지시: "RLS 승인 나면 바로 착수할 수 있게 정리해서 대기해." 코드/스키마는 여전히
+**아무것도 적용(run)하지 않았다** - 아래는 전부 승인 전까지 죽어 있는(inert) 파일이다.
+승인이 떨어지면 남는 실행 단계는 "명령 실행 + 라우터 연결"뿐이도록 준비했다.
+
+### 만든 것 (전부 미실행·미연결 상태)
+
+- `backend/migrations/0002_tenant_schema.sql` - 설계안 §1 스키마 그대로(재파생 아니라
+  복사) - `prediction_run`/`region_score`/`idempotency_key`/`audit_log`.
+- `backend/migrations/0003_row_level_security.sql` - 설계안 §2 그대로 - `sellfinder_app`
+  전용 롤 생성(`BYPASSRLS` 없음) → `FORCE ROW LEVEL SECURITY` → `tenant_isolation` 정책
+  4개(계약 §1.2의 GUC 이름 `app.current_tenant_id` 그대로) → `GRANT`. 0002/0003을 분리한
+  이유: "테이블이 뭔지"와 "격리를 어떻게 거는지"를 따로 리뷰할 수 있게.
+- `backend/app/db.py` - `get_db_session()` 신설. **어떤 라우터도 아직 이걸 쓰지
+  않는다** - `prediction_store.py`는 여전히 100% 인메모리다. 연결마다
+  `SET LOCAL`(트랜잭션 스코프, 커넥션 풀에서 `SET`을 쓰면 다음 요청에 값이 새는 사고와
+  다름 - 설계안 §3)을 `set_config()`(파라미터 바인딩, 문자열 이어붙이기 아님)로 건다.
+  `get_tenant_id`(ADR-003 §3)·`_build_views()`(VF-013)와 같은 원칙 - DB를 만지는 코드는
+  전부 이 함수 하나를 거친다.
+- `app/config.py`에 `database_url: str | None = None`(`SELLFINDER_DATABASE_URL`) 추가 -
+  지금 비어 있는 게 정상이다(아무도 안 읽으니까).
+- `requirements.txt`: `psycopg[binary]` → `psycopg[binary,pool]`(커넥션 풀 필요).
+
+### 확인한 것
+
+```
+$ backend/.venv/Scripts/python.exe -m pytest backend/tests -q
+....................................................................     [100%]
+68 passed in 1.33s
+```
+
+(개수 그대로 - `db.py`/`0002`/`0003`을 아무도 안 쓰니 회귀가 있을 수가 없다. 확인
+목적은 "새 코드가 임포트 시점에 안 죽는가"였다.)
+
+```
+$ backend/.venv/Scripts/python.exe -c "import app.db as db; print('import OK')"
+import OK
+```
+
+```
+$ backend/.venv/Scripts/python.exe -c "... db.get_pool() with a fake DATABASE_URL ..."
+pool constructed OK: <psycopg_pool.pool_async.AsyncConnectionPool 'pool-1' at 0x...>
+```
+
+(`psycopg_pool.AsyncConnectionPool(..., open=False, ...)` 생성자 호출까지 실제로
+검증했다 - `open=False`라 이 시점에 실제 DB 접속을 시도하지 않는다. 이전 회차와 같은
+한계: 이 환경에 Postgres 서버가 없어 실제 연결·`SET LOCAL`·RLS 정책 집행까지는 검증
+못 했다. 지어내지 않는다.)
+
+```
+$ 직접 discover_migrations() 호출
+0001 0001_schema_migrations.sql
+0002 0002_tenant_schema.sql
+0003 0003_row_level_security.sql
+```
+
+(세 마이그레이션이 순서대로 정상 인식됨.)
+
+### 승인이 떨어지면 남는 실제 실행 단계 (체크리스트)
+
+1. Postgres 인스턴스 준비(dev/CI - CI라면 `backend` job에 `services: postgres:` 컨테이너
+   추가) + `SELLFINDER_DATABASE_URL`을 마이그레이션 실행용 소유자 계정으로 설정
+2. `python backend/tools/migrate.py` 실행 → 0001~0003 순서대로 적용
+3. `sellfinder_app` 롤의 비밀번호를 시크릿 매니저에 설정(0003이 `CREATE ROLE ... LOGIN`만
+   하고 비밀번호는 코드에 안 넣는다 - 06_governance.md §6)
+4. 런타임용 `SELLFINDER_DATABASE_URL`을 `sellfinder_app` 계정으로 별도 설정(마이그레이션
+   계정과 다른 자격증명)
+5. `prediction_store.py`의 `create_run`/`create_queued_run`/`get_run`/`complete_run`/
+   `fail_run`/`find_run_id_for_idempotency_key`/`remember_idempotency_key`를
+   `app/db.py`의 `get_db_session`을 쓰는 실제 쿼리로 교체 - 설계안 §5 표가 함수별 대응을
+   이미 정리해뒀다. `get_run(run_id, tenant_id)`가 `get_run(run_id)`로 바뀌는 것도
+   이 단계.
+6. 라우터 핸들러를 `async def`로 전환(현재 전부 동기 `def`)
+7. `job_runner.py`가 백그라운드 스레드 안에서 DB에 쓸 때도 같은 `get_db_session` 계열
+   경로를 타도록 확인(스레드 안에서 FastAPI `Depends`를 못 쓰므로 별도 헬퍼 필요 -
+   설계에서 아직 안 다룬 유일한 구멍, 승인 후 착수 시 첫 번째로 풀어야 할 세부사항으로
+   남겨둔다)
+8. `SELLFINDER_STORE_BACKEND=memory|postgres` 플래그로 컷오버(설계안 §6)
+
+**7번이 이번에 새로 발견한, 설계안에 없던 구멍이다**: `get_db_session`은 FastAPI
+`Depends` 체인 전용이라 HTTP 요청 밖에서 도는 `job_runner._run_job`(백그라운드 스레드)은
+이걸 그대로 못 쓴다. 승인 후 착수 시 `get_db_session`과 같은 원칙(단일 진입점,
+`SET LOCAL` 스코프)을 스레드 컨텍스트용으로 하나 더 만들어야 한다 - 지금 문서화만
+해두고 코드는 안 만들었다(아직 뭘 부를지 모르는 채로 짜면 추측이 된다).
+
+### 여전히 안 한 것
+
+`prediction_store.py`·`job_runner.py`·라우터는 전부 그대로다. 이번 회차는 순수하게
+"명령 한 줄이면 스키마가 올라가는" 상태를 만든 것이지, 앱이 그 스키마를 쓰게 만든 게
+아니다.
