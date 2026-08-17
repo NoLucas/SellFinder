@@ -497,3 +497,126 @@
   변경 파일: `intelligence/scoring/factors.py`(크래시 수정 3건 + seasonality 기준 보강 1건),
   `intelligence/tests/test_evidence_rules.py`(신설, 7개 테스트).
 - 못 한 것과 이유: 없음. 지시받은 두 항목(VF-014, evidence 4개 조항) 모두 완료.
+
+## 11. 총괄자 지시 5차 회신 (CI 외부 의존성 확인 + T1/T2 tenant_calibration)
+
+### 1. CI(`2791644`)의 "표준 라이브러리만 쓴다" 전제 확인
+
+- 끝낸 항목: 의존성 감사
+- 통과 확인:
+
+  ```
+  $ grep -rhn "^import \|^from " --include=*.py intelligence | sed ... | sort -u
+  → math, statistics, unittest, json, pathlib, typing, argparse, tempfile,
+    dataclasses, random, re, datetime, copy, __future__ 뿐. 전부 stdlib.
+    (자체 패키지 import: scoring/synthetic/backtest 상대 임포트 제외)
+
+  $ python -m venv <임시 venv>          # pip 외 아무것도 설치 안 함
+  $ <임시 venv>/python -m pip list
+  Package Version
+  ------- -------
+  pip     23.2.1
+
+  $ <임시 venv>/python -m unittest discover -s tests -v
+  Ran 81 tests in 0.973s
+  OK
+  ```
+
+  `git ls-files intelligence`로 추적 중인 `.py` 18개 전부의 import 문을 grep으로 모아 확인했고,
+  pip 패키지가 하나도 없는 완전히 깨끗한 venv에서 전체 스위트를 실제로 돌려 재확인했다.
+  `.venv`/`site-packages`/`requirements*.txt`/`pyproject.toml`/`setup.py` 도 `intelligence/`
+  안에 하나도 없다.
+- 결론: **외부 패키지 의존 0건 — `requirements.txt` 불필요.** CI의 현재 설정(의존성 설치
+  단계 없이 `python -m unittest discover -s tests`)이 맞다. 바꿀 것 없음.
+- 못 한 것과 이유: 없음.
+
+### 2. T1/T2 tier — `tenant_calibration`(f8) 실제 반영 + 06_governance.md §1.4 격리 강제
+
+- 끝낸 항목: T1/T2 보정 모델 구현 + 격리 테스트
+- 통과 확인:
+
+  ```
+  $ python -m unittest discover -s tests -v   # 90개 전체 통과 (81 + 신규 9)
+  Ran 90 tests in 1.052s
+  OK
+
+  # 실동작 스모크 테스트: 진짜로 1.3배 판매하는 가상 테넌트를 만들어 보정이 실제로 걸리는지 확인
+  $ python -c "..."
+  profile: T2 global_scale=1.303 n_rows=120 n_region_residuals=20   # 심은 1.3배 정확히 복원
+  calibrated tc: 1.21 | calibrated total: 1.523 | uncalibrated total: 1.259
+  calibrated tc: 1.35 | calibrated total: 0.648 | uncalibrated total: 0.480
+  calibrated tc: 1.36 | calibrated total: 2.211 | uncalibrated total: 1.625
+
+  # 격리 위반 변이 3종 — 전부 잡힘 (VF-001 때와 같은 방식, 파일 수정 없이 런타임 패치)
+  M-leak1 (calibration_profile 유무에 관계없이 f1에 상수 오염 주입)
+    → test_f1_to_f7_are_byte_identical_with_and_without_calibration   FAIL
+  M-leak2 (profile.global_scale에 비례해 f1 오염 - 테넌트마다 다르게)
+    → test_two_different_tenants_calibration_never_leaks_into_...     FAIL
+  원본(변이 없음) 재실행 → 9개 전부 OK
+  ```
+
+  **구현**: `intelligence/scoring/tenant_layer.py` 신설 — `tenant_sales`를 읽는 유일한 모듈.
+  `fit_tenant_calibration(sales_rows, baseline_by_region_period, data_tier)`은 (1) 호출자가
+  이미 한 테넌트로 스코핑해 넘긴 판매 행과 (2) 그 시점 공용 모델(보정 없이)이 예측했던
+  baseline을 짝지어 `실판매/baseline` 잔차비를 계산하고, T1은 전역 스케일(중앙값) +
+  지역군(시도 단위) 보정, T2는 거기에 지역(adm_dong) 단위 잔차까지 추가한다
+  (`05_scoring_spec.md` §2 "전역 스케일 + 지역군별 보정" / "테넌트 전용 잔차 모델" 그대로).
+  표본이 3건 미만이면 `None`을 반환 — 억지로 배수를 만들지 않는다. `is_outlier=True` 행은
+  제외한다(`01_domain_model.json` `tenant_sales.is_outlier` 주석: "학습에서 제외").
+
+  `model.predict_one`/`predict_batch`에 `calibration_profile` 인자를 추가해 f8에만 연결했다.
+  `factors.tenant_calibration()`은 이제 `tenant_sales`가 아니라 이미 계산된
+  `calibration_multiplier` 숫자 하나만 받는다 — 원시 판매 데이터를 보는 코드는
+  `tenant_layer.py` 밖에 없다.
+
+  **격리 강제 (`06_governance.md` §1.4, 지시받은 핵심)** — `tests/test_tenant_isolation.py`
+  9개, 두 갈래:
+  1. **구조적**: `FeatureStore.get_features/get_demand`, `model._compute_benchmarks`,
+     `factors`의 f1~f7 함수 7개, `tenant_layer`의 두 함수 시그니처를 `inspect.signature`로
+     실제로 검사해 `sales`/`tenant_id` 모양 파라미터가 하나도 없음을 확인. 나중에 누가
+     f1~f7에 `tenant_sales` 파라미터를 "편의상" 추가하면 이 테스트가 즉시 깨진다.
+  2. **동작적**: 실제 `predict_batch`를 돌려서 (a) `calibration_profile` 유무와 무관하게
+     f1~f7이 바이트 단위로 동일함, (b) **서로 완전히 다른 두 테넌트**(판매 규모 0.6배 vs
+     2.5배)의 profile로 같은 지역·기간을 스코어링해도 f1~f7이 완전히 동일하고 f8만
+     다름을 확인. 위 변이 검사로 이 두 테스트가 실제로 격리 위반을 잡는다는 것도 증명했다.
+     추가로 표본 부족 시 중립 폴백(지어내지 않음), outlier 제외, T2의 지역 잔차가 지역군·
+     전역보다 우선함, **T1은 지역 단위 잔차를 절대 만들지 않음**(tier 간 정밀도 구분 유지)도
+     검증했다.
+
+  변경 파일: `intelligence/scoring/tenant_layer.py`(신설), `intelligence/scoring/factors.py`
+  (`tenant_calibration` 시그니처 확장), `intelligence/scoring/model.py`(`calibration_profile`
+  배선), `intelligence/tests/test_tenant_isolation.py`(신설, 9개), `intelligence/README.md`
+  §5-1(사용법 2단계 예시 추가).
+- 못 한 것과 이유: `expected_revenue_krw`(p10/p50/p90 금액 추정, T1/T2가 "넓은/좁은 구간"으로
+  제공해야 하는 그 필드)는 손대지 않았다 — 이건 별개의 큰 작업(Step 5, 잔차 "분포" 자체를
+  금액 단위로 캘리브레이션)이고, 이번 지시는 명시적으로 f8(`tenant_calibration`)만 겨냥했다.
+  `expected_revenue_krw`는 모든 tier에서 여전히 `None`이다 — README §5에 그대로 남겨뒀다.
+
+## 12. 총괄자에게 알림 — 커밋 귀속 사고 (git 인덱스 경쟁, 내용 손실은 없음)
+
+이번 회차(§11) 작업을 `git add intelligence` 후 `git commit -- intelligence`로 커밋하려는
+시점에 **A(data-platform) 세션이 pathspec 없이(전체 워킹트리 기준) 자기 커밋을 먼저 실행**했고,
+그 순간 스테이징돼 있던 내 intelligence 변경분이 A의 커밋에 함께 쓸려 들어갔다.
+
+- 결과 커밋: `8b0bd8d` — 메시지는 `data-platform: pin CI deps (locale-safety fix) +
+  region_feature as_of writer + real derivation (DISPATCH-5)`. 내 커밋 메시지("intelligence:
+  CI dependency audit (clean) + T1/T2 tenant_calibration with isolation tests")는 어디에도
+  안 남았다.
+- **내용 손실은 없다.** `git show 8b0bd8d --stat`로 확인 — `intelligence/README.md`,
+  `RECONCILIATION.md`, `scoring/factors.py`, `scoring/model.py`,
+  `scoring/tenant_layer.py`(신규), `tests/test_tenant_isolation.py`(신규) 전부 의도한 그대로
+  들어가 있다. HEAD 기준 `python -m unittest discover -s tests -v` 재실행 → 90/90 통과.
+- **히스토리를 다시 쓰지 않았다** (`git commit --amend`/`rebase` 등). 다른 세션이 이미 이
+  커밋 위에서 계속 작업 중일 수 있어 위험 판단, 내용이 맞게 들어가 있으니 그대로 뒀다.
+- **원인**: 같은 워킹트리·같은 git 인덱스를 여러 세션이 동시에 쓰고 있다. `git add <내
+  폴더>` → `git commit -- <내 폴더>` 절차를 지켜도, 그 사이(add와 commit 사이) 다른 세션이
+  pathspec 없는 커밋을 끼워 넣으면 내가 스테이징한 파일이 그 커밋에 흡수된다. 이건 어느
+  한쪽이 "규칙을 안 지켜서" 생긴 게 아니라 **동시에 같은 인덱스에 쓰는 구조 자체의 경쟁
+  조건**이다 — `git add intelligence`/`git commit -- intelligence` 관례만으로는 원천 차단이
+  안 된다(내가 낸 pathspec은 "내가 커밋에 무엇을 넣을지"만 제한하지, "다른 세션이 그 사이에
+  먼저 커밋해버리는 것"은 막지 못한다).
+- **제안** (결정은 총괄자·jin 몫): 세션 간 git 작업을 직렬화하는 절차가 필요해 보인다 — 예를
+  들어 (a) 커밋 직전 `git status`로 스테이징 영역이 자기 폴더만 담고 있는지 확인 후 즉시
+  커밋, (b) 세션마다 작업 디렉터리를 분리(`git worktree`)해 인덱스 자체를 나누는 방법. 지금은
+  운 좋게 내용이 안 깨졌지만, 두 세션이 **동시에 같은 파일을 건드리는 경우**엔 이 경쟁이
+  merge conflict나 한쪽 변경 유실로 이어질 수 있다.

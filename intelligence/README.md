@@ -24,6 +24,7 @@ results: list[model.PredictionResult] = model.predict_batch(
     price_tier: str = "mid",                   # 선택. "value"/"mid"/"premium"/"luxury" (검증 안 함, §4-3 참고)
     seasonality_profile: list[float] | None = None,  # 선택. 정확히 12개 원소 (1월~12월), §4-2 참고
     horizon_months: int = 1,                   # 선택. 1 이상이어야 함, §4-2 참고
+    calibration_profile: tenant_layer.TenantCalibrationProfile | None = None,  # 선택. T1/T2 전용, §5-1
 ) -> list[model.PredictionResult]
 ```
 
@@ -164,8 +165,46 @@ assert [r.to_dict() for r in a] == [r.to_dict() for r in b]  # True
   기반). `/scores` 응답의 점수·랭킹 소스로는 쓸 수 있지만 금액으로 표시하면 안 된다.
 - **`opportunity_score`(퍼센타일 랭킹)는 여기서 계산되지 않는다.** `region_ids` 전체 집합
   내에서의 상대 순위가 필요하면 C가 `total_multiplier` 기준으로 직접 정렬해야 한다.
-- **`tenant_calibration`(f8)은 모든 tier에서 중립(1.0) 고정**이다 — 테넌트 실적 데이터를 아직
-  반영하지 않는다(Step 5 scope).
+- **`tenant_calibration`(f8)은 `calibration_profile`을 안 주면 모든 tier에서 중립(1.0)
+  고정**이다. T1/T2에서 실제 보정을 반영하려면 §5-1을 봐라 — 자동으로 되지 않는다.
+
+### 5-1. T1/T2 보정 (`calibration_profile`, 2026-08-17 추가)
+
+`predict_batch`/`predict_one`에 `calibration_profile` 키워드 인자를 추가로 받는다
+(`scoring.tenant_layer.TenantCalibrationProfile | None`, 기본값 `None`=중립).
+**`store`(공용 FeatureStore)와는 완전히 별개 경로다** — `region_ids`/`taxonomy_node_id`/
+`channel`/`period`/`as_of` 등 나머지 인자는 이전과 똑같이 동작하고, `calibration_profile`은
+오직 f8(`tenant_calibration`)에만 영향을 준다. f1~f7은 이 인자가 있든 없든 바이트 단위로
+동일하다(`tests/test_tenant_isolation.py`가 실제로 검증).
+
+```python
+from scoring import tenant_layer
+
+# 1단계: 테넌트의 과거 실적(sales_rows)과, 그 시점에 공용 모델(calibration 없이)이
+#        예측했을 baseline을 짝지어 프로파일을 학습한다. C는 sales_rows를 이미
+#        access token에서 나온 tenant_id로만 필터링해서 넘겨야 한다 — 이 함수는
+#        tenant_id를 받지 않고 더 가져올 방법도 없다(06_governance.md §1.4).
+baseline_by_region_period = {
+    (row.region_id, period): row.expected_demand_units
+    for period in past_periods
+    for row in model.predict_batch(region_ids=..., period=period, as_of=f"{period}-01",
+                                    data_tier="T2", store=store)  # calibration_profile 없이
+}
+profile = tenant_layer.fit_tenant_calibration(
+    sales_rows=tenant_sales_rows,  # [{"region_id","period","units_sold","distribution_points","is_outlier"}, ...]
+    baseline_by_region_period=baseline_by_region_period,
+    data_tier="T2",
+)  # 표본이 부족하면 None을 반환한다 — 억지로 배수를 만들지 않는다
+
+# 2단계: 실제 예측 요청에 프로파일을 그대로 넘긴다.
+results = model.predict_batch(region_ids=..., period="2026-07", as_of="2026-07-01",
+                               data_tier="T2", store=store, calibration_profile=profile)
+```
+
+`fit_tenant_calibration`은 표본이 3건 미만이면 `None`을 반환한다 — `predict_batch`에
+`calibration_profile=None`을 넘기면(또는 그냥 생략하면) `tenant_calibration`이 중립(1.0)으로
+처리된다(크래시 없음). **한 번 학습한 `profile`을 매 예측 요청마다 재사용해라** —
+`fit_tenant_calibration`을 요청마다 다시 부르지 마라, 무겁고 매번 같은 결과가 나온다.
 
 ## 6. 최소 통합 예시
 

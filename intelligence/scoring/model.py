@@ -17,13 +17,19 @@ What it DOES guarantee (see tests/test_factor_model.py):
   - T0 => expected_revenue_krw is null (enforced by assert_t0_revenue_null,
     not just "happens to be None")
   - identical inputs => byte-identical output (no hidden randomness)
+
+T1/T2 tenant_calibration (f8, 05_scoring_spec.md §2) is implemented via an
+optional `calibration_profile` param (tenant_layer.TenantCalibrationProfile)
+threaded through predict_one/predict_batch. It reaches ONLY f8 - see
+tenant_layer.py's module docstring and tests/test_tenant_isolation.py for
+06_governance.md §1.4's isolation guarantee.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
-from . import factors
+from . import factors, tenant_layer
 from .feature_store import FeatureStore
 
 _CHANNEL_TYPE_CACHE: dict[str, str] | None = None
@@ -190,11 +196,21 @@ def predict_one(
     benchmarks: dict,
     ecommerce_benchmark: float | None,
     spend_index_benchmark: float | None,
+    calibration_profile: tenant_layer.TenantCalibrationProfile | None = None,
 ) -> PredictionResult:
     channel_type = channel_type_of(channel)
     feats = region_features.get(region_id, {})
     demand = demand_by_region.get(region_id)
     target_ages = product_attributes.get("target_age")
+    # 06_governance.md §1.4: calibration_profile is the ONLY tenant-derived
+    # input anywhere in this function, and it only ever reaches f8 below -
+    # region_features/demand_by_region/benchmarks (f1~f7's entire input
+    # surface) come exclusively from the shared FeatureStore and were
+    # computed before this function was even called. See tenant_layer.py's
+    # module docstring and tests/test_tenant_isolation.py.
+    calibration_multiplier = (
+        tenant_layer.resolve_multiplier(calibration_profile, region_id) if calibration_profile is not None else None
+    )
 
     f_list = [
         factors.addressable_demand(
@@ -231,7 +247,11 @@ def predict_one(
             benchmark_value=ecommerce_benchmark if channel_type == "online" else benchmarks["channel_density"],
         ),
         factors.seasonality(seasonality_profile, _months_for_horizon(period, horizon_months)),
-        factors.tenant_calibration(data_tier),
+        factors.tenant_calibration(
+            data_tier,
+            calibration_multiplier,
+            calibration_profile.n_rows_used if calibration_profile is not None else None,
+        ),
     ]
 
     assert [f.key for f in f_list] == list(factors.FACTOR_KEYS)  # order/coverage guard
@@ -275,6 +295,7 @@ def predict_batch(
     price_tier: str = "mid",
     seasonality_profile: list[float] | None = None,
     horizon_months: int = 1,
+    calibration_profile: tenant_layer.TenantCalibrationProfile | None = None,
 ) -> list[PredictionResult]:
     """Score `region_ids` for one (product, channel, period). Benchmarks are
     computed once across this exact region set - per 01_domain_model.json,
@@ -282,6 +303,13 @@ def predict_batch(
     result set), and factor benchmarks follow the same scoping so a factor's
     "vs. peer average" evidence means the peers actually being compared here,
     not some fixed global constant baked into the code.
+
+    `calibration_profile` (05_scoring_spec.md §2, T1/T2 only - build one with
+    tenant_layer.fit_tenant_calibration()) is the only tenant-derived input
+    here. It is passed straight to predict_one() and never touches
+    `store.get_features`/`store.get_demand`/`_compute_benchmarks` above -
+    those three calls are f1~f7's entire input surface and run identically
+    whether or not a calibration_profile is given (06_governance.md §1.4).
     """
     product_attributes = product_attributes or {}
     target_ages = product_attributes.get("target_age")
@@ -316,6 +344,7 @@ def predict_batch(
                 benchmarks=benchmarks,
                 ecommerce_benchmark=ecommerce_benchmark,
                 spend_index_benchmark=spend_index_benchmark,
+                calibration_profile=calibration_profile,
             )
         )
     return results

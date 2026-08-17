@@ -301,16 +301,31 @@ def seasonality(seasonality_profile: list[float] | None, months: list[int]) -> F
 # f8 tenant_calibration - T0 is HARD-FIXED at 1.0. See model.py's
 # assert_t0_revenue_null for the paired output-side guard.
 # ---------------------------------------------------------------------------
-def tenant_calibration(data_tier: str) -> FactorResult:
+def tenant_calibration(
+    data_tier: str,
+    calibration_multiplier: float | None = None,
+    n_rows_used: int | None = None,
+) -> FactorResult:
+    """05_scoring_spec.md §2: T0는 항상 1.0 고정. T1/T2는 `calibration_multiplier`가
+    있으면(scoring/tenant_layer.py의 `resolve_multiplier()`가 이미 계산해 넘긴 값)
+    그걸 쓰고, 없으면(테넌트가 아직 판매 데이터를 안 올렸거나 `fit_tenant_calibration`이
+    표본 부족으로 `None`을 낸 경우) 중립(1.0)으로 처리한다.
+
+    이 함수는 `tenant_sales`를 직접 읽지 않는다 - 이미 계산된 배수 하나만 받는다.
+    06_governance.md §1.4 격리는 이 함수가 아니라 model.py의 f1~f7 경로에
+    `calibration_multiplier`가 조회에 전혀 관여하지 않는다는 사실로 지켜진다
+    (tests/test_tenant_isolation.py).
+    """
     if data_tier == "T0":
         return FactorResult(
             "tenant_calibration", 1.0, None, None,
             "T0 테넌트 - 자사 실적 데이터 없음, 보정 없음(1.0 고정)",
         )
-    # T1/T2 residual-model calibration is 05_scoring_spec.md §2's Step 5 scope
-    # (needs tenant_sales + the Step 3 backtest residual distribution). Until
-    # that lands, T1/T2 also get a neutral 1.0 rather than an invented number.
-    return FactorResult(
-        "tenant_calibration", 1.0, None, None,
-        f"{data_tier} 테넌트 보정 모델 미구현 (5단계 예정) - 임시로 중립(1.0) 처리",
-    )
+    if calibration_multiplier is None:
+        return FactorResult(
+            "tenant_calibration", 1.0, None, None,
+            f"{data_tier} 테넌트 - 보정 데이터 부족(또는 미제공), 중립(1.0)으로 처리",
+        )
+    rows_note = f", {n_rows_used}건 학습" if n_rows_used else ""
+    evidence = f"자사 판매 실적 기반 보정 배수 {calibration_multiplier:.2f} (중립 기준 1.0{rows_note})"
+    return FactorResult("tenant_calibration", calibration_multiplier, calibration_multiplier, 1.0, evidence)
